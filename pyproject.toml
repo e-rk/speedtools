@@ -15,6 +15,7 @@ dependencies = [
     "pillow",
     "black",
 ]
+license = {text = "GPL-3.0-or-later"}
 
 [project.scripts]
 speedtool-unpack = "speedtools.speedtool:unpack"
