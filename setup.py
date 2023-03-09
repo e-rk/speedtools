@@ -35,7 +35,15 @@ class build_ksy(Command):
 
     def run(self):
         for build, source in self.files.items():
-            args = ["--outdir", str(build.parent), "-t", "python", str(source)]
+            args = [
+                "--outdir",
+                str(build.parent),
+                "-t",
+                "python",
+                "--python-package",
+                "speedtools",
+                str(source),
+            ]
             try:
                 self.spawn(["ksc"] + args)
             except ExecError:

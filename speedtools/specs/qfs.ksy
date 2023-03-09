@@ -13,5 +13,5 @@ seq:
     type: b24
   - id: data
     size-eos: true
-    process: refpack(expanded_length)
+    process: speedtools.refpack(expanded_length)
     type: fsh

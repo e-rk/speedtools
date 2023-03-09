@@ -8,7 +8,7 @@
 import logging
 from collections import namedtuple
 
-from speedtools.parser.frd import Frd
+from speedtools.frd import Frd
 from speedtools.types import Polygon, Quaternion, Vector3d
 
 logger = logging.getLogger(__name__)

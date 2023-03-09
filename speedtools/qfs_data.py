@@ -9,7 +9,7 @@ import logging
 from collections import namedtuple
 from struct import pack
 
-from speedtools.parser.qfs import Qfs
+from speedtools.qfs import Qfs
 
 ch = logging.StreamHandler()
 

@@ -8,8 +8,8 @@
 import logging
 from collections import namedtuple
 
-from speedtools.parser.viv import Viv
 from speedtools.types import Polygon, Vector3d
+from speedtools.viv import Viv
 
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
