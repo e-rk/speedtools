@@ -9,7 +9,7 @@ import logging
 from collections import namedtuple
 from struct import pack
 
-from speedtools.qfs import Qfs
+from speedtools.parsers import QfsParser
 
 ch = logging.StreamHandler()
 
@@ -18,7 +18,7 @@ class Bitmap(namedtuple("Bitmap", ["id", "width", "height", "rgba"])):
     pass
 
 
-class QfsData(Qfs):
+class QfsData(QfsParser):
     @property
     def raw_bitmaps(self):
         for object in self.data.objects:

@@ -160,4 +160,5 @@ cython_debug/
 #.idea/
 
 # Project-specific
-speedtools/parser
+speedtools/parsers
+!speedtools/parsers/__init__.py

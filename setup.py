@@ -35,13 +35,18 @@ class build_ksy(Command):
 
     def run(self):
         for build, source in self.files.items():
+            target_path = (
+                Path(build.parent, "parsers")
+                if not self.editable_mode
+                else Path(source.parent.parent, "parsers")
+            )
             args = [
                 "--outdir",
-                str(build.parent),
+                str(target_path),
                 "-t",
                 "python",
                 "--python-package",
-                "speedtools",
+                "speedtools.parsers",
                 str(source),
             ]
             try:

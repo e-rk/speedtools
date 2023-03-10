@@ -8,7 +8,7 @@
 import logging
 from collections import namedtuple
 
-from speedtools.frd import Frd
+from speedtools.parsers import FrdParser
 from speedtools.types import Polygon, Quaternion, Vector3d
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ class TrackSegment(namedtuple("TrackSegment", ["vertices", "polygons"])):
     pass
 
 
-class FrdData(Frd):
+class FrdData(FrdParser):
     def _make_polygon(self, polygon):
         material = polygon.texture & 0xFF
         backface_culling = (polygon.hs_texflags & 0x8000) == 0

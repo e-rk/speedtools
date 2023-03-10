@@ -8,8 +8,8 @@
 import logging
 from collections import namedtuple
 
+from speedtools.parsers import VivParser
 from speedtools.types import Polygon, Vector3d
-from speedtools.viv import Viv
 
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
@@ -19,7 +19,7 @@ class Part(namedtuple("Part", ["position", "vertices", "normals", "polygons"])):
     pass
 
 
-class VivData(Viv):
+class VivData(VivParser):
     def _make_polygon(self, polygon):
         face = tuple(vertice for vertice in polygon.vertices)
         uv = tuple((u, 1 - v) for u, v in zip(polygon.u, polygon.v))
@@ -40,15 +40,15 @@ class VivData(Viv):
             position_vect = Vector3d(x=position.x, y=position.y, z=position.z)
             vertices = [
                 Vector3d(x=vert.x, y=vert.y, z=vert.z)
-                for vert in body.vertices[vertex_index: vertex_index + vertex_num]
+                for vert in body.vertices[vertex_index : vertex_index + vertex_num]
             ]
             normals = [
                 Vector3d(x=normal.x, y=normal.y, z=normal.z)
-                for normal in body.normals[vertex_index: vertex_index + vertex_num]
+                for normal in body.normals[vertex_index : vertex_index + vertex_num]
             ]
             polygons = [
                 self._make_polygon(polygon)
-                for polygon in body.polygons[polygon_index: polygon_index + polygon_num]
+                for polygon in body.polygons[polygon_index : polygon_index + polygon_num]
             ]
             yield Part(
                 position=position_vect,
