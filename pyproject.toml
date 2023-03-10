@@ -13,7 +13,6 @@ authors = [
 dependencies = [
     "kaitaistruct",
     "pillow",
-    "black",
 ]
 license = {text = "GPL-3.0-or-later"}
 
