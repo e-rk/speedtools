@@ -1,6 +1,7 @@
 meta:
   id: fsh
   file-extension: fsh
+  license: CC0-1.0
   endian: le
   encoding: ASCII
 seq:
@@ -59,34 +60,38 @@ types:
         repeat-expr: width * height
   pixel_32_element:
     seq:
-      - id: elem
+      - id: value
         type: u4
+        doc: Raw 32-bit pixel value
     instances:
-      red: 
-        value: elem & 0xff
+      red:
+        value: value & 0xff
       green:
-        value: (elem >> 8) & 0xff
+        value: (value >> 8) & 0xff
       blue:
-        value: (elem >> 16) & 0xff
+        value: (value >> 16) & 0xff
       alpha:
-        value: (elem >> 24) & 0xff
-      color: 
+        value: (value >> 24) & 0xff
+      color:
         value: 'blue + green * 0x100 + red * 0x10000 + alpha * 0x1000000'
+        doc: ARGB color value
   palette_element:
     seq:
-      - id: elem
+      - id: value
         type: u2
+        doc: Raw palette value
     instances:
-      red: 
-        value: (elem & 0x1f) * 8
+      red:
+        value: (value & 0x1f) * 8
       green:
-        value: ((elem >> 5) & 0x1f) * 8
+        value: ((value >> 5) & 0x1f) * 8
       blue:
-        value: ((elem >> 10) & 0x1f) * 8
+        value: ((value >> 10) & 0x1f) * 8
       alpha:
-        value: '(elem & 0x8000) != 0 ? 0xff : 0'
-      color: 
+        value: '(value & 0x8000) != 0 ? 0xff : 0'
+      color:
         value: 'blue + green * 0x100 + red * 0x10000 + alpha * 0x1000000'
+        doc: ARGB color value
 enums:
   bitmap_code:
     0x7b: bitmap_8
