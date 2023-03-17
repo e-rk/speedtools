@@ -1,52 +1,34 @@
 meta:
   id: frd
   file-extension: frd
+  license: CC0-1.0
   endian: le
 seq:
-  - id: header
-    type: frd_header
+  - id: unknown
+    size: 28
+  - id: num_segments
+    type: u4
+  - id: num_road_blocks
+    type: u4
   - id: road_blocks
-    type: frd_road_block
+    type: road_block
     repeat: expr
-    repeat-expr: header.pos
-  - id: track_blocks
-    type: frd_track_block
+    repeat-expr: num_road_blocks
+  - id: segment_headers
+    type: segment_header
     repeat: expr
-    repeat-expr: header.blocks + 1
-  - id: track_block_data
-    type: frd_track_block_data(track_blocks[_index])
+    repeat-expr: num_segments + 1
+  - id: segment_data
+    type: segment_data
+    parent: segment_headers[_index]
     repeat: expr
-    repeat-expr: header.blocks + 1
-  - id: nobj
+    repeat-expr: num_segments + 1
+  - id: num_global_objects
     type: u4
   - id: global_objects
-    type: xobjs(nobj)
+    type: object_chunk(num_global_objects)
 types:
-  frd_header:
-    seq:
-      - id: unknown
-        size: 28
-      - id: blocks
-        type: u4
-      - id: pos
-        type: u4
-  frd_road_block:
-    seq:
-      - id: ref
-        type: point
-      - id: normal
-        type: point
-      - id: forward
-        type: point
-      - id: right
-        type: point
-      - id: left_wall
-        type: f4
-      - id: right_wall
-        type: f4
-      - id: unknown
-        size: 28
-  point:
+  float3:
     seq:
       - id: x
         type: f4
@@ -54,160 +36,7 @@ types:
         type: f4
       - id: z
         type: f4
-  frd_track_block:
-    seq:
-      - id: block
-        type: u4
-        repeat: expr
-        repeat-expr: 7
-      - id: obj
-        type: u4
-        repeat: expr
-        repeat-expr: 4
-      - id: unknown
-        size: 44
-      - id: vertices
-        type: u4
-      - id: hi_res_vert
-        type: u4
-      - id: lo_res_vert
-        type: u4
-      - id: med_res_vert
-        type: u4
-      - id: vertices_dup
-        type: u4
-      - id: object_vert
-        type: u4
-      - id: unknown1
-        size: 8
-      - id: centre
-        type: point
-      - id: bounding
-        type: point
-        repeat: expr
-        repeat-expr: 4
-      - id: neighbouring_blocks
-        type: neighbor_block
-        repeat: expr
-        repeat-expr: 300
-      - id: nobj
-        type: nobj_type
-        repeat: expr
-        repeat-expr: 4
-      - id: nvroad
-        type: u4
-      - id: pt_min
-        type: point
-      - id: pt_max
-        type: point
-      - id: unknown3
-        size: 4
-      - id: positions
-        type: u4
-      - id: nxobj
-        type: u4
-      - id: unknown4
-        size: 4
-      - id: npolyobj
-        type: u4
-      - id: unknown5
-        size: 4
-      - id: nsoundsrc
-        type: u4
-      - id: unknown6
-        size: 4
-      - id: nlightsrc
-        type: u4
-      - id: unknown7
-        size: 4
-      - id: hs_neighbors
-        type: u4
-        repeat: expr
-        repeat-expr: 8
-  neighbor_block:
-    seq:
-      - id: block
-        type: s2
-      - id: unknown
-        type: s2
-  nobj_type:
-    seq:
-      - id: nobj
-        type: u4
-      - id: unknown
-        size: 4
-  frd_track_block_data:
-    params:
-      - id: header
-        type: frd_track_block
-    seq:
-      - id: vertices
-        type: point
-        repeat: expr
-        repeat-expr: header.vertices
-      - id: unknown
-        type: u4
-        repeat: expr
-        repeat-expr: header.vertices
-      - id: vroad
-        type: nvroad_type
-        repeat: expr
-        repeat-expr: header.nvroad
-      - id: xobj
-        type: refxobj
-        repeat: expr
-        repeat-expr: header.nxobj
-      - id: unknown1
-        size: 20
-        repeat: expr
-        repeat-expr: header.npolyobj
-      - id: soundsrc
-        type: source_type
-        repeat: expr
-        repeat-expr: header.nsoundsrc
-      - id: lightsrc
-        type: source_type
-        repeat: expr
-        repeat-expr: header.nlightsrc
-      - id: polydata
-        type: track_polygon(header.block[_index])
-        repeat: expr
-        repeat-expr: 7
-      - id: polydata_obj
-        type: track_polygon(header.obj[_index])
-        repeat: expr
-        repeat-expr: 4
-      - id: objs
-        type: xobjs(header.nobj[_index].nobj)
-        repeat: expr
-        repeat-expr: 4
-  nvroad_type:
-    seq:
-      - id: hs_minmax
-        size: 4
-      - id: hs_orphan
-        size: 4
-      - id: unknown
-        size: 2
-      - id: count
-        type: u2
-      - id: data
-        type: vroad_data
-  vroad_data:
-    seq:
-      - id: norm
-        type: u2_vector
-      - id: forw
-        type: u2_vector
-  u2_vector:
-    seq:
-      - id: x
-        type: u2
-      - id: y
-        type: u2
-      - id: z
-        type: u2
-  s4_vector:
+  int3:
     seq:
       - id: x
         type: s4
@@ -215,124 +44,8 @@ types:
         type: s4
       - id: z
         type: s4
-  refxobj:
+  short4:
     seq:
-      - id: pt
-        type: s4_vector
-      - id: unknown
-        size: 2
-      - id: global_no
-        type: u2
-      - id: unknown1
-        size: 2
-      - id: cross_index
-        size: 1
-      - id: unknown2
-        size: 1
-  source_type:
-    seq:
-      - id: pt
-        type: s4_vector
-      - id: type
-        type: u4
-  track_polygon:
-    params:
-      - id: count
-        type: u4
-    seq:
-      - id: data
-        type: polydata
-        repeat: expr
-        repeat-expr: count
-  polydata:
-    seq:
-      - id: vertex
-        type: u2
-        repeat: expr
-        repeat-expr: 4
-      - id: texture
-        type: u2
-      - id: hs_texflags
-        type: u2
-      - id: flags
-        size: 1
-  xobjs:
-    params:
-      - id: nobj
-        type: u4
-    seq:
-      - id: objdata
-        type: xobjdata
-        repeat: expr
-        repeat-expr: nobj
-      - id: extra
-        type: xobjdata_extra(objdata[_index])
-        repeat: expr
-        repeat-expr: nobj
-  xobjdata:
-    seq:
-      - id: cross_type
-        type: u4
-      - id: cross_no
-        type: u4
-      - id: unknown
-        size: 4
-      - id: ref
-        type: point
-        if: cross_type == 1 or cross_type == 2 or cross_type == 4
-      - id: unknown1
-        size: 12
-        if: cross_type == 3
-      - id: anim
-        type: u4
-      - id: unknown2
-        size: 4
-      - id: nvertices
-        type: u4
-      - id: unknown3
-        size: 8
-      - id: npolygons
-        type: u4
-      - id: unknown4
-        size: 4
-  xobjdata_extra:
-    params:
-      - id: objdata
-        type: xobjdata
-    seq:
-      - id: anim
-        type: xobjdata_anim
-        if: objdata.cross_type == 3
-      - id: vertices
-        type: point
-        repeat: expr
-        repeat-expr: objdata.nvertices
-      - id: unknown
-        type: u4
-        repeat: expr
-        repeat-expr: objdata.nvertices
-      - id: polygons
-        type: track_polygon(objdata.npolygons)
-  xobjdata_anim:
-    seq:
-      - id: unknown
-        size: 2
-      - id: type
-        size: 1
-      - id: objno
-        size: 1
-      - id: anim_length
-        type: u2
-      - id: anim_delay
-        type: u2
-      - id: anim_data
-        type: anim_data_type
-        repeat: expr
-        repeat-expr: anim_length
-  anim_data_type:
-    seq:
-      - id: pt
-        type: s4_vector
       - id: x
         type: s2
       - id: y
@@ -341,3 +54,439 @@ types:
         type: s2
       - id: w
         type: s2
+  short3:
+    seq:
+      - id: x
+        type: u2
+      - id: y
+        type: u2
+      - id: z
+        type: u2
+  road_block:
+    seq:
+      - id: location
+        type: float3
+        doc: Road block node location
+      - id: normal
+        type: float3
+        doc: Normal vector of the road plane
+      - id: forward
+        type: float3
+        doc: Unit vector pointing forwards
+      - id: right
+        type: float3
+        doc: Unit vector pointing right
+      - id: left_wall
+        type: f4
+        doc: Distance to the left wall
+      - id: right_wall
+        type: f4
+        doc: Distance to the right wall
+      - id: unknown1
+        size: 8
+      - id: neighbors
+        type: u2
+        repeat: expr
+        repeat-expr: 2
+        doc: Neighboring nodes
+      - id: unknown2
+        size: 16
+  segment_header:
+    seq:
+      - id: num_polygons
+        type: u4
+        repeat: expr
+        repeat-expr: 11
+        doc: Number of polygons in each chunk
+      - id: unused1
+        size: 44
+        doc: Empty space
+      - id: num_vertices
+        type: u4
+        doc: Number of vertices in the track segment
+      - id: num_high_res_vertices
+        type: u4
+        doc: Number of high-resolution vertices in the track segment
+      - id: num_low_res_vertices
+        type: u4
+        doc: Number of low-resolution vertices in the track segment
+      - id: num_medium_res_vertices
+        type: u4
+        doc: Number of medium-resolution vertices in the track segment
+      - id: num_vertices_dup
+        type: u4
+        doc: Number of vertices in the track segment
+      - id: num_object_vertices
+        type: u4
+        doc: Number of vertices used by off-road track objects
+      - id: unused2
+        size: 8
+        doc: Empty space
+      - id: location
+        type: float3
+        doc: Center location of the track segment
+      - id: bounding_points
+        type: float3
+        repeat: expr
+        repeat-expr: 4
+        doc: Coordinates of the points delimiting the segment boundary
+      - id: neighbors
+        type: neighbor
+        repeat: expr
+        repeat-expr: 300
+        doc: List of segment numbers neighboring with this segment
+      - id: num_objects_per_chunks
+        type: num_objects_per_chunk
+        repeat: expr
+        repeat-expr: 4
+        doc: Number of road objects stored in each object chunk.
+      - id: num_driveable_polygons
+        type: u4
+        doc: Number of driveable track polygon attributes
+      - id: min_point
+        type: float3
+        doc: Minimum vertex coordinate for driveable track polygon
+      - id: max_point
+        type: float3
+        doc: Maximum vertex coordinate for diriveable track polygon
+      - id: unused3
+        size: 4
+        doc: Empty space
+      - id: num_road_blocks
+        type: u4
+        doc: Number of road blocks associated with this segment
+      - id: num_road_objects
+        type: u4
+        doc: Number of non-animated road objects
+      - id: unused4
+        size: 4
+        doc: Empty space
+      - id: num_polygon_objects
+        type: u4
+        doc: Number of off-road polygon objects
+      - id: unused5
+        size: 4
+        doc: Empty space
+      - id: num_sound_sources
+        type: u4
+        doc: Number of sound sources
+      - id: unused6
+        size: 4
+        doc: Empty space
+      - id: num_light_sources
+        type: u4
+        doc: Number of light sources
+      - id: unused7
+        size: 4
+        doc: Empty space
+      - id: neighbor_segments
+        type: u4
+        repeat: expr
+        repeat-expr: 8
+        doc: List of segments in direct contact with this segment
+  neighbor:
+    seq:
+      - id: block
+        type: s2
+        doc: Identifier of the neighboring block
+      - id: unknown
+        type: s2
+  num_objects_per_chunk:
+    seq:
+      - id: num_objects
+        type: u4
+      - id: unknown
+        size: 4
+  segment_data:
+    seq:
+      - id: vertices
+        type: float3
+        repeat: expr
+        repeat-expr: _parent.num_vertices
+        doc: Vertice coordinates
+      - id: vertice_shadings
+        type: color
+        repeat: expr
+        repeat-expr: _parent.num_vertices
+        doc: Vertice shading color
+      - id: driveable_polygons
+        type: driveable_polygon
+        repeat: expr
+        repeat-expr: _parent.num_driveable_polygons
+        doc: Additional attributes for driveable track polygons
+      - id: object_attributes
+        type: object_attribute
+        repeat: expr
+        repeat-expr: _parent.num_road_objects
+        doc: Additional attributes for track objects
+      - id: second_object_attributes
+        type: object_attribute_2_padded(_parent.num_polygon_objects)
+        size: 20 * _parent.num_polygon_objects
+        doc: Additional attributes for polygon and some track objects
+      - id: sound_sources
+        type: source_type
+        repeat: expr
+        repeat-expr: _parent.num_sound_sources
+        doc: Sound source data
+      - id: light_sources
+        type: source_type
+        repeat: expr
+        repeat-expr: _parent.num_light_sources
+        doc: Light source data
+      - id: chunks
+        type: track_polygon(_parent.num_polygons[_index])
+        repeat: expr
+        repeat-expr: 11
+        doc: Polygon data chunks
+      - id: object_chunks
+        type: object_chunk(_parent.num_objects_per_chunks[_index].num_objects)
+        repeat: expr
+        repeat-expr: 4
+        doc: Object data chunks
+  driveable_polygon:
+    seq:
+      - id: min_y
+        type: u1
+        doc: Minimum value of the Y coordinate
+      - id: max_y
+        type: u1
+        doc: Maximum value of the Y coordinate
+      - id: min_x
+        type: u1
+        doc: Minimum value of the X coordinate
+      - id: max_x
+        type: u1
+        doc: Maximum value of the X coordinate
+      - id: front_edge
+        type: u1
+        doc: Front edge flags
+      - id: left_edge
+        type: u1
+        doc: Left edge flags
+      - id: back_edge
+        type: u1
+        doc: Back edge flags
+      - id: right_edge
+        type: u1
+        doc: Right edge flags
+      - id: collision_flags
+        type: u1
+        doc: Polygon collision flags
+      - id: unknown
+        size: 1
+      - id: polygon
+        type: u2
+        doc: Index of the polygon in high-resolution track chunk described by this structure
+      - id: normal
+        type: short3
+      - id: forward
+        type: short3
+  object_attribute:
+    seq:
+      - id: location
+        type: int3
+        doc: Coordinate of the object reference point
+      - id: unknown1
+        size: 2
+      - id: identifier
+        type: u2
+        doc: Unique identifier of the object
+      - id: unknown2
+        size: 4
+  object_attribute_2_padded:
+    params:
+      - id: num_attributes
+        type: u4
+    seq:
+      - id: attributes
+        type: object_attribute_2
+        repeat: expr
+        repeat-expr: num_attributes
+  object_attribute_2:
+    seq:
+      - id: magic
+        contents: [0x04, 0x00]
+      - id: type
+        type: u1
+        enum: attribute_type
+        doc: Object attribute type
+      - id: identifier
+        type: u1
+        doc: Object identifier number
+      - id: location
+        type: int3
+        doc: Object location
+      - id: cross_index
+        type: u1
+        doc: Unknown use
+        if: type == attribute_type::road_object1 or type == attribute_type::road_object2
+      - id: unknown
+        size: 3
+        if: type == attribute_type::road_object1 or type == attribute_type::road_object2
+    enums:
+      attribute_type:
+        0x01: polygon_object
+        0x02: road_object1
+        0x04: road_object2
+  source_type:
+    seq:
+      - id: location
+        type: int3
+        doc: Source location
+      - id: type
+        type: u4
+        doc: Source type
+  track_polygon:
+    params:
+      - id: num_polygons
+        type: u4
+    seq:
+      - id: polygons
+        type: polygon
+        repeat: expr
+        repeat-expr: num_polygons
+        doc: Sequence of polygons
+  polygon:
+    seq:
+      - id: face
+        type: u2
+        repeat: expr
+        repeat-expr: 4
+        doc: Indices of the vertices building the polygon
+      - id: texture
+        type: u2
+        doc: Texture data
+      - id: flags
+        type: u2
+        doc: Polygon flags
+      - id: animation
+        type: u1
+        doc: Texture animation data
+    instances:
+      backface_culling:
+        value: (flags & 0x8000) == 0
+      mirror_y:
+        value: (flags & 0x0020) != 0
+      mirror_x:
+        value: (flags & 0x0010) != 0
+      invert:
+        value: (flags & 0x0008) != 0
+      rotate:
+        value: (flags & 0x0004) != 0
+      lane:
+        value: (texture & 0x0800) != 0
+      texture_id:
+        value: (texture & 0x07FF)
+  object_chunk:
+    params:
+      - id: num_objects
+        type: u4
+    seq:
+      - id: objects
+        type: object_header
+        repeat: expr
+        repeat-expr: num_objects
+      - id: object_extras
+        type: object_data
+        parent: objects[_index]
+        repeat: expr
+        repeat-expr: objects.size
+  object_header:
+    seq:
+      - id: type
+        type: u4
+        enum: object_type
+        doc: Object type
+      - id: attribute_index
+        type: u4
+        doc: Index od the additional object attribute data
+      - id: unknown
+        size: 4
+      - id: location
+        type: float3
+        doc: Location of the object
+      - id: specific_data_size
+        type: u4
+        doc: Size of the object specific data
+      - id: unused1
+        size: 4
+      - id: num_vertices
+        type: u4
+        doc: Number of vertices in object geometry
+      - id: unused2
+        size: 8
+      - id: num_polygons
+        type: u4
+        doc: Number of polygons in object geometry
+      - id: unused3
+        size: 4
+    enums:
+      object_type:
+        0x02: normal1
+        0x03: animated
+        0x04: normal2
+  object_data:
+    seq:
+      - id: animation
+        type: animation
+        if: _parent.type == object_header::object_type::animated
+        doc: Animation data
+      - id: vertices
+        type: float3
+        repeat: expr
+        repeat-expr: _parent.num_vertices
+        doc: Vertice coordinates
+      - id: vertice_shadings
+        type: color
+        repeat: expr
+        repeat-expr: _parent.num_vertices
+        doc: Vertice shading color
+      - id: polygons
+        type: polygon
+        repeat: expr
+        repeat-expr: _parent.num_polygons
+        doc: Object polygons
+  animation:
+    seq:
+      - id: head
+        type: u2
+        doc: Head value with unknown use
+      - id: type
+        type: u1
+        doc: Type value with unknown use
+      - id: identifier
+        type: u1
+        doc: Unique identifier
+      - id: num_keyframes
+        type: u2
+        doc: Number of keyframes in the animation
+      - id: delay
+        type: u2
+        doc: Initial delay of the animation
+      - id: keyframes
+        type: keyframe
+        repeat: expr
+        repeat-expr: num_keyframes
+        doc: Animation keyframes
+  keyframe:
+    seq:
+      - id: location
+        type: int3
+        doc: Object location at keyframe
+      - id: quaternion
+        type: short4
+        doc: Object rotation at keyframe
+  color:
+    seq:
+      - id: red
+        type: u1
+        doc: Red color channel
+      - id: green
+        type: u1
+        doc: Green color channel
+      - id: blue
+        type: u1
+        doc: Blue color channel
+      - id: alpha
+        type: u1
+        doc: Alpha color channel

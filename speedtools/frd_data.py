@@ -7,6 +7,7 @@
 
 import logging
 from collections import namedtuple
+from itertools import chain, compress
 
 from speedtools.parsers import FrdParser
 from speedtools.types import Polygon, Quaternion, Vector3d
@@ -14,11 +15,11 @@ from speedtools.types import Polygon, Quaternion, Vector3d
 logger = logging.getLogger(__name__)
 
 
-class Animation(namedtuple("Animation", ["length", "delay", "positions", "quaternions"])):
+class Animation(namedtuple("Animation", ["length", "delay", "locations", "quaternions"])):
     pass
 
 
-class TrackObject(namedtuple("TrackObject", ["position", "animation", "vertices", "polygons"])):
+class TrackObject(namedtuple("TrackObject", ["location", "animation", "vertices", "polygons"])):
     pass
 
 
@@ -29,11 +30,11 @@ class TrackSegment(namedtuple("TrackSegment", ["vertices", "polygons"])):
 class FrdData(FrdParser):
     def _make_polygon(self, polygon):
         material = polygon.texture & 0xFF
-        backface_culling = (polygon.hs_texflags & 0x8000) == 0
+        backface_culling = polygon.backface_culling
         material = str(material).zfill(4)
         uvs = []
         face = []
-        for vertice, uv in zip(polygon.vertex, self._texture_flags_to_uv(polygon.hs_texflags)):
+        for vertice, uv in zip(polygon.face, self._texture_flags_to_uv(polygon), strict=True):
             if vertice in face:
                 logger.debug("Polygon is not a quad. Converting into triangle.")
                 continue
@@ -47,66 +48,98 @@ class FrdData(FrdParser):
         )
 
     def _make_object(self, data, extra):
-        position = None
+        location = None
         animation = None
-        if data.cross_type == 2 or data.cross_type == 4:
-            position = Vector3d(x=data.ref.x, y=data.ref.y, z=data.ref.z)
-        if data.cross_type == 3:
-            positions = [
-                Vector3d(x=anim.pt.x / 65536.0, y=anim.pt.y / 65536.0, z=anim.pt.z / 65536.0)
-                for anim in extra.anim.anim_data
+        if data.type == data.ObjectType.normal1 or data.type == data.ObjectType.normal2:
+            location = Vector3d(x=data.location.x, y=data.location.y, z=data.location.z)
+        if data.type == data.ObjectType.animated:
+            locations = [
+                Vector3d(
+                    x=keyframe.location.x / 65536.0,
+                    y=keyframe.location.y / 65536.0,
+                    z=keyframe.location.z / 65536.0,
+                )
+                for keyframe in extra.animation.keyframes
             ]
             quaternions = [
-                Quaternion(x=anim.x, y=anim.y, z=anim.z, w=anim.w) for anim in extra.anim.anim_data
+                Quaternion(
+                    x=keyframe.quaternion.x,
+                    y=keyframe.quaternion.y,
+                    z=keyframe.quaternion.z,
+                    w=keyframe.quaternion.w,
+                )
+                for keyframe in extra.animation.keyframes
             ]
             animation = Animation(
-                length=extra.anim.anim_length,
-                delay=extra.anim.anim_delay,
-                positions=positions,
+                length=extra.animation.num_keyframes,
+                delay=extra.animation.delay,
+                locations=locations,
                 quaternions=quaternions,
             )
-        vertices = [Vector3d(x=v.x, y=v.y, z=v.z) for v in extra.vertices]
-        polys = [self._make_polygon(polygon) for polygon in extra.polygons.data]
+        vertices = [Vector3d(x=vertice.x, y=vertice.y, z=vertice.z) for vertice in extra.vertices]
+        polys = [self._make_polygon(polygon) for polygon in extra.polygons]
         return TrackObject(
-            position=position, animation=animation, vertices=vertices, polygons=polys
+            location=location, animation=animation, vertices=vertices, polygons=polys
         )
 
-    def _texture_flags_to_uv(self, texture_flags):
+    def _make_track_segment(self, segment, polygons):
+        vertices = [
+            Vector3d(x=vertice.x, y=vertice.y, z=vertice.z) for vertice in segment.vertices
+        ]
+        polygons = [self._make_polygon(polygon) for polygon in polygons]
+        return TrackSegment(vertices=vertices, polygons=polygons)
+
+    def _texture_flags_to_uv(self, polygon):
         uv = [[1, 1], [0, 1], [0, 0], [1, 0]]
-        if texture_flags & 32:
+        if polygon.mirror_y:
             uv[1][1], uv[2][1] = uv[2][1], uv[1][1]
             uv[0][1], uv[3][1] = uv[3][1], uv[0][1]
-        if texture_flags & 16:
+        if polygon.mirror_x:
             uv[0][0], uv[1][0] = uv[1][0], uv[0][0]
             uv[2][0], uv[3][0] = uv[3][0], uv[2][0]
-        if texture_flags & 8:
+        if polygon.invert:
             uv = list(map(lambda x: [1 - x[0], 1 - x[1]], uv))
-        if texture_flags & 4:
+        if polygon.rotate:
             uv[0][1] = 1 - uv[0][1]
             uv[1][0] = 1 - uv[1][0]
             uv[2][1] = 1 - uv[2][1]
             uv[3][0] = 1 - uv[3][0]
         return [tuple(item) for item in uv]
 
-    def _high_poly_resources(self, block):
-        return [block.polydata[3], block.polydata[4], *block.polydata_obj]
+    def _high_poly_chunks(self, block):
+        return compress(
+            block.chunks,
+            [
+                False,  # Low-resolution track geometry
+                False,  # Low-resolution misc geometry
+                False,  # Medium-resolution track geometry
+                False,  # Medium-resolution misc geometry
+                True,  # High-resolution track geometry
+                True,  # High-resolution misc geometry
+                False,  # Road lanes
+                True,  # High-resolution misc geometry
+                True,  # High-resolution misc geometry
+                True,  # High-resolution misc geometry
+                True,  # High-resolution misc geometry
+            ],
+        )
 
     @property
     def objects(self):
-        for block in self.track_block_data:
-            for object in block.objs:
-                for obj, extra in zip(object.objdata, object.extra):
-                    yield self._make_object(obj, extra)
-        for object, extra in zip(self.global_objects.objdata, self.global_objects.extra):
+        object_chunks = chain.from_iterable(block.object_chunks for block in self.segment_data)
+        objects = chain.from_iterable(
+            zip(object.objects, object.object_extras, strict=True) for object in object_chunks
+        )
+        for object, extra in chain(
+            objects,
+            zip(self.global_objects.objects, self.global_objects.object_extras, strict=True),
+        ):
             yield self._make_object(object, extra)
-
-    def _make_track_segment(self, vertices, polygons):
-        vertices = [Vector3d(x=v.x, y=v.y, z=v.z) for v in vertices]
-        polygons = [self._make_polygon(polygon) for polygon in polygons]
-        return TrackSegment(vertices=vertices, polygons=polygons)
 
     @property
     def track_segments(self):
-        for block in self.track_block_data:
-            for data in self._high_poly_resources(block):
-                yield self._make_track_segment(vertices=block.vertices, polygons=data.data)
+        for segment in self.segment_data:
+            polygons = chain.from_iterable(
+                chunk.polygons for chunk in self._high_poly_chunks(segment)
+            )
+            yield self._make_track_segment(segment=segment, polygons=polygons)
