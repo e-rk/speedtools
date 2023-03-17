@@ -7,6 +7,7 @@
 
 import logging
 from collections import namedtuple
+from itertools import islice
 
 from speedtools.parsers import VivParser
 from speedtools.types import Polygon, Vector3d
@@ -15,13 +16,13 @@ ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 
 
-class Part(namedtuple("Part", ["position", "vertices", "normals", "polygons"])):
+class Part(namedtuple("Part", ["location", "vertices", "normals", "polygons"])):
     pass
 
 
 class VivData(VivParser):
     def _make_polygon(self, polygon):
-        face = tuple(vertice for vertice in polygon.vertices)
+        face = tuple(vertice for vertice in polygon.face)
         uv = tuple((u, 1 - v) for u, v in zip(polygon.u, polygon.v))
         return Polygon(face=face, uv=uv, material=polygon.texture, backface_culling=True)
 
@@ -29,29 +30,31 @@ class VivData(VivParser):
     def parts(self):
         fce = self.entries[1]
         body = fce.body
-        for position, vertex_index, vertex_num, polygon_index, polygon_num in zip(
-            body.parts,
-            body.part_vertex_index,
-            body.part_num_vertices,
-            body.part_triangle_index,
-            body.part_num_triangles,
+        part_vertices_iter = [
+            islice(body.vertices, index, index + count)
+            for index, count in zip(body.part_vertex_index, body.part_num_vertices)
+        ]
+        part_normals_iter = [
+            islice(body.normals, index, index + count)
+            for index, count in zip(body.part_vertex_index, body.part_num_vertices)
+        ]
+        part_polygons_iter = [
+            islice(body.polygons, index, index + count)
+            for index, count in zip(body.part_polygon_index, body.part_num_polygons)
+        ]
+        for part_location, part_vertices, part_normals, part_polygons in zip(
+            body.part_locations,
+            part_vertices_iter,
+            part_normals_iter,
+            part_polygons_iter,
             strict=True,
         ):
-            position_vect = Vector3d(x=position.x, y=position.y, z=position.z)
-            vertices = [
-                Vector3d(x=vert.x, y=vert.y, z=vert.z)
-                for vert in body.vertices[vertex_index : vertex_index + vertex_num]
-            ]
-            normals = [
-                Vector3d(x=normal.x, y=normal.y, z=normal.z)
-                for normal in body.normals[vertex_index : vertex_index + vertex_num]
-            ]
-            polygons = [
-                self._make_polygon(polygon)
-                for polygon in body.polygons[polygon_index : polygon_index + polygon_num]
-            ]
+            location_vect = Vector3d(x=part_location.x, y=part_location.y, z=part_location.z)
+            vertices = [Vector3d(x=vert.x, y=vert.y, z=vert.z) for vert in part_vertices]
+            normals = [Vector3d(x=normal.x, y=normal.y, z=normal.z) for normal in part_normals]
+            polygons = [self._make_polygon(polygon) for polygon in part_polygons]
             yield Part(
-                position=position_vect,
+                location=location_vect,
                 vertices=vertices,
                 normals=normals,
                 polygons=polygons,
