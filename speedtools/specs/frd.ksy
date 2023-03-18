@@ -57,11 +57,11 @@ types:
   short3:
     seq:
       - id: x
-        type: u2
+        type: s2
       - id: y
-        type: u2
+        type: s2
       - id: z
-        type: u2
+        type: s2
   road_block:
     seq:
       - id: location
