@@ -7,6 +7,8 @@
 
 from collections import namedtuple
 
+from speedtools.parsers import FrdParser
+
 
 class Vector3d(namedtuple("Vector3d", ["x", "z", "y"])):
     pass
@@ -18,3 +20,7 @@ class Polygon(namedtuple("Polygon", ["face", "uv", "material", "backface_culling
 
 class Quaternion(namedtuple("Quaternion", ["w", "x", "z", "y"])):
     pass
+
+
+CollisionType = FrdParser.ObjectAttribute.CollisionType
+ObjectType = FrdParser.ObjectHeader.ObjectType
