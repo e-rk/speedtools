@@ -292,7 +292,17 @@ types:
         type: u2
         doc: Unique identifier of the object
       - id: unknown2
-        size: 4
+        size: 3
+      - id: collision_type
+        type: u1
+        enum: collision_type
+        doc: Collision type of the object
+    enums:
+      collision_type:
+        0x00: none
+        0x01: static
+        0x02: rigid
+        0x03: unknown
   object_attribute_2_padded:
     params:
       - id: num_attributes
