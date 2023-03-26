@@ -11,24 +11,24 @@ from contextlib import suppress
 from pathlib import Path
 
 import click
-from PIL import Image
 
 from speedtools.track_data import TrackData
+from speedtools.utils import write_bitmaps, write_resources
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+sh = logging.StreamHandler()
+logger.addHandler(sh)
 
 
 @click.command()
 @click.option("--output", help="Output directory", type=click.Path())
 @click.argument("path", type=click.Path())
 def unpack(output, path):
-    with suppress(FileExistsError):
-        os.makedirs(output)
     data = TrackData(path)
-    for bitmap in data.track_bitmaps:
-        logger.info(f"Unpacking image: {bitmap.id}")
-        image = Image.frombytes("RGBA", (bitmap.width, bitmap.height), data=bitmap.rgba)
-        image.save(Path(output, f"{bitmap.id}.png"))
+    nonmirrored = filter(lambda x: not x.mirrored, data.track_resources)
+    # write_bitmaps(bitmaps=data.track_bitmaps, output_dir=output)
+    write_resources(resources=nonmirrored, output_dir=output)
 
 
 @click.command()
