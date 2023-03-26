@@ -38,6 +38,10 @@ class TrackData:
                 materials.add(polygon.material)
         return materials
 
+    @property
+    def track_resources(self):
+        return self.qfs.resources
+
     def get_material(self, material_id):
         pass
 
