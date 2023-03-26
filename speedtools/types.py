@@ -7,7 +7,7 @@
 
 from collections import namedtuple
 
-from speedtools.parsers import FrdParser
+from speedtools.parsers import FrdParser, FshParser
 
 
 class Vector3d(namedtuple("Vector3d", ["x", "z", "y"])):
@@ -24,3 +24,4 @@ class Quaternion(namedtuple("Quaternion", ["w", "x", "z", "y"])):
 
 CollisionType = FrdParser.ObjectAttribute.CollisionType
 ObjectType = FrdParser.ObjectHeader.ObjectType
+FshDataType = FshParser.DataType

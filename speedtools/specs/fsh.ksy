@@ -9,40 +9,70 @@ seq:
     contents: [SHPI]
   - id: length
     type: u4
-  - id: num_objects
+  - id: num_resources
     type: u4
+    doc: Number of resources
   - id: directory_id_string
     contents: [GIMX]
-  - id: objects
-    type: directory_entry
+  - id: resources
+    type: resource(_index, _index == (num_resources - 1))
     repeat: expr
-    repeat-expr: num_objects
+    repeat-expr: num_resources
 types:
-  directory_entry:
+  resource:
+    params:
+      - id: index
+        type: s4
+      - id: is_last
+        type: bool
     seq:
-      - id: identifier
+      - id: name
         type: str
         size: 4
+        doc: Resource name
       - id: offset
         type: u4
+        doc: Offset of the resource data in file
     instances:
       body:
         pos: offset
-        type: bitmap
-      aux:
-        pos: offset + body.block_size
-        type: bitmap
-  bitmap:
+        type: resource_body
+        size: body_size
+      body_size:
+        value: 'not is_last ? _parent.resources[index + 1].offset - offset : _root._io.size - offset'
+  resource_body:
+    seq:
+      - id: blocks
+        type: data_block
+        repeat: until
+        repeat-until: _.extra_offset == 0
+  data_block:
     seq:
       - id: code
         type: u1
-        enum: bitmap_code
-      - id: block_size
+        enum: data_type
+        doc: Data block type
+      - id: extra_offset
         type: b24le
+        doc: Offset of the next data block since the start of this data block
       - id: width
         type: u2
+        doc: Width of the bitmap or length of text data
       - id: height
         type: u2
+        doc: Height of the bitmap
+      - id: data
+        type:
+          switch-on: code
+          cases:
+            data_type::text: strz
+            _: bitmap
+        size: 'is_last ? (_parent._io.size - _parent._io.pos) : (extra_offset - 8)'
+    instances:
+      is_last:
+        value: extra_offset == 0
+  bitmap:
+    seq:
       - id: unknown
         type: u4
       - id: x_pos
@@ -51,13 +81,13 @@ types:
         type: u2
       - id: data
         type:
-          switch-on: code
+          switch-on: _parent.code
           cases:
-            bitmap_code::bitmap_8: u1
-            bitmap_code::bitmap_32: pixel_32_element
-            bitmap_code::palette: palette_element
+            data_type::bitmap8: u1
+            data_type::bitmap32: pixel_32_element
+            data_type::palette: palette_element
         repeat: expr
-        repeat-expr: width * height
+        repeat-expr: _parent.width * _parent.height
   pixel_32_element:
     seq:
       - id: value
@@ -93,8 +123,8 @@ types:
         value: 'blue + green * 0x100 + red * 0x10000 + alpha * 0x1000000'
         doc: ARGB color value
 enums:
-  bitmap_code:
-    0x7b: bitmap_8
-    0x7d: bitmap_32
+  data_type:
+    0x7b: bitmap8
+    0x7d: bitmap32
     0x2d: palette
     0x6f: text

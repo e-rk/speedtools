@@ -10,38 +10,68 @@ from collections import namedtuple
 from struct import pack
 
 from speedtools.parsers import QfsParser
+from speedtools.types import FshDataType
 
-ch = logging.StreamHandler()
+logger = logging.getLogger(__name__)
 
 
-class Bitmap(namedtuple("Bitmap", ["id", "width", "height", "rgba"])):
+class Bitmap(namedtuple("Bitmap", ["width", "height", "rgba"])):
+    pass
+
+
+class Resource(namedtuple("Resource", ["name", "bitmap", "text", "mirrored", "additive"])):
     pass
 
 
 class QfsData(QfsParser):
+    def _get_data_by_code(self, codes, resource):
+        return next(filter(lambda x: x.code in codes, resource.body.blocks), None)
+
+    def _make_bitmap(self, resource):
+        bitmap = self._get_data_by_code(
+            codes=[FshDataType.bitmap8, FshDataType.bitmap32], resource=resource
+        )
+        if bitmap is None:
+            return None
+        elif bitmap.code is FshDataType.bitmap8:
+            palette = self._get_data_by_code(codes=[FshDataType.palette], resource=resource)
+            palette_colors = [element.color for element in palette.data.data]
+            rgba_int = [palette_colors[element] for element in bitmap.data.data]
+            rgba_bytes = pack(f"<{len(rgba_int)}I", *rgba_int)
+            bitmap = Bitmap(
+                width=bitmap.width,
+                height=bitmap.height,
+                rgba=rgba_bytes,
+            )
+        elif bitmap.code is FshDataType.bitmap32:
+            rgba_int = [elem.color for elem in bitmap.data.data]
+            rgba_bytes = pack(f"<{len(rgba_int)}I", *rgba_int)
+            bitmap = Bitmap(
+                width=bitmap.width,
+                height=bitmap.height,
+                rgba=rgba_bytes,
+            )
+        return bitmap
+
     @property
     def raw_bitmaps(self):
-        for object in self.data.objects:
-            if object.body.code is self.data.BitmapCode.bitmap_8:
-                palette_colors = [element.color for element in object.aux.data]
-                rgba_int = [palette_colors[element] for element in object.body.data]
-                rgba_bytes = pack(f"<{len(rgba_int)}I", *rgba_int)
-                bitmap = Bitmap(
-                    id=object.identifier,
-                    width=object.body.width,
-                    height=object.body.height,
-                    rgba=rgba_bytes,
-                )
-            elif object.body.code is self.data.BitmapCode.bitmap_32:
-                rgba_int = [elem.color for elem in object.body.data]
-                rgba_bytes = pack(f"<{len(rgba_int)}I", *rgba_int)
-                bitmap = Bitmap(
-                    id=object.identifier,
-                    width=object.body.width,
-                    height=object.body.height,
-                    rgba=rgba_bytes,
-                )
-            yield bitmap
+        for resource in self.data.resources:
+            yield self._make_bitmap(resource)
 
-    def get_resource(self, identifier):
-        pass
+    @property
+    def resources(self):
+        for resource in self.data.resources:
+            bitmap = self._make_bitmap(resource)
+            text = self._get_data_by_code(codes=[FshDataType.text], resource=resource)
+            text_data = text.data if text is not None else None
+            mirrored = "<mirrored>" == text_data if text_data is not None else False
+            # if not mirrored:
+            #     mirrored = "<nonmirrored>" == text_data if text_data is not None else False
+            additive = False
+            yield Resource(
+                name=resource.name,
+                bitmap=bitmap,
+                text=text_data,
+                mirrored=mirrored,
+                additive=additive,
+            )
