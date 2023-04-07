@@ -21,6 +21,10 @@ from PIL import Image as pil_Image
 from speedtools.types import BaseMesh, BasePolygon, Bitmap, Image, Resource, Vertex
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+# sh = logging.StreamHandler()
+# sh.setLevel(logging.DEBUG)
+# logger.addHandler(sh)
 
 T = TypeVar("T")
 Ty = TypeVar("Ty")
@@ -156,3 +160,13 @@ def make_horizon_texture(resources: list[Resource]) -> Any:
     for idx, image in enumerate(images):
         horizon_image.paste(image, (image.width * idx, width_hrz // 2 - image.width // 2))
     return horizon_image
+
+
+def bnk_find_tlv(header, tlv_type, subheader=False):
+    TlvType = header._root.TvType
+    tlv = next(filter(lambda tlv: tlv.type is tlv_type, header.tlvs), None)
+    logger.debug(f"Tlv = {tlv}, type = {tlv_type}")
+    if tlv is None and not subheader:
+        subheader = bnk_find_tlv(header=header, tlv_type=TlvType.subheader, subheader=True)
+        return bnk_find_tlv(header=subheader, tlv_type=tlv_type, subheader=True)
+    return tlv.value if tlv is not None else None

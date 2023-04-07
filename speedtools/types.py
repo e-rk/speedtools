@@ -12,12 +12,13 @@ from enum import Enum
 from math import pi, sqrt
 from typing import NamedTuple, Optional, TypeAlias
 
-from speedtools.parsers import FceParser, FrdParser, FshParser
+from speedtools.parsers import BnkParser, FceParser, FrdParser, FshParser
 
 RoadEffect: TypeAlias = FrdParser.DriveablePolygon.RoadEffect
 CollisionType: TypeAlias = FrdParser.ObjectAttribute.CollisionType
 ObjectType: TypeAlias = FrdParser.ObjectHeader.ObjectType
 FshDataType: TypeAlias = FshParser.DataType
+BnkTlvType: TypeAlias = BnkParser.TvType
 
 
 class Action(Enum):
