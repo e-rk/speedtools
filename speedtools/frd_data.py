@@ -39,7 +39,7 @@ class CollisionMesh(namedtuple("CollisionMesh", ["polygons", "collision_effect"]
 
 class FrdData(FrdParser):
     def _make_polygon(self, polygon):
-        material = polygon.texture & 0xFF
+        material = polygon.texture & 0x7FF
         backface_culling = polygon.backface_culling
         material = str(material).zfill(4)
         uvs = []
