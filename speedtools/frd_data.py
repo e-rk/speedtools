@@ -7,6 +7,7 @@
 
 import logging
 from collections import namedtuple
+from contextlib import suppress
 from itertools import chain, compress, groupby
 
 from speedtools.parsers import FrdParser
@@ -58,10 +59,14 @@ class FrdData(FrdParser):
         )
 
     def _get_object_collision_type(self, segment, object):
+        logger.info(f"Object: {vars(object)}")
         if object.type is not ObjectType.normal1 and object.type is not ObjectType.normal2:
             return CollisionType.none
-        object_attribute = segment.object_attributes[object.attribute_index]
-        return object_attribute.collision_type
+        collision_type = CollisionType.none
+        with suppress(IndexError, AttributeError):
+            object_attribute = segment.object_attributes[object.attribute_index]
+            collision_type = object_attribute.collition_type
+        return collision_type
 
     def _make_object(self, segment, object, extra):
         location = None

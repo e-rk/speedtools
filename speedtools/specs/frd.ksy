@@ -314,8 +314,9 @@ types:
         repeat-expr: num_attributes
   object_attribute_2:
     seq:
-      - id: magic
-        contents: [0x04, 0x00]
+      - id: unknown1
+        size: 2
+        doc: Unknown use
       - id: type
         type: u1
         enum: attribute_type
@@ -329,15 +330,17 @@ types:
       - id: cross_index
         type: u1
         doc: Unknown use
-        if: type == attribute_type::road_object1 or type == attribute_type::road_object2
-      - id: unknown
+        if: type != attribute_type::polygon_object
+      - id: unknown2
         size: 3
-        if: type == attribute_type::road_object1 or type == attribute_type::road_object2
+        if: type != attribute_type::polygon_object
     enums:
       attribute_type:
         0x01: polygon_object
         0x02: road_object1
-        0x04: road_object2
+        0x03: road_object2
+        0x04: road_object3
+        0x06: special
   source_type:
     seq:
       - id: location
@@ -435,6 +438,7 @@ types:
         0x02: normal1
         0x03: animated
         0x04: normal2
+        0x06: special
   object_data:
     seq:
       - id: animation
