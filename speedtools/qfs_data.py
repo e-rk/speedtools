@@ -6,39 +6,34 @@
 #
 
 import logging
-from collections import namedtuple
+from collections.abc import Generator
 from struct import pack
+from typing import Container, Optional
 
-from speedtools.parsers import QfsParser
-from speedtools.types import FshDataType
+from speedtools.parsers import FshParser, QfsParser
+from speedtools.types import Bitmap, FshDataType, Resource
 
 logger = logging.getLogger(__name__)
 
 
-class Bitmap(namedtuple("Bitmap", ["width", "height", "rgba"])):
-    pass
-
-
-class Resource(namedtuple("Resource", ["name", "bitmap", "text", "mirrored", "additive"])):
-    pass
-
-
 class QfsData(QfsParser):
-    def _get_data_by_code(self, codes, resource):
+    def _get_data_by_code(
+        self, codes: Container[FshDataType], resource: FshParser.DataBlock
+    ) -> Optional[FshParser.DataBlock]:
         return next(filter(lambda x: x.code in codes, resource.body.blocks), None)
 
-    def _make_bitmap(self, resource):
+    def _make_bitmap(self, resource: FshParser.Resource) -> Bitmap:
         bitmap = self._get_data_by_code(
             codes=[FshDataType.bitmap8, FshDataType.bitmap32], resource=resource
         )
         if bitmap is None:
-            return None
+            raise RuntimeError("Bitmap resource not found")
         elif bitmap.code is FshDataType.bitmap8:
             palette = self._get_data_by_code(codes=[FshDataType.palette], resource=resource)
             palette_colors = [element.color for element in palette.data.data]
             rgba_int = [palette_colors[element] for element in bitmap.data.data]
             rgba_bytes = pack(f"<{len(rgba_int)}I", *rgba_int)
-            bitmap = Bitmap(
+            bitmap_object = Bitmap(
                 width=bitmap.width,
                 height=bitmap.height,
                 rgba=rgba_bytes,
@@ -46,20 +41,22 @@ class QfsData(QfsParser):
         elif bitmap.code is FshDataType.bitmap32:
             rgba_int = [elem.color for elem in bitmap.data.data]
             rgba_bytes = pack(f"<{len(rgba_int)}I", *rgba_int)
-            bitmap = Bitmap(
+            bitmap_object = Bitmap(
                 width=bitmap.width,
                 height=bitmap.height,
                 rgba=rgba_bytes,
             )
-        return bitmap
+        else:
+            raise RuntimeError("Bitmap resource not recognized")
+        return bitmap_object
 
     @property
-    def raw_bitmaps(self):
+    def raw_bitmaps(self) -> Generator[Bitmap, None, None]:
         for resource in self.data.resources:
             yield self._make_bitmap(resource)
 
     @property
-    def resources(self):
+    def resources(self) -> Generator[Resource, None, None]:
         for resource in self.data.resources:
             bitmap = self._make_bitmap(resource)
             text = self._get_data_by_code(codes=[FshDataType.text], resource=resource)

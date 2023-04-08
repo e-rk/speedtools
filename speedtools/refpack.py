@@ -6,28 +6,35 @@
 #
 
 import logging
-from collections import namedtuple
+from collections.abc import Generator
+from dataclasses import dataclass
 from struct import unpack
 
 logger = logging.getLogger(__name__)
 
 
-class Opcode(namedtuple("Opcode", ["proclen", "reflen", "refdist"])):
-    def is_stop(self):
+@dataclass
+class Opcode:
+    proclen: int
+    reflen: int
+    refdist: int
+
+    @property
+    def is_stop(self) -> bool:
         return self.proclen < 4 and self.reflen == 0 and self.refdist == 0
 
 
 class Refpack:
-    def __init__(self, expanded_length):
+    def __init__(self, expanded_length: int):
         self.expanded_length = expanded_length
         logger.debug(self.expanded_length)
 
-    def decode(self, compressed_data):
+    def decode(self, compressed_data: bytes) -> bytes:
         decompressed_data = bytearray()
         compressed_data = bytearray(compressed_data)
 
         for cmd, data in self._decode_cmd(compressed_data):
-            logger.debug(f"Decompressing: {cmd} {data}")
+            logger.debug(f"Decompressing: {cmd}")
             decompressed_data.extend(data)
 
             for _ in range(cmd.reflen):
@@ -40,7 +47,9 @@ class Refpack:
 
         return decompressed_data
 
-    def _decode_cmd(self, compressed_data):
+    def _decode_cmd(
+        self, compressed_data: bytearray
+    ) -> Generator[tuple[Opcode, bytes], None, None]:
         while True:
             (opcode,) = unpack("<B", compressed_data[:1])
             logger.debug(f"opcode: {opcode}")
@@ -65,31 +74,31 @@ class Refpack:
             yield cmd, compressed_data[: cmd.proclen]
             del compressed_data[: cmd.proclen]
 
-            if cmd.is_stop():
+            if cmd.is_stop:
                 break
 
-    def _decode_2b_cmd(self, opdata):
+    def _decode_2b_cmd(self, opdata: bytes) -> Opcode:
         a, b = unpack("BB", opdata)
         proclen = a & 0x03
         reflen = ((a & 0x1C) >> 2) + 3
         refdist = ((a & 0x60) << 3) + b + 1
         return Opcode(proclen=proclen, refdist=refdist, reflen=reflen)
 
-    def _decode_3b_cmd(self, opdata):
+    def _decode_3b_cmd(self, opdata: bytes) -> Opcode:
         a, b, c = unpack("BBB", opdata)
         proclen = (b & 0xC0) >> 6
         reflen = (a & 0x3F) + 4
         refdist = ((b & 0x3F) << 8) + c + 1
         return Opcode(proclen=proclen, refdist=refdist, reflen=reflen)
 
-    def _decode_4b_cmd(self, opdata):
+    def _decode_4b_cmd(self, opdata: bytes) -> Opcode:
         a, b, c, d = unpack("BBBB", opdata)
         proclen = a & 0x03
         reflen = ((a & 0x0C) << 6) + d + 5
         refdist = ((a & 0x10) << 12) + (b << 8) + c + 1
         return Opcode(proclen=proclen, refdist=refdist, reflen=reflen)
 
-    def _decode_1b_cmd(self, opdata):
+    def _decode_1b_cmd(self, opdata: bytes) -> Opcode:
         (a,) = unpack("B", opdata)
         if a < 0xFC:
             proclen = ((a & 0x1F) + 1) << 2

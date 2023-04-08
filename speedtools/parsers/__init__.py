@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
+from .fce import Fce as FceParser
 from .frd import Frd as FrdParser
 from .fsh import Fsh as FshParser
 from .qfs import Qfs as QfsParser
@@ -15,4 +16,5 @@ __all__ = [
     "FshParser",
     "QfsParser",
     "VivParser",
+    "FceParser",
 ]

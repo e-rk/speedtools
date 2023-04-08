@@ -6,28 +6,24 @@
 #
 
 import logging
-from collections import namedtuple
+from collections.abc import Generator
 from itertools import islice
 
-from speedtools.parsers import VivParser
-from speedtools.types import Polygon, Vector3d
+from speedtools.parsers import FceParser, VivParser
+from speedtools.types import Part, Polygon, Vector3d
 
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 
 
-class Part(namedtuple("Part", ["location", "vertices", "normals", "polygons"])):
-    pass
-
-
 class VivData(VivParser):
-    def _make_polygon(self, polygon):
+    def _make_polygon(self, polygon: FceParser.Polygon) -> Polygon:
         face = tuple(vertice for vertice in polygon.face)
         uv = tuple((u, 1 - v) for u, v in zip(polygon.u, polygon.v))
         return Polygon(face=face, uv=uv, material=polygon.texture, backface_culling=True)
 
     @property
-    def parts(self):
+    def parts(self) -> Generator[Part, None, None]:
         fce = self.entries[1]
         body = fce.body
         part_vertices_iter = [
@@ -61,6 +57,6 @@ class VivData(VivParser):
             )
 
     @property
-    def materials(self):
+    def materials(self) -> Generator[str, None, None]:
         for tga in filter(lambda x: x.name.endswith(".tga"), self.entries):
             yield tga.name

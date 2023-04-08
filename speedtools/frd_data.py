@@ -6,40 +6,30 @@
 #
 
 import logging
-from collections import namedtuple
+from collections.abc import Generator
 from contextlib import suppress
 from itertools import chain, compress, groupby
+from typing import Iterable, Optional
 
 from speedtools.parsers import FrdParser
-from speedtools.types import CollisionType, ObjectType, Polygon, Quaternion, Vector3d
+from speedtools.types import (
+    Animation,
+    CollisionMesh,
+    CollisionPolygon,
+    CollisionType,
+    ObjectType,
+    Polygon,
+    Quaternion,
+    TrackObject,
+    TrackSegment,
+    Vector3d,
+)
 
 logger = logging.getLogger(__name__)
 
 
-class Animation(namedtuple("Animation", ["length", "delay", "locations", "quaternions"])):
-    pass
-
-
-class TrackObject(
-    namedtuple("TrackObject", ["location", "animation", "vertices", "polygons", "collision_type"])
-):
-    pass
-
-
-class TrackSegment(namedtuple("TrackSegment", ["vertices", "polygons", "collision_meshes"])):
-    pass
-
-
-class CollisionPolygon(namedtuple("CollisionPolygon", ["face"])):
-    pass
-
-
-class CollisionMesh(namedtuple("CollisionMesh", ["polygons", "collision_effect"])):
-    pass
-
-
 class FrdData(FrdParser):
-    def _make_polygon(self, polygon):
+    def _make_polygon(self, polygon: FrdParser.Polygon) -> Polygon:
         material = polygon.texture & 0x7FF
         backface_culling = polygon.backface_culling
         material = str(material).zfill(4)
@@ -58,17 +48,26 @@ class FrdData(FrdParser):
             backface_culling=backface_culling,
         )
 
-    def _get_object_collision_type(self, segment, object):
+    def _get_object_collision_type(
+        self, segment: Optional[FrdParser.SegmentData], object: FrdParser.ObjectHeader
+    ) -> CollisionType:
         logger.info(f"Object: {vars(object)}")
-        if object.type is not ObjectType.normal1 and object.type is not ObjectType.normal2:
+        if (
+            object.type is not ObjectType.normal1 and object.type is not ObjectType.normal2
+        ) or segment is None:
             return CollisionType.none
         collision_type = CollisionType.none
-        with suppress(IndexError, AttributeError):
+        with suppress(IndexError):
             object_attribute = segment.object_attributes[object.attribute_index]
-            collision_type = object_attribute.collition_type
+            collision_type = object_attribute.collision_type
         return collision_type
 
-    def _make_object(self, segment, object, extra):
+    def _make_object(
+        self,
+        segment: Optional[FrdParser.SegmentData],
+        object: FrdParser.ObjectHeader,
+        extra: FrdParser.ObjectData,
+    ) -> TrackObject:
         location = None
         animation = None
         if object.type == ObjectType.normal1 or object.type == ObjectType.normal2:
@@ -108,11 +107,15 @@ class FrdData(FrdParser):
             collision_type=collision_type,
         )
 
-    def _make_collision_mesh(self, segment):
+    def _make_collision_mesh(
+        self, segment: FrdParser.SegmentData
+    ) -> Generator[CollisionMesh, None, None]:
         driveable_polygons = sorted(
-            segment.driveable_polygons, key=lambda x: x.collision_flags & 0x0F
+            segment.driveable_polygons, key=lambda x: int(x.collision_flags) & 0x0F
         )
-        driveable_mesh_groups = groupby(driveable_polygons, key=lambda x: x.collision_flags & 0x0F)
+        driveable_mesh_groups = groupby(
+            driveable_polygons, key=lambda x: int(x.collision_flags) & 0x0F
+        )
         for key, group in driveable_mesh_groups:
             if key == 0:
                 continue
@@ -122,17 +125,19 @@ class FrdData(FrdParser):
             ]
             yield CollisionMesh(polygons=polygons, collision_effect=key)
 
-    def _make_track_segment(self, segment, polygons):
+    def _make_track_segment(
+        self, segment: FrdParser.SegmentData, polygons: Iterable[FrdParser.Polygon]
+    ) -> TrackSegment:
         vertices = [
             Vector3d(x=vertice.x, y=vertice.y, z=vertice.z) for vertice in segment.vertices
         ]
-        polygons = [self._make_polygon(polygon) for polygon in polygons]
+        track_polygons = [self._make_polygon(polygon) for polygon in polygons]
         collision_meshes = list(self._make_collision_mesh(segment))
         return TrackSegment(
-            vertices=vertices, polygons=polygons, collision_meshes=collision_meshes
+            vertices=vertices, polygons=track_polygons, collision_meshes=collision_meshes
         )
 
-    def _texture_flags_to_uv(self, polygon):
+    def _texture_flags_to_uv(self, polygon: FrdParser.Polygon) -> list[tuple[int, int]]:
         uv = [[1, 1], [0, 1], [0, 0], [1, 0]]
         if polygon.mirror_y:
             uv[1][1], uv[2][1] = uv[2][1], uv[1][1]
@@ -147,9 +152,9 @@ class FrdData(FrdParser):
             uv[1][0] = 1 - uv[1][0]
             uv[2][1] = 1 - uv[2][1]
             uv[3][0] = 1 - uv[3][0]
-        return [tuple(item) for item in uv]
+        return [(item[0], item[1]) for item in uv]
 
-    def _high_poly_chunks(self, block):
+    def _high_poly_chunks(self, block: FrdParser.SegmentData) -> Iterable[FrdParser.SegmentData]:
         return compress(
             block.chunks,
             [
@@ -168,7 +173,7 @@ class FrdData(FrdParser):
         )
 
     @property
-    def objects(self):
+    def objects(self) -> Generator[TrackObject, None, None]:
         for segment in self.segment_data:
             objects = chain.from_iterable(
                 zip(object.objects, object.object_extras, strict=True)
@@ -186,7 +191,7 @@ class FrdData(FrdParser):
             yield self._make_object(segment=None, object=object, extra=extra)
 
     @property
-    def track_segments(self):
+    def track_segments(self) -> Generator[TrackSegment, None, None]:
         for segment in self.segment_data:
             polygons = chain.from_iterable(
                 chunk.polygons for chunk in self._high_poly_chunks(segment)

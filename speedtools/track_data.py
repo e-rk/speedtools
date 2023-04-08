@@ -6,32 +6,34 @@
 #
 
 import logging
+from collections.abc import Iterable
 from itertools import chain
 from pathlib import Path
 
 from speedtools.frd_data import FrdData
 from speedtools.qfs_data import QfsData
+from speedtools.types import Bitmap, Resource, TrackObject, TrackSegment
 
 logger = logging.getLogger(__name__)
 
 
 class TrackData:
-    def __init__(self, directory):
+    def __init__(self, directory: Path) -> None:
         logger.debug(f"Opening directory {directory}")
-        self.frd = FrdData.from_file(Path(directory, "TR.FRD"))
-        self.qfs = QfsData.from_file(Path(directory, "TR0.QFS"))
-        self.sky = QfsData.from_file(Path(directory, "SKY.QFS"))
+        self.frd: FrdData = FrdData.from_file(Path(directory, "TR.FRD"))
+        self.qfs: QfsData = QfsData.from_file(Path(directory, "TR0.QFS"))
+        self.sky: QfsData = QfsData.from_file(Path(directory, "SKY.QFS"))
 
     @property
-    def objects(self):
+    def objects(self) -> Iterable[TrackObject]:
         return self.frd.objects
 
     @property
-    def track_segments(self):
+    def track_segments(self) -> Iterable[TrackSegment]:
         return self.frd.track_segments
 
     @property
-    def material_ids(self):
+    def material_ids(self) -> set[str]:
         materials = set()
         for object in chain(self.track_segments, self.objects):
             for polygon in object.polygons:
@@ -39,12 +41,9 @@ class TrackData:
         return materials
 
     @property
-    def track_resources(self):
+    def track_resources(self) -> Iterable[Resource]:
         return self.qfs.resources
 
-    def get_material(self, material_id):
-        pass
-
     @property
-    def track_bitmaps(self):
+    def track_bitmaps(self) -> Iterable[Bitmap]:
         return self.qfs.raw_bitmaps

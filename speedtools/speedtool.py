@@ -13,7 +13,7 @@ from pathlib import Path
 import click
 
 from speedtools.track_data import TrackData
-from speedtools.utils import write_bitmaps, write_resources
+from speedtools.utils import write_resources
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -24,7 +24,7 @@ logger.addHandler(sh)
 @click.command()
 @click.option("--output", help="Output directory", type=click.Path())
 @click.argument("path", type=click.Path())
-def unpack(output, path):
+def unpack(output: Path, path: Path) -> None:
     data = TrackData(path)
     nonmirrored = filter(lambda x: not x.mirrored, data.track_resources)
     # write_bitmaps(bitmaps=data.track_bitmaps, output_dir=output)
@@ -34,7 +34,7 @@ def unpack(output, path):
 @click.command()
 @click.option("--output", help="Output directory", type=click.Path())
 @click.argument("path", type=click.Path())
-def obj(output, path):
+def obj(output: Path, path: Path) -> None:
     with suppress(FileExistsError):
         os.makedirs(output)
     data = TrackData(path)
@@ -56,14 +56,14 @@ def obj(output, path):
 
         with open(Path(output, f"materials_{index}.mtl"), "w") as mtl:
             for material in materials:
-                path = "../images/" + str(int(material) + 2).zfill(4) + ".png"
+                out_path = "../images/" + str(int(material) + 2).zfill(4) + ".png"
                 mtl.write(
                     f"newmtl texture_{material}{os.linesep}"
                     f"Ka 1.000 1.000 1.000{os.linesep}"
                     f"Kd 1.000 1.000 1.000{os.linesep}"
                     f"Ks 0.000 0.000 0.000{os.linesep}"
                     f"d 1.0{os.linesep}"
-                    f"map_Ka {path}{os.linesep}"
-                    f"map_Kd {path}{os.linesep}"
+                    f"map_Ka {out_path}{os.linesep}"
+                    f"map_Kd {out_path}{os.linesep}"
                     f"illum 2{os.linesep}"
                 )
