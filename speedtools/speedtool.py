@@ -27,7 +27,6 @@ logger.addHandler(sh)
 def unpack(output: Path, path: Path) -> None:
     data = TrackData(path)
     nonmirrored = filter(lambda x: not x.mirrored, data.track_resources)
-    # write_bitmaps(bitmaps=data.track_bitmaps, output_dir=output)
     write_resources(resources=nonmirrored, output_dir=output)
 
 
