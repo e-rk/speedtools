@@ -2,7 +2,7 @@
 extend-ignore = E203
 max-line-length = 99
 exclude =
-    speedtools/parsers,
+    speedtools/parsers/*.py,
     .git,
     __pycache__,
     docs/source/conf.py,
