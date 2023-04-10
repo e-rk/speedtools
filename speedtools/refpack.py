@@ -6,7 +6,7 @@
 #
 
 import logging
-from collections.abc import Generator
+from collections.abc import Iterator
 from dataclasses import dataclass
 from struct import unpack
 
@@ -47,9 +47,7 @@ class Refpack:
 
         return decompressed_data
 
-    def _decode_cmd(
-        self, compressed_data: bytearray
-    ) -> Generator[tuple[Opcode, bytes], None, None]:
+    def _decode_cmd(self, compressed_data: bytearray) -> Iterator[tuple[Opcode, bytes]]:
         while True:
             (opcode,) = unpack("<B", compressed_data[:1])
             logger.debug(f"opcode: {opcode}")

@@ -6,7 +6,7 @@
 #
 
 import logging
-from collections.abc import Iterable
+from collections.abc import Iterator
 from itertools import chain
 from pathlib import Path
 
@@ -25,11 +25,11 @@ class TrackData:
         self.sky: QfsData = QfsData.from_file(Path(directory, "SKY.QFS"))
 
     @property
-    def objects(self) -> Iterable[TrackObject]:
+    def objects(self) -> Iterator[TrackObject]:
         return self.frd.objects
 
     @property
-    def track_segments(self) -> Iterable[TrackSegment]:
+    def track_segments(self) -> Iterator[TrackSegment]:
         return self.frd.track_segments
 
     @property
@@ -41,9 +41,9 @@ class TrackData:
         return materials
 
     @property
-    def track_resources(self) -> Iterable[Resource]:
+    def track_resources(self) -> Iterator[Resource]:
         return self.qfs.resources
 
     @property
-    def track_bitmaps(self) -> Iterable[Bitmap]:
+    def track_bitmaps(self) -> Iterator[Bitmap]:
         return self.qfs.raw_bitmaps

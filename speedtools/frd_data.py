@@ -6,13 +6,14 @@
 #
 
 import logging
-from collections.abc import Generator
+from collections.abc import Iterable, Iterator
 from contextlib import suppress
 from itertools import chain, compress, groupby
-from typing import Iterable, Optional
+from typing import Optional
 
 from speedtools.parsers import FrdParser
 from speedtools.types import (
+    UV,
     Animation,
     CollisionMesh,
     CollisionPolygon,
@@ -32,7 +33,6 @@ class FrdData(FrdParser):
     def _make_polygon(self, polygon: FrdParser.Polygon) -> Polygon:
         material = polygon.texture & 0x7FF
         backface_culling = polygon.backface_culling
-        material = str(material).zfill(4)
         uvs = []
         face = []
         for vertice, uv in zip(polygon.face, self._texture_flags_to_uv(polygon), strict=True):
@@ -107,9 +107,7 @@ class FrdData(FrdParser):
             collision_type=collision_type,
         )
 
-    def _make_collision_mesh(
-        self, segment: FrdParser.SegmentData
-    ) -> Generator[CollisionMesh, None, None]:
+    def _make_collision_mesh(self, segment: FrdParser.SegmentData) -> Iterator[CollisionMesh]:
         driveable_polygons = sorted(
             segment.driveable_polygons, key=lambda x: int(x.collision_flags) & 0x0F
         )
@@ -123,7 +121,13 @@ class FrdData(FrdParser):
                 CollisionPolygon(face=segment.chunks[4].polygons[polygon.polygon].face)
                 for polygon in group
             ]
-            yield CollisionMesh(polygons=polygons, collision_effect=key)
+            yield CollisionMesh(
+                vertices=[
+                    Vector3d(x=vertice.x, y=vertice.y, z=vertice.z) for vertice in segment.vertices
+                ],
+                polygons=polygons,
+                collision_effect=key,
+            )
 
     def _make_track_segment(
         self, segment: FrdParser.SegmentData, polygons: Iterable[FrdParser.Polygon]
@@ -137,7 +141,7 @@ class FrdData(FrdParser):
             vertices=vertices, polygons=track_polygons, collision_meshes=collision_meshes
         )
 
-    def _texture_flags_to_uv(self, polygon: FrdParser.Polygon) -> list[tuple[int, int]]:
+    def _texture_flags_to_uv(self, polygon: FrdParser.Polygon) -> list[UV]:
         uv = [[1, 1], [0, 1], [0, 0], [1, 0]]
         if polygon.mirror_y:
             uv[1][1], uv[2][1] = uv[2][1], uv[1][1]
@@ -152,7 +156,7 @@ class FrdData(FrdParser):
             uv[1][0] = 1 - uv[1][0]
             uv[2][1] = 1 - uv[2][1]
             uv[3][0] = 1 - uv[3][0]
-        return [(item[0], item[1]) for item in uv]
+        return [UV(u=item[0], v=item[1]) for item in uv]
 
     def _high_poly_chunks(self, block: FrdParser.SegmentData) -> Iterable[FrdParser.SegmentData]:
         return compress(
@@ -173,7 +177,7 @@ class FrdData(FrdParser):
         )
 
     @property
-    def objects(self) -> Generator[TrackObject, None, None]:
+    def objects(self) -> Iterator[TrackObject]:
         for segment in self.segment_data:
             objects = chain.from_iterable(
                 zip(object.objects, object.object_extras, strict=True)
@@ -191,7 +195,7 @@ class FrdData(FrdParser):
             yield self._make_object(segment=None, object=object, extra=extra)
 
     @property
-    def track_segments(self) -> Generator[TrackSegment, None, None]:
+    def track_segments(self) -> Iterator[TrackSegment]:
         for segment in self.segment_data:
             polygons = chain.from_iterable(
                 chunk.polygons for chunk in self._high_poly_chunks(segment)

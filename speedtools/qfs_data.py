@@ -6,9 +6,9 @@
 #
 
 import logging
-from collections.abc import Generator
+from collections.abc import Iterator
 from struct import pack
-from typing import Container, Optional
+from typing import Container
 
 from speedtools.parsers import FshParser, QfsParser
 from speedtools.types import Bitmap, FshDataType, Resource
@@ -19,16 +19,16 @@ logger = logging.getLogger(__name__)
 class QfsData(QfsParser):
     def _get_data_by_code(
         self, codes: Container[FshDataType], resource: FshParser.DataBlock
-    ) -> Optional[FshParser.DataBlock]:
-        return next(filter(lambda x: x.code in codes, resource.body.blocks), None)
+    ) -> FshParser.DataBlock:
+        return next(  # type: ignore[no-any-return]
+            filter(lambda x: x.code in codes, resource.body.blocks)
+        )
 
     def _make_bitmap(self, resource: FshParser.Resource) -> Bitmap:
         bitmap = self._get_data_by_code(
             codes=[FshDataType.bitmap8, FshDataType.bitmap32], resource=resource
         )
-        if bitmap is None:
-            raise RuntimeError("Bitmap resource not found")
-        elif bitmap.code is FshDataType.bitmap8:
+        if bitmap.code is FshDataType.bitmap8:
             palette = self._get_data_by_code(codes=[FshDataType.palette], resource=resource)
             palette_colors = [element.color for element in palette.data.data]
             rgba_int = [palette_colors[element] for element in bitmap.data.data]
@@ -51,12 +51,12 @@ class QfsData(QfsParser):
         return bitmap_object
 
     @property
-    def raw_bitmaps(self) -> Generator[Bitmap, None, None]:
+    def raw_bitmaps(self) -> Iterator[Bitmap]:
         for resource in self.data.resources:
             yield self._make_bitmap(resource)
 
     @property
-    def resources(self) -> Generator[Resource, None, None]:
+    def resources(self) -> Iterator[Resource]:
         for resource in self.data.resources:
             bitmap = self._make_bitmap(resource)
             text = self._get_data_by_code(codes=[FshDataType.text], resource=resource)
