@@ -6,16 +6,9 @@ build-backend = "setuptools.build_meta"
 name = "speedtools"
 version = "0.1.0"
 description = "NFS resource utilities"
-authors = [
-    {name = "Rafał Kuźnia"},
-    {email = "rafal.kuznia@protonmail.com"},
-]
-dependencies = [
-    "kaitaistruct",
-    "pillow",
-    "click",
-]
-license = {text = "GPL-3.0-or-later"}
+authors = [{ name = "Rafał Kuźnia" }, { email = "rafal.kuznia@protonmail.com" }]
+dependencies = ["kaitaistruct", "pillow", "click"]
+license = { text = "GPL-3.0-or-later" }
 
 [project.scripts]
 speedtool-unpack = "speedtools.speedtool:unpack"
