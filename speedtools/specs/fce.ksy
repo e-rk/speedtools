@@ -152,10 +152,22 @@ seq:
     repeat-expr: 16 - num_colors
   - id: unknown5
     size: 260
-  - id: unknown6
-    size: 64 * 16  # TODO: ???
-  - id: unknown7
-    size: 64 * 64  # TODO: ???
+  - id: dummies
+    type: dummy
+    # size: 64 * 16  # TODO: ???
+    size: 64
+    repeat: expr
+    repeat-expr: 16
+  - id: part_strings
+    type: part
+    size: 64
+    repeat: expr
+    repeat-expr: num_car_parts
+  - id: unused_part_strings
+    type: part
+    size: 64
+    repeat: expr
+    repeat-expr: 64 - num_car_parts
   - id: unknown8
     size: 528  # TODO: ???
 instances:
@@ -189,13 +201,13 @@ types:
   color:
     seq:
       - id: hue
-        type: u4
+        type: u1
       - id: saturation
-        type: u4
+        type: u1
       - id: brightness
-        type: u4
+        type: u1
       - id: unknown
-        size: 4
+        size: 1
   polygon:
     seq:
       - id: texture
@@ -224,3 +236,26 @@ types:
         repeat: expr
         repeat-expr: 3
         doc: V texture coordinate
+  dummy:
+    seq:
+      - id: magic
+        type: u1
+      - id: type
+        type: u1
+      - id: color
+        type: u1
+      - id: breakable
+        type: u1
+      - id: flashing
+        type: u1
+      - id: intensity
+        type: u1
+      - id: time_on
+        type: u1
+      - id: time_off
+        type: u1
+  part:
+    seq:
+      - id: value
+        type: strz
+        repeat: eos

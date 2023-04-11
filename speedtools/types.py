@@ -121,6 +121,7 @@ class TrackSegment(DrawableMesh):
 
 @dataclass
 class Part(DrawableMesh):
+    name: str
     vertices: Sequence[Vector3d]
     polygons: Sequence[Polygon]
     location: Optional[Vector3d] = None

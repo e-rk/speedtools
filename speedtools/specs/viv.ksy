@@ -42,4 +42,5 @@ types:
           cases:
             '"carp.txt"': strz
             '"car.fce"': fce
+            '"dash.fce"': fce
         size: length
