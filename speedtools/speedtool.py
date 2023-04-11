@@ -13,7 +13,7 @@ from pathlib import Path
 import click
 
 from speedtools.track_data import TrackData
-from speedtools.utils import write_resources
+from speedtools.utils import export_resource
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -27,7 +27,7 @@ logger.addHandler(sh)
 def unpack(output: Path, path: Path) -> None:
     data = TrackData(path)
     nonmirrored = filter(lambda x: not x.mirrored, data.track_resources)
-    write_resources(resources=nonmirrored, output_dir=output)
+    export_resource(nonmirrored, dir=output)
 
 
 @click.command()
