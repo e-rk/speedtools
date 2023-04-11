@@ -10,7 +10,7 @@ from collections.abc import Iterator
 from itertools import islice
 
 from speedtools.parsers import FceParser, VivParser
-from speedtools.types import UV, Part, Polygon, Vector3d
+from speedtools.types import UV, Image, Part, Polygon, Resource, Vector3d
 
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
@@ -60,3 +60,9 @@ class VivData(VivParser):
     def materials(self) -> Iterator[str]:
         for tga in filter(lambda x: x.name.endswith(".tga"), self.entries):
             yield tga.name
+
+    @property
+    def materials2(self) -> Iterator[Resource]:
+        for tga in filter(lambda x: x.name.endswith("car00.tga"), self.entries):
+            image = Image(tga.body)
+            yield Resource(name=tga.name, text="", mirrored=False, additive=False, image=image)

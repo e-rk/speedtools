@@ -36,7 +36,7 @@ class QfsData(QfsParser):
             bitmap_object = Bitmap(
                 width=bitmap.width,
                 height=bitmap.height,
-                rgba=rgba_bytes,
+                data=rgba_bytes,
             )
         elif bitmap.code is FshDataType.bitmap32:
             rgba_int = [elem.color for elem in bitmap.data.data]
@@ -44,7 +44,7 @@ class QfsData(QfsParser):
             bitmap_object = Bitmap(
                 width=bitmap.width,
                 height=bitmap.height,
-                rgba=rgba_bytes,
+                data=rgba_bytes,
             )
         else:
             raise RuntimeError("Bitmap resource not recognized")
@@ -66,8 +66,8 @@ class QfsData(QfsParser):
             #     mirrored = "<nonmirrored>" == text_data if text_data is not None else False
             additive = "<additive>" == text_data if text_data is not None else False
             yield Resource(
-                name=resource.name,
-                bitmap=bitmap,
+                name=self._make_unique_name(resource.name),
+                image=bitmap,
                 text=text_data,
                 mirrored=mirrored,
                 additive=additive,

@@ -67,16 +67,20 @@ class DrawableMesh(BaseMesh, Protocol):
 
 
 @dataclass(frozen=True)
-class Bitmap:
+class Image:
+    data: bytes
+
+
+@dataclass(frozen=True)
+class Bitmap(Image):
     width: int
     height: int
-    rgba: bytes
 
 
 @dataclass(frozen=True)
 class Resource:
     name: str
-    bitmap: Bitmap
+    image: Image
     text: str
     mirrored: bool
     additive: bool

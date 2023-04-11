@@ -10,14 +10,26 @@ import os
 from collections.abc import Iterator
 from contextlib import suppress
 from functools import singledispatch
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 
-from PIL import Image
+from PIL import Image as pil_Image
 
-from speedtools.types import Resource
+from speedtools.types import Bitmap, Image, Resource
 
 logger = logging.getLogger(__name__)
+
+
+@singledispatch
+def create_pil_image(image: Image) -> Any:
+    buffer = BytesIO(image.data)
+    return pil_Image.open(fp=buffer)
+
+
+@create_pil_image.register
+def _(image: Bitmap) -> Any:
+    return pil_Image.frombytes("RGBA", (image.width, image.height), data=image.data)
 
 
 @singledispatch
@@ -35,8 +47,7 @@ def _(resource: Iterator[Resource], dir: Path) -> None:
 def _(resource: Resource, dir: Path) -> None:
     with suppress(FileExistsError):
         os.makedirs(dir)
-    bitmap = resource.bitmap
     output_file = Path(dir, f"{resource.name}.png")
+    image = create_pil_image(resource.image)
     logger.info(f"Writing image: {output_file}")
-    image = Image.frombytes("RGBA", (bitmap.width, bitmap.height), data=bitmap.rgba)
     image.save(output_file)
