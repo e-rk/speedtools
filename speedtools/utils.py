@@ -7,18 +7,25 @@
 
 import logging
 import os
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from contextlib import suppress
 from functools import singledispatch
 from io import BytesIO
+from itertools import islice
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 from PIL import Image as pil_Image
 
 from speedtools.types import Bitmap, Image, Resource
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar("T")
+
+
+def islicen(iterable: Iterable[T], start: int, num: int) -> Iterable[T]:
+    return islice(iterable, start, start + num)
 
 
 @singledispatch
