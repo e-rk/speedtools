@@ -6,13 +6,12 @@
 #
 
 import logging
-from collections.abc import Iterable, Iterator, Mapping
-from itertools import chain
+from collections.abc import Iterator
 from pathlib import Path
 
 from speedtools.frd_data import FrdData
 from speedtools.qfs_data import QfsData
-from speedtools.types import Bitmap, Polygon, Resource, TrackObject, TrackSegment
+from speedtools.types import Polygon, Resource, TrackObject, TrackSegment
 
 logger = logging.getLogger(__name__)
 
