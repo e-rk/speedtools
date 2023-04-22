@@ -11,6 +11,7 @@ from typing import NamedTuple, Optional, Protocol, TypeAlias
 
 from speedtools.parsers import FrdParser, FshParser
 
+RoadEffect: TypeAlias = FrdParser.DriveablePolygon.RoadEffect
 CollisionType: TypeAlias = FrdParser.ObjectAttribute.CollisionType
 ObjectType: TypeAlias = FrdParser.ObjectHeader.ObjectType
 FshDataType: TypeAlias = FshParser.DataType

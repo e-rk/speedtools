@@ -281,6 +281,28 @@ types:
         type: short3
       - id: forward
         type: short3
+    instances:
+      road_effect:
+        value: collision_flags & 0x0f
+        enum: road_effect
+    enums:
+      road_effect:
+        0: not_driveable
+        1: driveable1
+        2: gravel
+        3: driveable2
+        4: leaves1
+        5: dust1
+        6: driveable3
+        7: driveable4
+        8: driveable5
+        9: snow1
+        10: driveable6
+        11: leaves2
+        12: driveable7
+        13: dust2
+        14: driveable8
+        15: snow2
   object_attribute:
     seq:
       - id: location
