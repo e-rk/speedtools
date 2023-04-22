@@ -6,21 +6,26 @@
 #
 
 import logging
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Sequence
 from contextlib import suppress
-from itertools import chain, compress, groupby
-from typing import Optional
+from functools import partial
+from itertools import chain, compress, groupby, starmap
+from typing import Any, Optional
+
+from more_itertools import collapse, nth, unique_everseen, unzip
 
 from speedtools.parsers import FrdParser
 from speedtools.types import (
     UV,
     Animation,
+    BasePolygon,
     CollisionMesh,
-    CollisionPolygon,
     CollisionType,
+    DrawableMesh,
     ObjectType,
     Polygon,
     Quaternion,
+    RoadEffect,
     TrackObject,
     TrackSegment,
     Vector3d,
@@ -30,26 +35,43 @@ logger = logging.getLogger(__name__)
 
 
 class FrdData(FrdParser):
-    def _make_polygon(self, polygon: FrdParser.Polygon) -> Polygon:
+    high_poly_chunks = [
+        False,  # Low-resolution track geometry
+        False,  # Low-resolution misc geometry
+        False,  # Medium-resolution track geometry
+        False,  # Medium-resolution misc geometry
+        True,  # High-resolution track geometry
+        True,  # High-resolution misc geometry
+        False,  # Road lanes
+        True,  # High-resolution misc geometry
+        True,  # High-resolution misc geometry
+        True,  # High-resolution misc geometry
+        True,  # High-resolution misc geometry
+    ]
+
+    @classmethod
+    def _validate_polygon(
+        cls, face: Sequence[int], *iterables: Iterable[Any]
+    ) -> Iterator[tuple[Any, ...]]:
+        polygon_data_zipped = zip(face, *iterables)
+        return unique_everseen(polygon_data_zipped, key=lambda x: nth(x, 0))
+
+    @classmethod
+    def _make_polygon(cls, polygon: FrdParser.Polygon) -> Polygon:
         material = polygon.texture & 0x7FF
         backface_culling = polygon.backface_culling
-        uvs = []
-        face = []
-        for vertice, uv in zip(polygon.face, self._texture_flags_to_uv(polygon), strict=True):
-            if vertice in face:
-                logger.debug("Polygon is not a quad. Converting into triangle.")
-                continue
-            uvs.append(uv)
-            face.append(vertice)
+        quads_or_triangles = cls._validate_polygon(polygon.face, cls._texture_flags_to_uv(polygon))
+        face, uv = unzip(quads_or_triangles)
         return Polygon(
             face=tuple(face),
-            uv=tuple(uvs),
+            uv=tuple(uv),
             material=material,
             backface_culling=backface_culling,
         )
 
+    @classmethod
     def _get_object_collision_type(
-        self, segment: Optional[FrdParser.SegmentData], object: FrdParser.ObjectHeader
+        cls, segment: Optional[FrdParser.SegmentData], object: FrdParser.ObjectHeader
     ) -> CollisionType:
         logger.info(f"Object: {vars(object)}")
         if (
@@ -62,8 +84,9 @@ class FrdData(FrdParser):
             collision_type = object_attribute.collision_type
         return collision_type
 
+    @classmethod
     def _make_object(
-        self,
+        cls,
         segment: Optional[FrdParser.SegmentData],
         object: FrdParser.ObjectHeader,
         extra: FrdParser.ObjectData,
@@ -97,51 +120,54 @@ class FrdData(FrdParser):
                 quaternions=quaternions,
             )
         vertices = [Vector3d(x=vertice.x, y=vertice.y, z=vertice.z) for vertice in extra.vertices]
-        polys = [self._make_polygon(polygon) for polygon in extra.polygons]
-        collision_type = self._get_object_collision_type(segment=segment, object=object)
+        polygons = [cls._make_polygon(polygon) for polygon in extra.polygons]
+        mesh = DrawableMesh(vertices=vertices, polygons=polygons)
+        collision_type = cls._get_object_collision_type(segment=segment, object=object)
         return TrackObject(
-            location=location,
-            animation=animation,
-            vertices=vertices,
-            polygons=polys,
-            collision_type=collision_type,
+            mesh=mesh, collision_type=collision_type, location=location, animation=animation
         )
 
-    def _make_collision_mesh(self, segment: FrdParser.SegmentData) -> Iterator[CollisionMesh]:
-        driveable_polygons = sorted(
-            segment.driveable_polygons, key=lambda x: int(x.collision_flags) & 0x0F
-        )
-        driveable_mesh_groups = groupby(
-            driveable_polygons, key=lambda x: int(x.collision_flags) & 0x0F
-        )
-        for key, group in driveable_mesh_groups:
-            if key == 0:
-                continue
-            polygons = [
-                CollisionPolygon(face=segment.chunks[4].polygons[polygon.polygon].face)
-                for polygon in group
-            ]
-            yield CollisionMesh(
-                vertices=[
-                    Vector3d(x=vertice.x, y=vertice.y, z=vertice.z) for vertice in segment.vertices
-                ],
-                polygons=polygons,
-                collision_effect=key,
-            )
-
-    def _make_track_segment(
-        self, segment: FrdParser.SegmentData, polygons: Iterable[FrdParser.Polygon]
-    ) -> TrackSegment:
+    @classmethod
+    def _make_collision_mesh(
+        cls,
+        segment: FrdParser.SegmentData,
+        road_effect: int,
+        driveable_polygons: FrdParser.DriveablePolygon,
+    ) -> CollisionMesh:
+        polygons = [
+            BasePolygon(face=segment.chunks[4].polygons[polygon.polygon].face)
+            for polygon in driveable_polygons
+        ]
         vertices = [
             Vector3d(x=vertice.x, y=vertice.y, z=vertice.z) for vertice in segment.vertices
         ]
-        track_polygons = [self._make_polygon(polygon) for polygon in polygons]
-        collision_meshes = list(self._make_collision_mesh(segment))
-        return TrackSegment(
-            vertices=vertices, polygons=track_polygons, collision_meshes=collision_meshes
+        return CollisionMesh(
+            vertices=vertices, polygons=polygons, collision_effect=RoadEffect(road_effect)
         )
 
-    def _texture_flags_to_uv(self, polygon: FrdParser.Polygon) -> list[UV]:
+    @classmethod
+    def _make_collision_meshes(cls, segment: FrdParser.SegmentData) -> Iterator[CollisionMesh]:
+        def driveable_polygon_key(driveable_polygon: FrdParser.DriveablePolygon) -> int:
+            return int(driveable_polygon.road_effect.value)
+
+        driveable_polygons = sorted(segment.driveable_polygons, key=driveable_polygon_key)
+        driveable_mesh_groups = groupby(driveable_polygons, key=driveable_polygon_key)
+        meshes = starmap(partial(cls._make_collision_mesh, segment), driveable_mesh_groups)
+        return filter(lambda x: x.collision_effect is not RoadEffect.not_driveable, meshes)
+
+    @classmethod
+    def _make_track_segment(cls, segment: FrdParser.SegmentData) -> TrackSegment:
+        polygons = chain.from_iterable(chunk.polygons for chunk in cls._high_poly_chunks(segment))
+        vertices = [
+            Vector3d(x=vertice.x, y=vertice.y, z=vertice.z) for vertice in segment.vertices
+        ]
+        track_polygons = [cls._make_polygon(polygon) for polygon in polygons]
+        collision_meshes = list(cls._make_collision_meshes(segment))
+        mesh = DrawableMesh(vertices=vertices, polygons=track_polygons)
+        return TrackSegment(mesh=mesh, collision_meshes=collision_meshes)
+
+    @classmethod
+    def _texture_flags_to_uv(cls, polygon: FrdParser.Polygon) -> list[UV]:
         uv = [[1, 1], [0, 1], [0, 0], [1, 0]]
         if polygon.mirror_y:
             uv[1][1], uv[2][1] = uv[2][1], uv[1][1]
@@ -158,46 +184,28 @@ class FrdData(FrdParser):
             uv[3][0] = 1 - uv[3][0]
         return [UV(u=item[0], v=item[1]) for item in uv]
 
-    def _high_poly_chunks(self, block: FrdParser.SegmentData) -> Iterable[FrdParser.SegmentData]:
-        return compress(
-            block.chunks,
-            [
-                False,  # Low-resolution track geometry
-                False,  # Low-resolution misc geometry
-                False,  # Medium-resolution track geometry
-                False,  # Medium-resolution misc geometry
-                True,  # High-resolution track geometry
-                True,  # High-resolution misc geometry
-                False,  # Road lanes
-                True,  # High-resolution misc geometry
-                True,  # High-resolution misc geometry
-                True,  # High-resolution misc geometry
-                True,  # High-resolution misc geometry
-            ],
+    @classmethod
+    def _high_poly_chunks(cls, block: FrdParser.SegmentData) -> Iterable[FrdParser.SegmentData]:
+        return compress(block.chunks, cls.high_poly_chunks)
+
+    @classmethod
+    def _make_segment_objects(cls, segment: FrdParser.SegmentData) -> Iterator[TrackObject]:
+        objects = chain.from_iterable(
+            zip(object.objects, object.object_extras, strict=True)
+            for object in segment.object_chunks
         )
+        return starmap(partial(cls._make_object, segment), objects)
 
     @property
     def objects(self) -> Iterator[TrackObject]:
-        for segment in self.segment_data:
-            objects = chain.from_iterable(
-                zip(object.objects, object.object_extras, strict=True)
-                for object in segment.object_chunks
-            )
-            for object, extra in objects:
-                yield self._make_object(
-                    segment=segment,
-                    object=object,
-                    extra=extra,
-                )
-        for object, extra in zip(
-            self.global_objects.objects, self.global_objects.object_extras, strict=True
-        ):
-            yield self._make_object(segment=None, object=object, extra=extra)
+        segment_objects = collapse(map(self._make_segment_objects, self.segment_data), levels=1)
+        global_objects = map(
+            partial(self._make_object, None),
+            self.global_objects.objects,
+            self.global_objects.object_extras,
+        )
+        return chain(segment_objects, global_objects)
 
     @property
     def track_segments(self) -> Iterator[TrackSegment]:
-        for segment in self.segment_data:
-            polygons = chain.from_iterable(
-                chunk.polygons for chunk in self._high_poly_chunks(segment)
-            )
-            yield self._make_track_segment(segment=segment, polygons=polygons)
+        return map(self._make_track_segment, self.segment_data)

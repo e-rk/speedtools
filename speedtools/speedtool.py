@@ -41,9 +41,9 @@ def obj(output: Path, path: Path) -> None:
     for index, object in enumerate(data.objects):
         with open(Path(output, f"object_{index}.obj"), "w") as obj_file:
             obj_file.write(f"mtllib materials_{index}.mtl{os.linesep}")
-            for vertex in object.vertices:
+            for vertex in object.mesh.vertices:
                 obj_file.write(f"v {vertex.x} {vertex.y} {vertex.z}{os.linesep}")
-            for i, polygon in enumerate(object.polygons):
+            for i, polygon in enumerate(object.mesh.polygons):
                 for uv in polygon.uv:
                     obj_file.write(f"vt {uv[0]} {uv[1]}{os.linesep}")
                 obj_file.write(f"usemtl texture_{polygon.material}{os.linesep}")

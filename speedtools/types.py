@@ -7,7 +7,7 @@
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import NamedTuple, Optional, Protocol, TypeAlias
+from typing import NamedTuple, Optional, TypeAlias
 
 from speedtools.parsers import FrdParser, FshParser
 
@@ -35,14 +35,15 @@ class Quaternion(NamedTuple):
     y: float
 
 
-class BasePolygon(Protocol):
+@dataclass(frozen=True)
+class BasePolygon:
     face: tuple[int, ...]
 
 
-class BaseMesh(Protocol):
+@dataclass(frozen=True)
+class BaseMesh:
     vertices: Sequence[Vector3d]
     polygons: Sequence[BasePolygon]
-    normals: Sequence[Vector3d]
 
 
 @dataclass(frozen=True)
@@ -53,7 +54,7 @@ class Polygon(BasePolygon):
     backface_culling: bool
 
 
-@dataclass
+@dataclass(frozen=True)
 class Animation:
     length: int
     delay: int
@@ -61,10 +62,10 @@ class Animation:
     quaternions: Sequence[Quaternion]
 
 
-class DrawableMesh(BaseMesh, Protocol):
+@dataclass(frozen=True)
+class DrawableMesh(BaseMesh):
     polygons: Sequence[Polygon]
-    location: Optional[Vector3d]
-    animation: Optional[Animation]
+    normals: Sequence[Vector3d] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -87,44 +88,34 @@ class Resource:
     additive: bool
 
 
-@dataclass
-class TrackObject(DrawableMesh):
-    collision_type: CollisionType
-    vertices: Sequence[Vector3d]
-    polygons: Sequence[Polygon]
+@dataclass(frozen=True)
+class ObjectData:
+    mesh: DrawableMesh
     location: Optional[Vector3d] = None
     animation: Optional[Animation] = None
-    normals: Sequence[Vector3d] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
-class CollisionPolygon(BasePolygon):
-    face: tuple[int, ...]
+class TrackObject:
+    mesh: DrawableMesh
+    collision_type: CollisionType
+    location: Optional[Vector3d] = None
+    animation: Optional[Animation] = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class CollisionMesh(BaseMesh):
-    collision_effect: int
-    vertices: Sequence[Vector3d]
-    polygons: Sequence[BasePolygon]
-    normals: Sequence[Vector3d] = field(default_factory=list)
+    collision_effect: RoadEffect
 
 
-@dataclass
-class TrackSegment(DrawableMesh):
+@dataclass(frozen=True)
+class TrackSegment:
+    mesh: DrawableMesh
     collision_meshes: Sequence[CollisionMesh]
-    vertices: Sequence[Vector3d]
-    polygons: Sequence[Polygon]
-    location: Optional[Vector3d] = None
-    animation: Optional[Animation] = None
-    normals: Sequence[Vector3d] = field(default_factory=list)
 
 
-@dataclass
-class Part(DrawableMesh):
+@dataclass(frozen=True)
+class Part:
+    mesh: DrawableMesh
     name: str
-    vertices: Sequence[Vector3d]
-    polygons: Sequence[Polygon]
-    location: Optional[Vector3d] = None
-    animation: Optional[Animation] = None
-    normals: Sequence[Vector3d] = field(default_factory=list)
+    location: Vector3d
