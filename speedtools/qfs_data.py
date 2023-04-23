@@ -64,7 +64,7 @@ class QfsData(QfsParser):
             mirrored = "<mirrored>" == text_data if text_data is not None else False
             # if not mirrored:
             #     mirrored = "<nonmirrored>" == text_data if text_data is not None else False
-            additive = False
+            additive = "<additive>" == text_data if text_data is not None else False
             yield Resource(
                 name=resource.name,
                 bitmap=bitmap,
