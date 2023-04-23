@@ -8,12 +8,14 @@ import logging
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import suppress
 from functools import partial
+from itertools import chain
 from math import atan2, cos, tau
 from pathlib import Path
 from typing import TypeVar
 
 from speedtools.cam_data import CamData
 from speedtools.can_data import CanData
+from more_itertools import collapse, map_except
 from speedtools.frd_data import FrdData
 from speedtools.fsh_data import FshData
 from speedtools.tr_ini import TrackIni
@@ -23,7 +25,10 @@ from speedtools.types import (
     Camera,
     CollisionType,
     Color,
+    CollisionFlags,
+    CollisionMesh,
     DirectionalLight,
+    Edge,
     Horizon,
     Light,
     LightAttributes,
@@ -161,6 +166,70 @@ class TrackData:
             transform=obj.transform,
         )
 
+    def _raise_vertices(cls, height: float, vertice: Vector3d) -> Vector3d:
+        y = vertice.y + height
+        return Vector3d(x=vertice.x, y=y, z=vertice.z)
+
+    @classmethod
+    def _make_wall_polygon(cls, offset: int, f: tuple[int, ...], edge: Edge) -> CollisionPolygon:
+        logger.error(f"Face: {f}, edge: {edge}")
+        face = None
+        if edge is Edge.FRONT:
+            face = (f[1], f[0], offset + f[0], offset + f[1])
+        if edge is Edge.LEFT:
+            face = (f[2], f[1], offset + f[1], offset + f[2])
+        if edge is Edge.BACK:
+            face = (f[3], f[2], offset + f[2], offset + f[3])
+        if edge is Edge.RIGHT:
+            face = (f[0], f[3], offset + f[3], offset + f[0])
+        if not face:
+            raise RuntimeError("Error during wall creation")
+        return CollisionPolygon(face=face, edges=[])
+
+    @classmethod
+    def _make_wall_polygons(
+        cls, offset: int, collision_polygon: CollisionPolygon
+    ) -> Iterator[CollisionPolygon]:
+        return map_except(
+            partial(cls._make_wall_polygon, offset, collision_polygon.face),
+            collision_polygon.edges,
+            IndexError,
+            RuntimeError,
+        )
+
+    @classmethod
+    def _make_collision_walls(
+        cls,
+        height: float,
+        collision_vertices: Vector3d,
+        collision_polygons: Iterable[CollisionPolygon],
+    ) -> CollisionMesh:
+        vertices = list(
+            chain(
+                collision_vertices, map(partial(cls._raise_vertices, height), collision_vertices)
+            )
+        )
+        polygons = collapse(
+            map(partial(cls._make_wall_polygons, len(vertices) // 2), collision_polygons), levels=1
+        )
+        return CollisionMesh(
+            vertices=list(vertices),
+            polygons=list(polygons),
+            collision_effect=CollisionFlags.driveable6,
+        )
+
+    @classmethod
+    def _finalize_segment(cls, height: float, segment: TrackSegment) -> TrackSegment:
+        collision_polygons = chain(mesh.polygons for mesh in segment.collision_meshes)
+        collision_meshes = chain(
+            segment.collision_meshes,
+            map(
+                partial(cls._make_collision_walls, height, segment.mesh.vertices),
+                collision_polygons,
+            ),
+        )
+        return TrackSegment(mesh=segment.mesh, collision_meshes=list(collision_meshes))
+
     @property
     def objects(self) -> Iterator[TrackObject]:
         actions = [AnimationAction(action, can.animation) for action, can in self.can]
@@ -168,7 +237,7 @@ class TrackData:
 
     @property
     def track_segments(self) -> Iterator[TrackSegment]:
-        return self.frd.track_segments
+        return map(partial(self._finalize_segment, 10.0), self.frd.track_segments)
 
     @property
     def track_resources(self) -> Iterator[Resource]:
