@@ -35,6 +35,13 @@ class ShapeKeyType(Enum):
     DAMAGE = 1
 
 
+class Edge(Enum):
+    FRONT = 0
+    LEFT = 1
+    BACK = 2
+    RIGHT = 3
+
+
 class Vector3d(NamedTuple):
     x: float
     z: float
@@ -211,7 +218,13 @@ class TrackObject:
 
 
 @dataclass(frozen=True)
+class CollisionPolygon(BasePolygon):
+    edges: Sequence[Edge]
+
+
+@dataclass(frozen=True)
 class CollisionMesh(BaseMesh):
+    polygons: Sequence[CollisionPolygon]
     collision_effect: RoadEffect
 
 

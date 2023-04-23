@@ -32,9 +32,11 @@ from speedtools.types import (
     AnimationAction,
     BasePolygon,
     CollisionMesh,
+    CollisionPolygon,
     CollisionType,
     Color,
     DrawableMesh,
+    Edge,
     LightStub,
     Matrix3x3,
     ObjectType,
@@ -166,6 +168,19 @@ class FrdData:
         )
 
     @classmethod
+    def _make_collision_polygon(
+        cls, segment: FrdParser.SegmentData, polygon: FrdParser.DriveablePolygon
+    ) -> CollisionPolygon:
+        face = segment.chunks[4].polygons[polygon.polygon].face
+        (face,) = unzip(cls._validate_polygon(face=face))
+        edges: list[Edge] = []
+        edges.append(Edge.FRONT) if polygon.front_edge else None
+        edges.append(Edge.LEFT) if polygon.left_edge else None
+        edges.append(Edge.BACK) if polygon.back_edge else None
+        edges.append(Edge.RIGHT) if polygon.right_edge else None
+        return CollisionPolygon(face=tuple(face), edges=edges)
+
+    @classmethod
     def _make_collision_mesh(
         cls,
         segment: FrdParser.SegmentData,
@@ -173,8 +188,7 @@ class FrdData:
         driveable_polygons: FrdParser.DriveablePolygon,
     ) -> CollisionMesh:
         polygons = [
-            BasePolygon(face=segment.chunks[4].polygons[polygon.polygon].face)
-            for polygon in driveable_polygons
+            cls._make_collision_polygon(segment, polygon) for polygon in driveable_polygons
         ]
         vertex_locations = [Vector3d.from_frd_float3(vertex) for vertex in segment.vertices]
         vertices = [Vertex(location=loc) for loc in vertex_locations]
