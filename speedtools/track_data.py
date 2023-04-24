@@ -7,7 +7,7 @@
 import logging
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import suppress
-from functools import partial
+from functools import partial, partialmethod
 from itertools import chain
 from math import atan2, cos, tau
 from pathlib import Path
@@ -18,6 +18,7 @@ from speedtools.can_data import CanData
 from more_itertools import collapse, map_except
 from speedtools.frd_data import FrdData
 from speedtools.fsh_data import FshData
+from speedtools.parsers import HeightsParser
 from speedtools.tr_ini import TrackIni
 from speedtools.types import (
     Action,
@@ -35,10 +36,11 @@ from speedtools.types import (
     LightStub,
     Polygon,
     Resource,
+    RoadEffect,
     TrackObject,
     TrackSegment,
 )
-from speedtools.utils import unique_named_resources
+from speedtools.utils import islicen, unique_named_resources
 
 logger = logging.getLogger(__name__)
 T = TypeVar("T")
@@ -109,6 +111,7 @@ class TrackData:
         )
         self.sfx: FshData = FshData.from_file(Path(game_root, self.SFX_RESOURCE_FILE))
         self.can: Sequence[tuple[Action, CanData]] = self.tr_can_open(directory=directory)
+        self.heights: HeightsParser = HeightsParser.from_file(Path(directory, "HEIGHTS.SIM"))
         self.resources: dict[int, Resource] = {}
         self.sfx_resources: dict[str, Resource] = {}
         self.light_glows: dict[int, LightAttributes] = {}
@@ -200,13 +203,14 @@ class TrackData:
     @classmethod
     def _make_collision_walls(
         cls,
-        height: float,
+        height: Iterator[float],
         collision_vertices: Vector3d,
         collision_polygons: Iterable[CollisionPolygon],
     ) -> CollisionMesh:
         vertices = list(
             chain(
-                collision_vertices, map(partial(cls._raise_vertices, height), collision_vertices)
+                collision_vertices,
+                map(partial(cls._raise_vertices, next(height)), collision_vertices),
             )
         )
         polygons = collapse(
@@ -215,20 +219,26 @@ class TrackData:
         return CollisionMesh(
             vertices=list(vertices),
             polygons=list(polygons),
-            collision_effect=CollisionFlags.driveable6,
+            collision_effect=RoadEffect.driveable6,
         )
 
     @classmethod
-    def _finalize_segment(cls, height: float, segment: TrackSegment) -> TrackSegment:
+    def _finalize_segment(cls, heights: Iterable[float], segment: TrackSegment) -> TrackSegment:
+        heights_iter = islicen(heights, segment.extra_data_start, segment.extra_data_count)
         collision_polygons = chain(mesh.polygons for mesh in segment.collision_meshes)
         collision_meshes = chain(
             segment.collision_meshes,
             map(
-                partial(cls._make_collision_walls, height, segment.mesh.vertices),
+                partial(cls._make_collision_walls, heights_iter, segment.mesh.vertices),
                 collision_polygons,
             ),
         )
-        return TrackSegment(mesh=segment.mesh, collision_meshes=list(collision_meshes))
+        return TrackSegment(
+            mesh=segment.mesh,
+            collision_meshes=list(collision_meshes),
+            extra_data_count=segment.extra_data_count,
+            extra_data_start=segment.extra_data_start,
+        )
 
     @property
     def objects(self) -> Iterator[TrackObject]:
@@ -237,7 +247,7 @@ class TrackData:
 
     @property
     def track_segments(self) -> Iterator[TrackSegment]:
-        return map(partial(self._finalize_segment, 10.0), self.frd.track_segments)
+        return map(partial(self._finalize_segment, self.heights.heights), self.frd.track_segments)
 
     @property
     def track_resources(self) -> Iterator[Resource]:

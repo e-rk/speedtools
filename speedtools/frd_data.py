@@ -10,7 +10,7 @@ import logging
 from collections.abc import Iterable, Iterator, Sequence
 from contextlib import suppress
 from functools import partial
-from itertools import chain, compress, groupby, starmap
+from itertools import accumulate, chain, compress, groupby, starmap
 from pathlib import Path
 from typing import Any, Optional
 
@@ -210,9 +210,8 @@ class FrdData:
     def _make_waypoints(cls, road_block: FrdParser.RoadBlock) -> Vector3d:
         return Vector3d(x=road_block.location.x, y=road_block.location.y, z=road_block.location.z)
 
-    @classmethod
     def _make_track_segment(
-        cls, segment: FrdParser.SegmentData, road_blocks: Iterable[FrdParser.RoadBlock]
+        cls, header: FrdParser.SegmentHeader, segment: FrdParser.SegmentData, extra_data_start: int
     ) -> TrackSegment:
         polygons = chain.from_iterable(chunk.polygons for chunk in cls._high_poly_chunks(segment))
         vertex_locations = [Vector3d.from_frd_float3(vertex) for vertex in segment.vertices]
@@ -228,7 +227,13 @@ class FrdData:
         ]
         mesh = DrawableMesh(vertices=vertices, polygons=track_polygons)
         waypoints = [cls._make_waypoints(block) for block in road_blocks]
-        return TrackSegment(mesh=mesh, collision_meshes=collision_meshes, waypoints=waypoints)
+        return TrackSegment(
+            mesh=mesh,
+            collision_meshes=collision_meshes,
+            extra_data_count=header.num_road_blocks,
+            extra_data_start=extra_data_start,
+            waypoints=waypoints,
+        )
 
     @classmethod
     def _texture_flags_to_uv(cls, polygon: FrdParser.Polygon) -> list[UV]:
@@ -282,8 +287,14 @@ class FrdData:
 
     @property
     def track_segments(self) -> Iterator[TrackSegment]:
-        road_blocks = chunked(self.frd.road_blocks, 8)
-        return map(self._make_track_segment, self.frd.segment_data, road_blocks)
+        extra_data_count = [header.num_road_blocks for header in self.frd.segment_headers]
+        extra_data_start = accumulate(extra_data_count)
+        return map(
+            self._make_track_segment,
+            self.frd.segment_headers,
+            self.frd.segment_data,
+            extra_data_start,
+        )
 
     @property
     def light_dummies(self) -> Iterator[LightStub]:

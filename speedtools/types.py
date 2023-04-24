@@ -233,6 +233,8 @@ class TrackSegment:
     mesh: DrawableMesh
     collision_meshes: Sequence[CollisionMesh]
     waypoints: Sequence[Vector3d]
+    extra_data_start: int
+    extra_data_count: int
 
 
 @dataclass(frozen=True)
