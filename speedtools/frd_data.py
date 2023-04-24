@@ -10,7 +10,7 @@ import logging
 from collections.abc import Iterable, Iterator, Sequence
 from contextlib import suppress
 from functools import partial
-from itertools import chain, compress, groupby, starmap
+from itertools import accumulate, chain, compress, groupby, starmap
 from pathlib import Path
 from typing import Any, Optional
 
@@ -207,7 +207,9 @@ class FrdData:
         return filter(lambda x: x.collision_effect is not RoadEffect.not_driveable, meshes)
 
     @classmethod
-    def _make_track_segment(cls, segment: FrdParser.SegmentData) -> TrackSegment:
+    def _make_track_segment(
+        cls, header: FrdParser.SegmentHeader, segment: FrdParser.SegmentData, extra_data_start: int
+    ) -> TrackSegment:
         polygons = chain.from_iterable(chunk.polygons for chunk in cls._high_poly_chunks(segment))
         vertex_locations = [Vector3d.from_frd_float3(vertex) for vertex in segment.vertices]
         track_polygons = [cls._make_polygon(polygon) for polygon in polygons]
@@ -221,7 +223,12 @@ class FrdData:
             for loc, color in zip(vertex_locations, vertex_colors, strict=True)
         ]
         mesh = DrawableMesh(vertices=vertices, polygons=track_polygons)
-        return TrackSegment(mesh=mesh, collision_meshes=collision_meshes)
+        return TrackSegment(
+            mesh=mesh,
+            collision_meshes=collision_meshes,
+            extra_data_count=header.num_road_blocks,
+            extra_data_start=extra_data_start,
+        )
 
     @classmethod
     def _texture_flags_to_uv(cls, polygon: FrdParser.Polygon) -> list[UV]:
@@ -275,7 +282,14 @@ class FrdData:
 
     @property
     def track_segments(self) -> Iterator[TrackSegment]:
-        return map(self._make_track_segment, self.frd.segment_data)
+        extra_data_count = [header.num_road_blocks for header in self.frd.segment_headers]
+        extra_data_start = accumulate(extra_data_count)
+        return map(
+            self._make_track_segment,
+            self.frd.segment_headers,
+            self.frd.segment_data,
+            extra_data_start,
+        )
 
     @property
     def light_dummies(self) -> Iterator[LightStub]:

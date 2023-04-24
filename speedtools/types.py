@@ -232,6 +232,8 @@ class CollisionMesh(BaseMesh):
 class TrackSegment:
     mesh: DrawableMesh
     collision_meshes: Sequence[CollisionMesh]
+    extra_data_start: int
+    extra_data_count: int
 
 
 @dataclass(frozen=True)
