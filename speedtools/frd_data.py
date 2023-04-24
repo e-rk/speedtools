@@ -201,9 +201,10 @@ class FrdData:
         def driveable_polygon_key(driveable_polygon: FrdParser.DriveablePolygon) -> int:
             return int(driveable_polygon.road_effect.value)
 
-        driveable_polygons = sorted(segment.driveable_polygons, key=driveable_polygon_key)
-        driveable_mesh_groups = groupby(driveable_polygons, key=driveable_polygon_key)
-        meshes = starmap(partial(cls._make_collision_mesh, segment), driveable_mesh_groups)
+        # driveable_polygons = sorted(segment.driveable_polygons, key=driveable_polygon_key)
+        # driveable_mesh_groups = groupby(driveable_polygons, key=driveable_polygon_key)
+        # meshes = starmap(partial(cls._make_collision_mesh, segment), driveable_mesh_groups)
+        meshes = [cls._make_collision_mesh(segment, 1, segment.driveable_polygons)]
         return filter(lambda x: x.collision_effect is not RoadEffect.not_driveable, meshes)
 
     @classmethod
