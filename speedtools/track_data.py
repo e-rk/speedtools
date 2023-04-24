@@ -10,6 +10,7 @@ from contextlib import suppress
 from functools import partial, partialmethod
 from itertools import chain
 from math import atan2, cos, tau
+from operator import add
 from pathlib import Path
 from typing import TypeVar
 
@@ -201,6 +202,13 @@ class TrackData:
         )
 
     @classmethod
+    def _make_ceiling_polygons(
+        cls, offset: int, collision_polygon: CollisionPolygon
+    ) -> CollisionPolygon:
+        face = tuple(reversed(tuple(map(partial(add, offset), collision_polygon.face))))
+        return CollisionPolygon(face=face, edges=[])
+
+    @classmethod
     def _make_collision_walls(
         cls,
         height: Iterator[float],
@@ -214,7 +222,11 @@ class TrackData:
             )
         )
         polygons = collapse(
-            map(partial(cls._make_wall_polygons, len(vertices) // 2), collision_polygons), levels=1
+            chain(
+                map(partial(cls._make_wall_polygons, len(vertices) // 2), collision_polygons),
+                map(partial(cls._make_ceiling_polygons, len(vertices) // 2), collision_polygons),
+            ),
+            levels=2,
         )
         return CollisionMesh(
             vertices=list(vertices),
