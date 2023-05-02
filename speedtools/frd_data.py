@@ -22,6 +22,7 @@ from speedtools.types import (
     CollisionMesh,
     CollisionType,
     DrawableMesh,
+    LightStub,
     ObjectType,
     Polygon,
     Quaternion,
@@ -83,6 +84,10 @@ class FrdData(FrdParser):
             object_attribute = segment.object_attributes[object.attribute_index]
             collision_type = object_attribute.collision_type
         return collision_type
+
+    @classmethod
+    def _int3_to_vector3d(cls, location: FrdParser.Int3) -> Vector3d:
+        return Vector3d(x=location.x / 65536.0, y=location.y / 65536.0, z=location.z / 65536.0)
 
     @classmethod
     def _make_object(
@@ -196,6 +201,12 @@ class FrdData(FrdParser):
         )
         return starmap(partial(cls._make_object, segment), objects)
 
+    @classmethod
+    def _make_dummy(cls, dummy: FrdParser.SourceType) -> LightStub:
+        location = cls._int3_to_vector3d(dummy.location)
+        id = dummy.type & 0x1F
+        return LightStub(location=location, glow_id=id)
+
     @property
     def objects(self) -> Iterator[TrackObject]:
         segment_objects = collapse(map(self._make_segment_objects, self.segment_data), levels=1)
@@ -209,3 +220,8 @@ class FrdData(FrdParser):
     @property
     def track_segments(self) -> Iterator[TrackSegment]:
         return map(self._make_track_segment, self.segment_data)
+
+    @property
+    def light_dummies(self) -> Iterator[LightStub]:
+        lights = chain.from_iterable(segment.light_sources for segment in self.segment_data)
+        return map(self._make_dummy, lights)

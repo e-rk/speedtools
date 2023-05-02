@@ -7,7 +7,7 @@ name = "speedtools"
 version = "0.1.0"
 description = "NFS resource utilities"
 authors = [{ name = "Rafał Kuźnia" }, { email = "rafal.kuznia@protonmail.com" }]
-dependencies = ["kaitaistruct", "pillow", "click", "more-itertools"]
+dependencies = ["kaitaistruct", "pillow", "click", "more-itertools", "parse"]
 license = { text = "GPL-3.0-or-later" }
 
 [project.scripts]

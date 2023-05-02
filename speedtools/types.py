@@ -35,6 +35,21 @@ class Quaternion(NamedTuple):
     y: float
 
 
+class Color(NamedTuple):
+    alpha: int
+    red: int
+    green: int
+    blue: int
+
+    @property
+    def rgb(self) -> tuple[int, int, int]:
+        return self[1:]
+
+    @property
+    def rgb_float(self) -> tuple[float, float, float]:
+        return tuple(map(lambda x: x / 255, self.rgb))  # type: ignore[return-value]
+
+
 @dataclass(frozen=True)
 class BasePolygon:
     face: tuple[int, ...]
@@ -119,3 +134,23 @@ class Part:
     mesh: DrawableMesh
     name: str
     location: Vector3d
+
+
+@dataclass(frozen=True)
+class LightAttributes:
+    id: int
+    color: Color
+    blink_interval_ms: int | None
+    flare_size: float
+
+
+@dataclass(frozen=True)
+class Light:
+    location: Vector3d
+    attributes: LightAttributes
+
+
+@dataclass(frozen=True)
+class LightStub:
+    location: Vector3d
+    glow_id: int

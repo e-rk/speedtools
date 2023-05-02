@@ -186,6 +186,18 @@ class TrackImportFlat(TrackImportStrategy, BaseImporter):
             if object.animation:
                 self.set_object_animation(object=bpy_obj, animation=object.animation)
             track_collection.objects.link(bpy_obj)
+        for index, light in enumerate(track.lights):
+            name = f"Track light {index}"
+            bpy_light = bpy.data.lights.new(name=name, type="POINT")
+            bpy_light.color = light.attributes.color.rgb_float
+            bpy_light.use_custom_distance = True
+            bpy_light.cutoff_distance = 15.0
+            bpy_light.specular_factor = 0.2
+            bpy_light.energy = 500
+            bpy_light.use_shadow = False
+            bpy_obj = bpy.data.objects.new(name=name, object_data=bpy_light)
+            self.set_object_location(object=bpy_obj, location=light.location)
+            track_collection.objects.link(bpy_obj)
 
 
 class CarImporterSimple(BaseImporter):
