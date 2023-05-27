@@ -8,7 +8,7 @@ import logging
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import suppress
 from functools import partial, partialmethod
-from itertools import chain
+from itertools import chain, starmap
 from math import atan2, cos, tau
 from operator import add
 from pathlib import Path
@@ -176,7 +176,7 @@ class TrackData:
 
     @classmethod
     def _make_wall_polygon(cls, offset: int, f: tuple[int, ...], edge: Edge) -> CollisionPolygon:
-        logger.error(f"Face: {f}, edge: {edge}")
+        # logger.error(f"Face: {f}, edge: {edge}")
         face = None
         if edge is Edge.FRONT:
             face = (f[1], f[0], offset + f[0], offset + f[1])
@@ -235,15 +235,46 @@ class TrackData:
         )
 
     @classmethod
+    def _make_wall_vertices(cls, collision_mesh: CollisionMesh, height: float) -> list[Vector3d]:
+        return []
+
+    @classmethod
+    def _make_walls_and_ceiling(
+        cls, collision_mesh: CollisionMesh, height: float
+    ) -> CollisionMesh:
+        vertices = list(map(partial(cls._raise_vertices, height), collision_mesh.vertices))
+        polygons = collapse(
+            chain(
+                map(partial(cls._make_wall_polygons, len(vertices) // 2), collision_mesh.polygons),
+                map(
+                    partial(cls._make_ceiling_polygons, len(vertices) // 2),
+                    collision_mesh.polygons,
+                ),
+            ),
+            # levels=2,
+        )
+        return CollisionMesh(
+            vertices=vertices, polygons=[], collision_effect=RoadEffect.not_driveable
+        )
+
+    @classmethod
     def _finalize_segment(cls, heights: Iterable[float], segment: TrackSegment) -> TrackSegment:
-        heights_iter = islicen(heights, segment.extra_data_start, segment.extra_data_count)
-        collision_polygons = chain(mesh.polygons for mesh in segment.collision_meshes)
+        heights_iter = list(islicen(heights, segment.extra_data_start, segment.extra_data_count))
+        collision_mesh_and_heights = zip(segment.collision_meshes, heights_iter)
+        # collision_polygons = chain(mesh.polygons for mesh in segment.collision_meshes)
+        # collision_meshes = chain(
+        #     segment.collision_meshes,
+        #     map(
+        #         partial(cls._make_collision_walls, heights_iter, segment.mesh.vertices),
+        #         collision_polygons,
+        #     ),
+        # )
+        logger.error(
+            f"Len heights: {len(heights_iter)}, Len collision: {len(segment.collision_meshes)}"
+        )
         collision_meshes = chain(
             segment.collision_meshes,
-            map(
-                partial(cls._make_collision_walls, heights_iter, segment.mesh.vertices),
-                collision_polygons,
-            ),
+            # starmap(cls._make_walls_and_ceiling, collision_mesh_and_heights),
         )
         return TrackSegment(
             mesh=segment.mesh,
