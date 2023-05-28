@@ -49,6 +49,7 @@ from speedtools.types import (
     Vector3d,
     Vertex,
 )
+from speedtools.utils import islicen
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +68,7 @@ class FrdData:
         True,  # High-resolution misc geometry
         True,  # High-resolution misc geometry
     ]
+    ROAD_BLOCKS_PER_SEGMENT = 8
 
     def __init__(self, parser: FrdParser) -> None:
         self.frd = parser
@@ -202,25 +204,26 @@ class FrdData:
         def driveable_polygon_key(driveable_polygon: FrdParser.DriveablePolygon) -> int:
             return int(driveable_polygon.road_effect.value)
 
-        road_block_chunks = split_when(
-            segment.driveable_polygons, lambda x, y: (x.polygon + 1) != y.polygon
-        )
         # driveable_polygons = sorted(segment.driveable_polygons, key=driveable_polygon_key)
         # driveable_mesh_groups = groupby(driveable_polygons, key=driveable_polygon_key)
         # meshes = starmap(partial(cls._make_collision_mesh, segment), driveable_mesh_groups)
-        meshes = map(partial(cls._make_collision_mesh, segment, 1), road_block_chunks)
-        filtered_meshes = filter(lambda x: len(x.polygons) > 1, meshes)
+        meshes = cls._make_collision_mesh(segment, 1, segment.driveable_polygons)
         # meshes = [cls._make_collision_mesh(segment, 1, segment.driveable_polygons)]
-        return filter(
-            lambda x: x.collision_effect is not RoadEffect.not_driveable, filtered_meshes
-        )
+        return [meshes]
+
+    @classmethod
+    def _make_waypoints(cls, road_block: FrdParser.RoadBlock) -> Vector3d:
+        return Vector3d(x=road_block.location.x, y=road_block.location.y, z=road_block.location.z)
 
     @classmethod
     def _make_waypoints(cls, road_block: FrdParser.RoadBlock) -> Vector3d:
         return Vector3d(x=road_block.location.x, y=road_block.location.y, z=road_block.location.z)
 
     def _make_track_segment(
-        cls, header: FrdParser.SegmentHeader, segment: FrdParser.SegmentData, extra_data_start: int
+        cls,
+        header: FrdParser.SegmentHeader,
+        segment: FrdParser.SegmentData,
+        road_blocks: Iterable[FrdParser.RoadBlock],
     ) -> TrackSegment:
         polygons = chain.from_iterable(chunk.polygons for chunk in cls._high_poly_chunks(segment))
         vertex_locations = [Vector3d.from_frd_float3(vertex) for vertex in segment.vertices]
@@ -296,13 +299,14 @@ class FrdData:
 
     @property
     def track_segments(self) -> Iterator[TrackSegment]:
-        extra_data_count = [header.num_road_blocks for header in self.frd.segment_headers]
-        extra_data_start = accumulate(extra_data_count)
+        road_blocks = starmap(
+            lambda i, x: islicen(
+                self.frd.road_blocks, i * self.ROAD_BLOCKS_PER_SEGMENT, x.num_road_blocks
+            ),
+            enumerate(self.frd.segment_headers),
+        )
         return map(
-            self._make_track_segment,
-            self.frd.segment_headers,
-            self.frd.segment_data,
-            extra_data_start,
+            self._make_track_segment, self.frd.segment_headers, self.frd.segment_data, road_blocks
         )
 
     @property
