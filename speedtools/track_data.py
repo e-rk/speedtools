@@ -7,12 +7,12 @@
 import logging
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import suppress
-from functools import partial, partialmethod
+from functools import partial, partialmethod, reduce
 from itertools import chain, starmap
 from math import atan2, cos, tau
 from operator import add
 from pathlib import Path
-from typing import TypeVar
+from typing import Tuple, TypeVar
 
 from speedtools.cam_data import CamData
 from speedtools.can_data import CanData
@@ -175,6 +175,11 @@ class TrackData:
         return Vector3d(x=vertice.x, y=y, z=vertice.z)
 
     @classmethod
+    def _raise_vertice(cls, height: float, vertice: Vector3d) -> Vector3d:
+        y = vertice.y + height
+        return Vector3d(x=vertice.x, y=y, z=vertice.z)
+
+    @classmethod
     def _make_wall_polygon(cls, offset: int, f: tuple[int, ...], edge: Edge) -> CollisionPolygon:
         # logger.error(f"Face: {f}, edge: {edge}")
         face = None
@@ -191,76 +196,39 @@ class TrackData:
         return CollisionPolygon(face=face, edges=[])
 
     @classmethod
-    def _make_wall_polygons(
-        cls, offset: int, collision_polygon: CollisionPolygon
-    ) -> Iterator[CollisionPolygon]:
-        return map_except(
-            partial(cls._make_wall_polygon, offset, collision_polygon.face),
-            collision_polygon.edges,
-            IndexError,
-            RuntimeError,
-        )
-
-    @classmethod
-    def _make_ceiling_polygons(
-        cls, offset: int, collision_polygon: CollisionPolygon
-    ) -> CollisionPolygon:
-        face = tuple(reversed(tuple(map(partial(add, offset), collision_polygon.face))))
-        return CollisionPolygon(face=face, edges=[])
-
-    @classmethod
-    def _make_collision_walls(
-        cls,
-        height: Iterator[float],
-        collision_vertices: Vector3d,
-        collision_polygons: Iterable[CollisionPolygon],
+    def _make_ceiling(
+        cls, waypoints: Iterable[Vector3d], height: Iterable[float], mesh: CollisionMesh
     ) -> CollisionMesh:
-        vertices = list(
-            chain(
-                collision_vertices,
-                map(partial(cls._raise_vertices, next(height)), collision_vertices),
-            )
-        )
-        polygons = collapse(
-            chain(
-                map(partial(cls._make_wall_polygons, len(vertices) // 2), collision_polygons),
-                map(partial(cls._make_ceiling_polygons, len(vertices) // 2), collision_polygons),
-            ),
-            levels=2,
-        )
+        def closest_waypoint(
+            p: Vector3d, a: Tuple[Vector3d, float], b: Tuple[Vector3d, float]
+        ) -> Tuple[Vector3d, float]:
+            va = a[0]
+            vb = b[0]
+            da = va.horizontal_plane_distance(p)
+            db = vb.horizontal_plane_distance(p)
+            return a if da < db else b
+
+        def reduce_swapped(x: Iterable[T], f: Callable[[T, T], T]) -> T:
+            return reduce(f, x)
+
+        def c_closest_waypoint(
+            p: Vector3d,
+        ) -> Callable[[Tuple[Vector3d, float], Tuple[Vector3d, float]], Tuple[Vector3d, float]]:
+            return partial(closest_waypoint, p)
+
+        f = map(c_closest_waypoint, mesh.vertices)
+        # logger.error(f"functions: {list(f)}")
+        g = partial(reduce_swapped, list(zip(waypoints, height, strict=True)))
+        closest = map(g, f)
+        target_height = map(lambda x: x[1], closest)
+        vertices = list(map(cls._raise_vertice, target_height, mesh.vertices))
         return CollisionMesh(
-            vertices=list(vertices),
-            polygons=list(polygons),
-            collision_effect=RoadEffect.driveable6,
+            vertices=vertices, polygons=mesh.polygons, collision_effect=mesh.collision_effect
         )
 
     @classmethod
-    def _make_wall_vertices(cls, collision_mesh: CollisionMesh, height: float) -> list[Vector3d]:
-        return []
-
-    @classmethod
-    def _make_walls_and_ceiling(
-        cls, collision_mesh: CollisionMesh, height: float
-    ) -> CollisionMesh:
-        vertices = list(map(partial(cls._raise_vertices, height), collision_mesh.vertices))
-        polygons = collapse(
-            chain(
-                map(partial(cls._make_wall_polygons, len(vertices) // 2), collision_mesh.polygons),
-                map(
-                    partial(cls._make_ceiling_polygons, len(vertices) // 2),
-                    collision_mesh.polygons,
-                ),
-            ),
-            # levels=2,
-        )
-        return CollisionMesh(
-            vertices=vertices, polygons=[], collision_effect=RoadEffect.not_driveable
-        )
-
-    @classmethod
-    def _finalize_segment(cls, heights: Iterable[float], segment: TrackSegment) -> TrackSegment:
-        heights_iter = list(islicen(heights, segment.extra_data_start, segment.extra_data_count))
-        collision_mesh_and_heights = zip(segment.collision_meshes, heights_iter)
+    def _finalize_segment(cls, segment: TrackSegment, heights: Iterable[float]) -> TrackSegment:
+        heights = list(heights)
         # collision_polygons = chain(mesh.polygons for mesh in segment.collision_meshes)
         # collision_meshes = chain(
         #     segment.collision_meshes,
@@ -269,18 +237,12 @@ class TrackData:
         #         collision_polygons,
         #     ),
         # )
-        logger.error(
-            f"Len heights: {len(heights_iter)}, Len collision: {len(segment.collision_meshes)}"
-        )
         collision_meshes = chain(
             segment.collision_meshes,
-            # starmap(cls._make_walls_and_ceiling, collision_mesh_and_heights),
+            map(partial(cls._make_ceiling, segment.waypoints, heights), segment.collision_meshes),
         )
         return TrackSegment(
-            mesh=segment.mesh,
-            collision_meshes=list(collision_meshes),
-            extra_data_count=segment.extra_data_count,
-            extra_data_start=segment.extra_data_start,
+            mesh=segment.mesh, collision_meshes=list(collision_meshes), waypoints=segment.waypoints
         )
 
     @property
@@ -290,7 +252,13 @@ class TrackData:
 
     @property
     def track_segments(self) -> Iterator[TrackSegment]:
-        return map(partial(self._finalize_segment, self.heights.heights), self.frd.track_segments)
+        heights = starmap(
+            lambda i, x: islicen(
+                self.heights.heights, i * self.frd.ROAD_BLOCKS_PER_SEGMENT, len(x.waypoints)
+            ),
+            enumerate(self.frd.track_segments),
+        )
+        return map(self._finalize_segment, self.frd.track_segments, heights)
 
     @property
     def track_resources(self) -> Iterator[Resource]:
