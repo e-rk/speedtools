@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import Enum
-from math import pi
+from math import pi, sqrt
 from typing import NamedTuple, Optional, TypeAlias
 
 from speedtools.parsers import FceParser, FrdParser, FshParser
@@ -62,6 +62,13 @@ class Vector3d(NamedTuple):
     @classmethod
     def from_fce_float3(cls, value: FceParser.Float3) -> Vector3d:
         return Vector3d(x=value.x, y=value.y, z=value.z)
+
+    def horizontal_plane_length(self) -> float:
+        return sqrt(self.x**2 + self.z**2)
+
+    def horizontal_plane_distance(self, x: Vector3d) -> float:
+        v = Vector3d(x=(self.x - x.x), y=(self.y - x.y), z=(self.z - x.z))
+        return v.horizontal_plane_length()
 
 
 class UV(NamedTuple):
