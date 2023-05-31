@@ -7,7 +7,7 @@
 import logging
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import suppress
-from functools import partial, partialmethod, reduce
+from functools import lru_cache, partial, partialmethod, reduce
 from itertools import chain, starmap
 from math import atan2, cos, tau
 from operator import add
@@ -16,7 +16,7 @@ from typing import Tuple, TypeVar
 
 from speedtools.cam_data import CamData
 from speedtools.can_data import CanData
-from more_itertools import collapse, map_except
+from more_itertools import take
 from speedtools.frd_data import FrdData
 from speedtools.fsh_data import FshData
 from speedtools.parsers import HeightsParser
@@ -175,8 +175,9 @@ class TrackData:
         return Vector3d(x=vertice.x, y=y, z=vertice.z)
 
     @classmethod
-    def _raise_vertice(cls, height: float, vertice: Vector3d) -> Vector3d:
-        y = vertice.y + height
+    def _raise_vertice(cls, height: Tuple[Vector3d, float], vertice: Vector3d) -> Vector3d:
+        _, h = height
+        y = vertice.y + h
         return Vector3d(x=vertice.x, y=y, z=vertice.z)
 
     @classmethod
@@ -197,49 +198,35 @@ class TrackData:
 
     @classmethod
     def _make_ceiling(
-        cls, waypoints: Iterable[Vector3d], height: Iterable[float], mesh: CollisionMesh
+        cls, height: Iterable[Tuple[Vector3d, float]], mesh: CollisionMesh
     ) -> CollisionMesh:
-        def closest_waypoint(
-            p: Vector3d, a: Tuple[Vector3d, float], b: Tuple[Vector3d, float]
-        ) -> Tuple[Vector3d, float]:
-            va = a[0]
-            vb = b[0]
-            da = va.horizontal_plane_distance(p)
-            db = vb.horizontal_plane_distance(p)
-            return a if da < db else b
+        @lru_cache
+        def sort_key(p: Vector3d, x: Tuple[Vector3d, float]) -> float:
+            v, _ = x
+            return p.horizontal_plane_distance(v)
 
-        def reduce_swapped(x: Iterable[T], f: Callable[[T, T], T]) -> T:
-            return reduce(f, x)
+        def get_height(x: Tuple[Vector3d, float]) -> float:
+            _, height = x
+            return height
 
-        def c_closest_waypoint(
-            p: Vector3d,
-        ) -> Callable[[Tuple[Vector3d, float], Tuple[Vector3d, float]], Tuple[Vector3d, float]]:
-            return partial(closest_waypoint, p)
-
-        f = map(c_closest_waypoint, mesh.vertices)
-        # logger.error(f"functions: {list(f)}")
-        g = partial(reduce_swapped, list(zip(waypoints, height, strict=True)))
-        closest = map(g, f)
-        target_height = map(lambda x: x[1], closest)
-        vertices = list(map(cls._raise_vertice, target_height, mesh.vertices))
+        k = map(lambda x: partial(sort_key, x), mesh.vertices)
+        f = partial(sorted, list(height))
+        closest = map(lambda x: f(key=x), k)
+        heights = map(partial(take, 1), closest)
+        heights = map(partial(min, key=get_height), heights)
+        vertices = list(map(cls._raise_vertice, heights, mesh.vertices))
         return CollisionMesh(
-            vertices=vertices, polygons=mesh.polygons, collision_effect=mesh.collision_effect
+            vertices=vertices, polygons=mesh.polygons, collision_effect=RoadEffect.not_driveable
         )
 
     @classmethod
-    def _finalize_segment(cls, segment: TrackSegment, heights: Iterable[float]) -> TrackSegment:
+    def _finalize_segment(
+        cls, heights: Iterable[Tuple[Vector3d, float]], segment: TrackSegment
+    ) -> TrackSegment:
         heights = list(heights)
-        # collision_polygons = chain(mesh.polygons for mesh in segment.collision_meshes)
-        # collision_meshes = chain(
-        #     segment.collision_meshes,
-        #     map(
-        #         partial(cls._make_collision_walls, heights_iter, segment.mesh.vertices),
-        #         collision_polygons,
-        #     ),
-        # )
         collision_meshes = chain(
             segment.collision_meshes,
-            map(partial(cls._make_ceiling, segment.waypoints, heights), segment.collision_meshes),
+            map(partial(cls._make_ceiling, heights), segment.collision_meshes),
         )
         return TrackSegment(
             mesh=segment.mesh, collision_meshes=list(collision_meshes), waypoints=segment.waypoints
@@ -252,13 +239,9 @@ class TrackData:
 
     @property
     def track_segments(self) -> Iterator[TrackSegment]:
-        heights = starmap(
-            lambda i, x: islicen(
-                self.heights.heights, i * self.frd.ROAD_BLOCKS_PER_SEGMENT, len(x.waypoints)
-            ),
-            enumerate(self.frd.track_segments),
-        )
-        return map(self._finalize_segment, self.frd.track_segments, heights)
+        waypoints = chain.from_iterable(segment.waypoints for segment in self.frd.track_segments)
+        heights = list(zip(waypoints, self.heights.heights, strict=True))
+        return map(partial(self._finalize_segment, heights), self.frd.track_segments)
 
     @property
     def track_resources(self) -> Iterator[Resource]:
