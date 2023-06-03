@@ -227,6 +227,8 @@ class TrackObject:
 @dataclass(frozen=True)
 class CollisionPolygon(BasePolygon):
     edges: Sequence[Edge]
+    has_finite_height: bool
+    has_wall_collision: bool
 
 
 @dataclass(frozen=True)
