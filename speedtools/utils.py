@@ -6,7 +6,7 @@
 
 import logging
 import os
-from collections.abc import Callable, Hashable, Iterable, Iterator
+from collections.abc import Callable, Hashable, Iterable, Iterator, Sequence
 from contextlib import suppress
 from functools import singledispatch
 from io import BytesIO
@@ -26,6 +26,10 @@ Ty = TypeVar("Ty")
 
 def islicen(iterable: Iterable[T], start: int, num: int) -> Iterable[T]:
     return islice(iterable, start, start + num)
+
+
+def slicen(iterable: Sequence[T], start: int, num: int) -> Sequence[T]:
+    return iterable[start : start + num]
 
 
 def count_repeats_and_map(
