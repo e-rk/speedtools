@@ -8,15 +8,24 @@ import logging
 import os
 from collections.abc import Callable, Hashable, Iterable, Iterator, Sequence
 from contextlib import suppress
-from functools import singledispatch
+from functools import partial, singledispatch
 from io import BytesIO
-from itertools import islice
+from itertools import chain, islice
+from operator import getitem
 from pathlib import Path
 from typing import Any, Dict, TypeVar
 
 from PIL import Image as pil_Image
 
-from speedtools.types import Bitmap, Image, Resource
+from speedtools.types import (
+    BaseMesh,
+    BasePolygon,
+    Bitmap,
+    CollisionMesh,
+    DrawableMesh,
+    Image,
+    Resource,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -94,3 +103,17 @@ def _(resource: Resource, directory: Path) -> None:
     image = create_pil_image(resource.image)
     logger.info(f"Writing image: {output_file}")
     image.save(output_file)
+
+
+def remove_unused_vertices(mesh: BaseMesh) -> BaseMesh:
+    used_vertice_idx = chain.from_iterable(polygon.face for polygon in mesh.polygons)
+    used_vertices = list(set(map(partial(getitem, mesh.vertices), used_vertice_idx)))
+    mapping = {v: i for i, v in enumerate(used_vertices)}
+
+    def _make_polygon(polygon: BasePolygon) -> BasePolygon:
+        vertices = tuple(mesh.vertices[i] for i in polygon.face)
+        face = tuple(mapping[v] for v in vertices)
+        return BasePolygon(face=face)
+
+    polygons = [_make_polygon(polygon) for polygon in mesh.polygons]
+    return BaseMesh(vertices=used_vertices, polygons=polygons)
