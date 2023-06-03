@@ -8,7 +8,7 @@ import logging
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import suppress
 from functools import lru_cache, partial, partialmethod, reduce
-from itertools import chain, starmap
+from itertools import accumulate, chain, starmap
 from math import atan2, cos, tau
 from operator import add
 from pathlib import Path
@@ -16,7 +16,7 @@ from typing import Tuple, TypeVar
 
 from speedtools.cam_data import CamData
 from speedtools.can_data import CanData
-from more_itertools import take
+from more_itertools import take, triplewise
 from speedtools.frd_data import FrdData
 from speedtools.fsh_data import FshData
 from speedtools.parsers import HeightsParser
@@ -41,7 +41,7 @@ from speedtools.types import (
     TrackObject,
     TrackSegment,
 )
-from speedtools.utils import islicen, unique_named_resources
+from speedtools.utils import islicen, slicen, unique_named_resources
 
 logger = logging.getLogger(__name__)
 T = TypeVar("T")
@@ -212,7 +212,7 @@ class TrackData:
         k = map(lambda x: partial(sort_key, x), mesh.vertices)
         f = partial(sorted, list(height))
         closest = map(lambda x: f(key=x), k)
-        heights = map(partial(take, 1), closest)
+        heights = map(partial(take, 3), closest)
         heights = map(partial(min, key=get_height), heights)
         vertices = list(map(cls._raise_vertice, heights, mesh.vertices))
         return CollisionMesh(
@@ -232,6 +232,26 @@ class TrackData:
             mesh=segment.mesh, collision_meshes=list(collision_meshes), waypoints=segment.waypoints
         )
 
+    def _make_waypoint_height_pair(
+        cls, heights: Sequence[float], height_idx: int, segment: TrackSegment
+    ) -> Tuple[Iterable[Vector3d], Iterable[float]]:
+        waypoints = segment.waypoints
+        return (waypoints, islicen(heights, height_idx, len(waypoints)))
+
+    @classmethod
+    def _make_waypoint_height_pair2(
+        cls,
+        first: Tuple[Iterable[Vector3d], Iterable[float]],
+        middle: Tuple[Iterable[Vector3d], Iterable[float]],
+        last: Tuple[Iterable[Vector3d], Iterable[float]],
+    ) -> Iterable[Tuple[Vector3d, float]]:
+        fw, fh = first
+        mw, mh = middle
+        lw, lh = last
+        waypoints = chain(fw, mw, lw)
+        heights = chain(fh, mh, lh)
+        return zip(waypoints, heights, strict=True)
+
     @property
     def objects(self) -> Iterator[TrackObject]:
         actions = [AnimationAction(action, can.animation) for action, can in self.can]
@@ -239,9 +259,20 @@ class TrackData:
 
     @property
     def track_segments(self) -> Iterator[TrackSegment]:
-        waypoints = chain.from_iterable(segment.waypoints for segment in self.frd.track_segments)
-        heights = list(zip(waypoints, self.heights.heights, strict=True))
-        return map(partial(self._finalize_segment, heights), self.frd.track_segments)
+        segments = list(self.frd.track_segments)
+        height_num = map(lambda x: len(x.waypoints), segments)
+        height_idx = accumulate(segments, func=lambda x, y: x + len(y.waypoints), initial=0)
+        heights = map(lambda i, n: slicen(self.heights.heights, i, n), height_idx, height_num)
+        waypoints = map(lambda x: x.waypoints, segments)
+        waypoints_and_heights = list(zip(waypoints, heights))
+        waypoints_and_heights = [
+            waypoints_and_heights[-1],
+            *waypoints_and_heights,
+            waypoints_and_heights[0],
+        ]
+        triples = triplewise(waypoints_and_heights)
+        chained = starmap(self._make_waypoint_height_pair2, triples)
+        return map(self._finalize_segment, chained, segments)
 
     @property
     def track_resources(self) -> Iterator[Resource]:
