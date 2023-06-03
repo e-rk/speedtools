@@ -181,7 +181,12 @@ class FrdData:
         edges.append(Edge.LEFT) if polygon.left_edge else None
         edges.append(Edge.BACK) if polygon.back_edge else None
         edges.append(Edge.RIGHT) if polygon.right_edge else None
-        return CollisionPolygon(face=tuple(face), edges=edges)
+        return CollisionPolygon(
+            face=tuple(face),
+            edges=edges,
+            has_finite_height=polygon.has_finite_height,
+            has_wall_collision=polygon.has_wall_collision,
+        )
 
     @classmethod
     def _make_collision_mesh(
