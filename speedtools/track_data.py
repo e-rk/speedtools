@@ -49,6 +49,7 @@ class TrackData:
             postfix="0.QFS",
             mirrored=mirrored,
             night=night,
+            weather=weather,
         )
         self.sky: QfsData = self.tr_open(
             constructor=QfsData.from_file,
@@ -57,6 +58,7 @@ class TrackData:
             postfix=".QFS",
             mirrored=mirrored,
             night=night,
+            weather=weather,
         )
         self.ini: TrackIni = self.tr_open(
             constructor=TrackIni.from_file,
@@ -65,6 +67,7 @@ class TrackData:
             postfix=".INI",
             mirrored=mirrored,
             night=night,
+            weather=weather,
         )
         self.resources: dict[int, Resource] = {}
         self.light_glows: dict[int, LightAttributes] = {}
