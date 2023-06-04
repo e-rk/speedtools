@@ -17,7 +17,7 @@ from typing import Any
 
 import bpy
 import mathutils
-from bpy.props import StringProperty
+from bpy.props import BoolProperty, StringProperty
 from more_itertools import collapse
 
 from speedtools import TrackData, VivData
@@ -230,13 +230,28 @@ class TrackImporter(bpy.types.Operator):
         default="",
     )
 
+    night: BoolProperty(  # type: ignore[valid-type]
+        name="Night on", description="Import night track variant", default=False
+    )
+    weather: BoolProperty(  # type: ignore[valid-type]
+        name="Weather on", description="Import rainy track variant", default=False
+    )
+    mirrored: BoolProperty(  # type: ignore[valid-type]
+        name="Mirrored on", description="Import mirrored track variant", default=False
+    )
+
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[int] | set[str]:
         wm = context.window_manager
         wm.fileselect_add(self)
         return {"RUNNING_MODAL"}
 
     def execute(self, context: bpy.types.Context) -> set[int] | set[str]:
-        track = TrackData(self.directory)
+        track = TrackData(
+            directory=self.directory,
+            mirrored=self.mirrored,
+            night=self.night,
+            weather=self.weather,
+        )
         import_strategy = TrackImportFlat(material_map=track.get_polygon_material)
         import_strategy.import_track(track=track)
         return {"FINISHED"}
