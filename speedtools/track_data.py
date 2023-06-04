@@ -6,8 +6,10 @@
 #
 
 import logging
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from contextlib import suppress
 from pathlib import Path
+from typing import TypeVar
 
 from speedtools.frd_data import FrdData
 from speedtools.qfs_data import QfsData
@@ -20,21 +22,79 @@ from speedtools.types import (
     Resource,
     TrackObject,
     TrackSegment,
-    Vector3d,
 )
 
 logger = logging.getLogger(__name__)
+T = TypeVar("T")
 
 
 class TrackData:
-    def __init__(self, directory: Path) -> None:
+    def __init__(
+        self, directory: Path, mirrored: bool = False, night: bool = False, weather: bool = False
+    ) -> None:
         logger.debug(f"Opening directory {directory}")
-        self.frd: FrdData = FrdData.from_file(Path(directory, "TR.FRD"))
-        self.qfs: QfsData = QfsData.from_file(Path(directory, "TR0.QFS"))
-        self.sky: QfsData = QfsData.from_file(Path(directory, "SKY.QFS"))
-        self.ini: TrackIni = TrackIni.from_file(Path(directory, "TR.INI"))
+        self.frd: FrdData = self.tr_open(
+            constructor=FrdData.from_file,
+            directory=directory,
+            prefix="TR",
+            postfix=".FRD",
+            mirrored=mirrored,
+            night=night,
+            weather=weather,
+        )
+        self.qfs: QfsData = self.tr_open(
+            constructor=QfsData.from_file,
+            directory=directory,
+            prefix="TR",
+            postfix="0.QFS",
+            mirrored=mirrored,
+            night=night,
+        )
+        self.sky: QfsData = self.tr_open(
+            constructor=QfsData.from_file,
+            directory=directory,
+            prefix="SKY",
+            postfix=".QFS",
+            mirrored=mirrored,
+            night=night,
+        )
+        self.ini: TrackIni = self.tr_open(
+            constructor=TrackIni.from_file,
+            directory=directory,
+            prefix="TR",
+            postfix=".INI",
+            mirrored=mirrored,
+            night=night,
+        )
         self.resources: dict[int, Resource] = {}
         self.light_glows: dict[int, LightAttributes] = {}
+        self.mirrored: bool = mirrored
+        self.night: bool = night
+        self.weather: bool = weather
+
+    @classmethod
+    def tr_open(
+        cls,
+        constructor: Callable[[Path], T],
+        directory: Path,
+        prefix: str,
+        postfix: str,
+        mirrored: bool = False,
+        night: bool = False,
+        weather: bool = False,
+    ) -> T:
+        if weather and night:
+            try_options = ["NW", "N", ""]
+        elif night:
+            try_options = ["N", ""]
+        elif weather:
+            try_options = ["W", ""]
+        else:
+            try_options = [""]
+        for variant in try_options:
+            with suppress(FileNotFoundError):
+                return constructor(Path(directory, f"{prefix}{variant}{postfix}"))
+        raise FileNotFoundError(f"File {prefix}{postfix} or its variants not found")
 
     @property
     def objects(self) -> Iterator[TrackObject]:
@@ -50,9 +110,17 @@ class TrackData:
 
     def get_polygon_material(self, polygon: Polygon) -> Resource:
         if not self.resources:
-            for index, resource in enumerate(
-                filter(lambda resource: not resource.mirrored, self.qfs.resources)
-            ):
+            if self.mirrored:
+                resources = filter(
+                    lambda resource: resource.mirrored or not resource.nonmirrored,
+                    self.qfs.resources,
+                )
+            else:
+                resources = filter(
+                    lambda resource: resource.nonmirrored or not resource.mirrored,
+                    self.qfs.resources,
+                )
+            for index, resource in enumerate(resources):
                 self.resources[index] = resource
         return self.resources[polygon.material]
 
