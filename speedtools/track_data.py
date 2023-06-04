@@ -40,6 +40,7 @@ from speedtools.types import (
     RoadEffect,
     TrackObject,
     TrackSegment,
+    Vector3d,
 )
 from speedtools.utils import islicen, slicen, unique_named_resources
 
