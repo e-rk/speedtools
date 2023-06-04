@@ -128,7 +128,7 @@ class VivData(VivParser):
     @classmethod
     def _make_resource(cls, entry: VivParser.DirectoryEntry) -> Resource:
         tga = Image(entry.body)
-        return Resource(name=entry.name, text="", mirrored=False, additive=False, image=tga)
+        return Resource(name=entry.name, image=tga)
 
     @property
     def parts(self) -> Iterator[Part]:

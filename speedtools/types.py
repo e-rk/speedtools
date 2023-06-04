@@ -98,9 +98,9 @@ class Bitmap(Image):
 class Resource:
     name: str
     image: Image
-    text: str
-    mirrored: bool
-    additive: bool
+    mirrored: bool = False
+    nonmirrored: bool = False
+    additive: bool = False
 
 
 @dataclass(frozen=True)

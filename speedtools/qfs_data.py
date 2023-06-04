@@ -70,13 +70,14 @@ class QfsData:
         bitmap = cls._make_bitmap(resource)
         text = only(cls._get_data_by_code(codes=[FshDataType.text], resource=resource))
         text_data = text.data if text is not None else None
-        mirrored = "<mirrored>" == text_data if text_data is not None else False
-        additive = "<additive>" == text_data if text_data is not None else False
+        mirrored = "<mirrored>" in text_data if text_data is not None else False
+        nonmirrored = "<nonmirrored>" in text_data if text_data is not None else False
+        additive = "<additive>" in text_data if text_data is not None else False
         return Resource(
             name=resource.name,
             image=bitmap,
-            text=text_data,
             mirrored=mirrored,
+            nonmirrored=nonmirrored,
             additive=additive,
         )
 
