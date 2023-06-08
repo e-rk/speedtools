@@ -27,23 +27,23 @@ logger.addHandler(sh)
 def unpack(output: Path, path: Path) -> None:
     data = TrackData(path)
     nonmirrored = filter(lambda x: not x.mirrored, data.track_resources)
-    export_resource(nonmirrored, dir=output)
+    export_resource(nonmirrored, directory=output)
 
 
 @click.command()
 @click.option("--output", help="Output directory", type=click.Path())
 @click.argument("path", type=click.Path())
-def obj(output: Path, path: Path) -> None:
+def mesh(output: Path, path: Path) -> None:
     with suppress(FileExistsError):
         os.makedirs(output)
     data = TrackData(path)
     materials = set()
-    for index, object in enumerate(data.objects):
-        with open(Path(output, f"object_{index}.obj"), "w") as obj_file:
+    for index, obj in enumerate(data.objects):
+        with open(Path(output, f"object_{index}.obj"), "w", encoding="utf-8") as obj_file:
             obj_file.write(f"mtllib materials_{index}.mtl{os.linesep}")
-            for vertex in object.mesh.vertices:
+            for vertex in obj.mesh.vertices:
                 obj_file.write(f"v {vertex.x} {vertex.y} {vertex.z}{os.linesep}")
-            for i, polygon in enumerate(object.mesh.polygons):
+            for i, polygon in enumerate(obj.mesh.polygons):
                 for uv in polygon.uv:
                     obj_file.write(f"vt {uv[0]} {uv[1]}{os.linesep}")
                 obj_file.write(f"usemtl texture_{polygon.material}{os.linesep}")
@@ -53,7 +53,7 @@ def obj(output: Path, path: Path) -> None:
                 obj_file.write(f"{os.linesep}")
                 materials.add(polygon.material)
 
-        with open(Path(output, f"materials_{index}.mtl"), "w") as mtl:
+        with open(Path(output, f"materials_{index}.mtl"), "w", encoding="utf-8") as mtl:
             for material in materials:
                 out_path = "../images/" + str(int(material) + 2).zfill(4) + ".png"
                 mtl.write(

@@ -71,7 +71,7 @@ class BaseImporter(metaclass=ABCMeta):
     def _make_material(self, ext_resource: ExtendedResource) -> bpy.types.Material:
         resource = ext_resource.resource
         images_dir = Path(bpy.path.abspath("//images"))
-        export_resource(resource, dir=images_dir)
+        export_resource(resource, directory=images_dir)
         bpy_material = bpy.data.materials.new(resource.name)
         bpy_material.use_nodes = True
         image_path = Path(images_dir, f"{resource.name}.png")
@@ -109,12 +109,12 @@ class BaseImporter(metaclass=ABCMeta):
         )
         return bpy_mesh
 
-    def set_object_location(self, object: bpy.types.Object, location: Vector3d) -> None:
+    def set_object_location(self, obj: bpy.types.Object, location: Vector3d) -> None:
         mu_location = mathutils.Vector(location)
-        object.location = mu_location
+        obj.location = mu_location
 
-    def set_object_animation(self, object: bpy.types.Object, animation: Animation) -> None:
-        object.rotation_mode = "QUATERNION"
+    def set_object_animation(self, obj: bpy.types.Object, animation: Animation) -> None:
+        obj.rotation_mode = "QUATERNION"
         for index, (location, quaternion) in enumerate(
             zip(animation.locations, animation.quaternions)
         ):
@@ -122,11 +122,11 @@ class BaseImporter(metaclass=ABCMeta):
             mu_quaternion = mathutils.Quaternion(quaternion)
             mu_quaternion = mu_quaternion.normalized()
             mu_quaternion = mu_quaternion.inverted()
-            object.location = mu_location
-            object.rotation_quaternion = mu_quaternion  # type: ignore[assignment]
-            object.keyframe_insert(data_path="location", frame=index * animation.delay)
-            object.keyframe_insert(data_path="rotation_quaternion", frame=index * animation.delay)
-        object.animation_data.action.name = f"{object.name}-loop"
+            obj.location = mu_location
+            obj.rotation_quaternion = mu_quaternion  # type: ignore[assignment]
+            obj.keyframe_insert(data_path="location", frame=index * animation.delay)
+            obj.keyframe_insert(data_path="rotation_quaternion", frame=index * animation.delay)
+        obj.animation_data.action.name = f"{obj.name}-loop"
 
     def make_drawable_object(self, name: str, mesh: DrawableMesh) -> bpy.types.Object:
         bpy_mesh = self.make_base_mesh(name=name, mesh=mesh)
@@ -160,9 +160,6 @@ class TrackImportStrategy(metaclass=ABCMeta):
 
 
 class TrackImportFlat(TrackImportStrategy, BaseImporter):
-    def __init__(self, material_map: Callable[[Polygon], Resource]) -> None:
-        super().__init__(material_map)
-
     def import_track(self, track: TrackData) -> None:
         track_collection = bpy.data.collections.new("Track segments")
         bpy.context.scene.collection.children.link(track_collection)
@@ -178,13 +175,13 @@ class TrackImportFlat(TrackImportStrategy, BaseImporter):
                 bpy_obj = bpy.data.objects.new(name, bpy_mesh)
                 track_collection.objects.link(bpy_obj)
                 bpy_obj.hide_set(True)
-        for index, object in enumerate(track.objects):
+        for index, obj in enumerate(track.objects):
             name = f"Track object {index}"
-            bpy_obj = self.make_drawable_object(name=name, mesh=object.mesh)
-            if object.location:
-                self.set_object_location(object=bpy_obj, location=object.location)
-            if object.animation:
-                self.set_object_animation(object=bpy_obj, animation=object.animation)
+            bpy_obj = self.make_drawable_object(name=name, mesh=obj.mesh)
+            if obj.location:
+                self.set_object_location(obj=bpy_obj, location=obj.location)
+            if obj.animation:
+                self.set_object_animation(obj=bpy_obj, animation=obj.animation)
             track_collection.objects.link(bpy_obj)
         for index, light in enumerate(track.lights):
             name = f"Track light {index}"
@@ -193,23 +190,20 @@ class TrackImportFlat(TrackImportStrategy, BaseImporter):
             bpy_light.use_custom_distance = True
             bpy_light.cutoff_distance = 15.0
             bpy_light.specular_factor = 0.2
-            bpy_light.energy = 500
-            bpy_light.use_shadow = False
+            bpy_light.energy = 500  # type: ignore[attr-defined]
+            bpy_light.use_shadow = False  # type: ignore[attr-defined]
             bpy_obj = bpy.data.objects.new(name=name, object_data=bpy_light)
-            self.set_object_location(object=bpy_obj, location=light.location)
+            self.set_object_location(obj=bpy_obj, location=light.location)
             track_collection.objects.link(bpy_obj)
 
 
 class CarImporterSimple(BaseImporter):
-    def __init__(self, material_map: Callable[[Polygon], Resource]) -> None:
-        super().__init__(material_map)
-
     def import_car(self, parts: Iterable[Part]) -> None:
         car_collection = bpy.data.collections.new("Car parts")
         bpy.context.scene.collection.children.link(car_collection)
         for part in parts:
             bpy_obj = self.make_drawable_object(name=part.name, mesh=part.mesh)
-            self.set_object_location(object=bpy_obj, location=part.location)
+            self.set_object_location(obj=bpy_obj, location=part.location)
             car_collection.objects.link(bpy_obj)
 
 
@@ -229,7 +223,6 @@ class TrackImporter(bpy.types.Operator):
         maxlen=1024,
         default="",
     )
-
     night: BoolProperty(  # type: ignore[valid-type]
         name="Night on", description="Import night track variant", default=False
     )

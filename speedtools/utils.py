@@ -40,21 +40,21 @@ def _(image: Bitmap) -> Any:
 
 
 @singledispatch
-def export_resource(resource: Any, dir: Path) -> None:
+def export_resource(resource: Any, directory: Path) -> None:
     raise NotImplementedError("Unsupported resource type")
 
 
 @export_resource.register(Iterator)
-def _(resource: Iterator[Resource], dir: Path) -> None:
+def _(resource: Iterator[Resource], directory: Path) -> None:
     for res in resource:
-        export_resource(res, dir=dir)
+        export_resource(res, directory=directory)
 
 
 @export_resource.register(Resource)
-def _(resource: Resource, dir: Path) -> None:
+def _(resource: Resource, directory: Path) -> None:
     with suppress(FileExistsError):
-        os.makedirs(dir)
-    output_file = Path(dir, f"{resource.name}.png")
+        os.makedirs(directory)
+    output_file = Path(directory, f"{resource.name}.png")
     image = create_pil_image(resource.image)
     logger.info(f"Writing image: {output_file}")
     image.save(output_file)

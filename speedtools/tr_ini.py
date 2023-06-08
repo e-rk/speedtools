@@ -12,7 +12,7 @@ from configparser import ConfigParser
 from itertools import starmap
 from pathlib import Path
 
-from parse import parse, search
+from parse import parse, search  # type: ignore[import]
 
 from speedtools.types import Color, LightAttributes
 
@@ -26,19 +26,20 @@ class TrackIni:
     @classmethod
     def from_file(cls, path: Path) -> TrackIni:
         parser = ConfigParser()
-        parser.read_file(open(path, "r"))
+        with open(path, "r", encoding="utf-8") as file:
+            parser.read_file(file)
         return cls(parser=parser)
 
     @classmethod
     def _make_glow(cls, name: str, string: str) -> LightAttributes:
         no_spaces = string.replace(" ", "")
         results = search("[{:d},{:d},{:d},{:d}],{:d},{:d},{:d},{:f}", no_spaces)
-        (id,) = parse("glow{:d}", name)
+        (identifier,) = parse("glow{:d}", name)
         alpha, red, green, blue, is_blinking, interval, _, flare_size = results
         color = Color(alpha=alpha, red=red, green=green, blue=blue)
         blink_interval = interval if is_blinking == 1 else None
         return LightAttributes(
-            id=id,
+            identifier=identifier,
             color=color,
             blink_interval_ms=blink_interval,
             flare_size=flare_size,

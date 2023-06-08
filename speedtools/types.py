@@ -43,7 +43,7 @@ class Color(NamedTuple):
 
     @property
     def rgb(self) -> tuple[int, int, int]:
-        return self[1:]
+        return (self.red, self.green, self.blue)
 
     @property
     def rgb_float(self) -> tuple[float, float, float]:
@@ -138,7 +138,7 @@ class Part:
 
 @dataclass(frozen=True)
 class LightAttributes:
-    id: int
+    identifier: int
     color: Color
     blink_interval_ms: int | None
     flare_size: float

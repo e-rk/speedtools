@@ -5,10 +5,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
+from __future__ import annotations
+
 from collections.abc import Iterable, Iterator
 from enum import Enum
 from functools import partial
 from itertools import compress, starmap
+from pathlib import Path
 from typing import NamedTuple
 
 from more_itertools import one
@@ -30,7 +33,7 @@ class PartAttributes(NamedTuple):
     resolution: Resolution = Resolution.HIGH
 
 
-class VivData(VivParser):
+class VivData:
     known_parts: dict[str, PartAttributes] = {
         # High Body
         ":HB": PartAttributes(resolution=Resolution.HIGH, name="body"),
@@ -92,6 +95,14 @@ class VivData(VivParser):
 
     body_textures = ["car00.tga"]
 
+    def __init__(self, parser: VivParser) -> None:
+        self.viv = parser
+
+    @classmethod
+    def from_file(cls, path: Path) -> VivData:
+        parser = VivParser.from_file(path)
+        return cls(parser=parser)
+
     @classmethod
     def _make_polygon(cls, polygon: FceParser.Polygon) -> Polygon:
         face = tuple(vertice for vertice in polygon.face)
@@ -132,7 +143,7 @@ class VivData(VivParser):
 
     @property
     def parts(self) -> Iterator[Part]:
-        fce = one(filter(lambda x: x.name == "car.fce", self.entries))
+        fce = one(filter(lambda x: x.name == "car.fce", self.viv.entries))
         body = fce.body
         slice_vert = partial(islicen, body.vertices)
         part_vertices_iter = map(slice_vert, body.part_vertex_index, body.part_num_vertices)
@@ -141,7 +152,7 @@ class VivData(VivParser):
         slice_norm = partial(islicen, body.polygons)
         part_polygons_iter = map(slice_norm, body.part_polygon_index, body.part_num_polygons)
         meshes = map(
-            self._make_part_mesh,  # type: ignore[arg-type]
+            self._make_part_mesh,
             part_vertices_iter,
             part_normals_iter,
             part_polygons_iter,
@@ -154,7 +165,9 @@ class VivData(VivParser):
 
     @property
     def materials(self) -> Iterator[Resource]:
-        return map(self._make_resource, filter(lambda x: x.name.endswith(".tga"), self.entries))
+        return map(
+            self._make_resource, filter(lambda x: x.name.endswith(".tga"), self.viv.entries)
+        )
 
     @property
     def body_materials(self) -> Iterator[Resource]:

@@ -135,5 +135,5 @@ class TrackData:
     def lights(self) -> Iterator[Light]:
         if not self.light_glows:
             for attribute in self.ini.glows:
-                self.light_glows[attribute.id] = attribute
+                self.light_glows[attribute.identifier] = attribute
         return map(self._make_light, self.frd.light_dummies)

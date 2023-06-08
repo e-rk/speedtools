@@ -5,11 +5,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
+from __future__ import annotations
+
 import logging
 from collections.abc import Iterable, Iterator, Sequence
 from contextlib import suppress
 from functools import partial
 from itertools import chain, compress, groupby, starmap
+from pathlib import Path
 from typing import Any, Optional
 
 from more_itertools import collapse, nth, unique_everseen, unzip
@@ -35,7 +38,7 @@ from speedtools.types import (
 logger = logging.getLogger(__name__)
 
 
-class FrdData(FrdParser):
+class FrdData:
     high_poly_chunks = [
         False,  # Low-resolution track geometry
         False,  # Low-resolution misc geometry
@@ -50,6 +53,14 @@ class FrdData(FrdParser):
         True,  # High-resolution misc geometry
     ]
 
+    def __init__(self, parser: FrdParser) -> None:
+        self.frd = parser
+
+    @classmethod
+    def from_file(cls, path: Path) -> FrdData:
+        parser = FrdParser.from_file(path)
+        return cls(parser)
+
     @classmethod
     def _validate_polygon(
         cls, face: Sequence[int], *iterables: Iterable[Any]
@@ -62,7 +73,7 @@ class FrdData(FrdParser):
         material = polygon.texture & 0x7FF
         backface_culling = polygon.backface_culling
         quads_or_triangles = cls._validate_polygon(polygon.face, cls._texture_flags_to_uv(polygon))
-        face, uv = unzip(quads_or_triangles)
+        face, uv = unzip(quads_or_triangles)  # pylint: disable=unbalanced-tuple-unpacking
         return Polygon(
             face=tuple(face),
             uv=tuple(uv),
@@ -72,16 +83,16 @@ class FrdData(FrdParser):
 
     @classmethod
     def _get_object_collision_type(
-        cls, segment: Optional[FrdParser.SegmentData], object: FrdParser.ObjectHeader
+        cls, segment: Optional[FrdParser.SegmentData], obj: FrdParser.ObjectHeader
     ) -> CollisionType:
-        logger.info(f"Object: {vars(object)}")
+        logger.info(f"Object: {vars(obj)}")
         if (
-            object.type is not ObjectType.normal1 and object.type is not ObjectType.normal2
+            obj.type is not ObjectType.normal1 and obj.type is not ObjectType.normal2
         ) or segment is None:
             return CollisionType.none
         collision_type = CollisionType.none
         with suppress(IndexError):
-            object_attribute = segment.object_attributes[object.attribute_index]
+            object_attribute = segment.object_attributes[obj.attribute_index]
             collision_type = object_attribute.collision_type
         return collision_type
 
@@ -93,14 +104,14 @@ class FrdData(FrdParser):
     def _make_object(
         cls,
         segment: Optional[FrdParser.SegmentData],
-        object: FrdParser.ObjectHeader,
+        obj: FrdParser.ObjectHeader,
         extra: FrdParser.ObjectData,
     ) -> TrackObject:
         location = None
         animation = None
-        if object.type == ObjectType.normal1 or object.type == ObjectType.normal2:
-            location = Vector3d(x=object.location.x, y=object.location.y, z=object.location.z)
-        if object.type == ObjectType.animated:
+        if obj.type in (ObjectType.normal1, ObjectType.normal2):
+            location = Vector3d(x=obj.location.x, y=obj.location.y, z=obj.location.z)
+        if obj.type == ObjectType.animated:
             locations = [
                 Vector3d(
                     x=keyframe.location.x / 65536.0,
@@ -127,7 +138,7 @@ class FrdData(FrdParser):
         vertices = [Vector3d(x=vertice.x, y=vertice.y, z=vertice.z) for vertice in extra.vertices]
         polygons = [cls._make_polygon(polygon) for polygon in extra.polygons]
         mesh = DrawableMesh(vertices=vertices, polygons=polygons)
-        collision_type = cls._get_object_collision_type(segment=segment, object=object)
+        collision_type = cls._get_object_collision_type(segment=segment, obj=obj)
         return TrackObject(
             mesh=mesh, collision_type=collision_type, location=location, animation=animation
         )
@@ -196,32 +207,33 @@ class FrdData(FrdParser):
     @classmethod
     def _make_segment_objects(cls, segment: FrdParser.SegmentData) -> Iterator[TrackObject]:
         objects = chain.from_iterable(
-            zip(object.objects, object.object_extras, strict=True)
-            for object in segment.object_chunks
+            zip(obj.objects, obj.object_extras, strict=True) for obj in segment.object_chunks
         )
         return starmap(partial(cls._make_object, segment), objects)
 
     @classmethod
     def _make_dummy(cls, dummy: FrdParser.SourceType) -> LightStub:
         location = cls._int3_to_vector3d(dummy.location)
-        id = dummy.type & 0x1F
-        return LightStub(location=location, glow_id=id)
+        identifier = dummy.type & 0x1F
+        return LightStub(location=location, glow_id=identifier)
 
     @property
     def objects(self) -> Iterator[TrackObject]:
-        segment_objects = collapse(map(self._make_segment_objects, self.segment_data), levels=1)
+        segment_objects = collapse(
+            map(self._make_segment_objects, self.frd.segment_data), levels=1
+        )
         global_objects = map(
             partial(self._make_object, None),
-            self.global_objects.objects,
-            self.global_objects.object_extras,
+            self.frd.global_objects.objects,
+            self.frd.global_objects.object_extras,
         )
         return chain(segment_objects, global_objects)
 
     @property
     def track_segments(self) -> Iterator[TrackSegment]:
-        return map(self._make_track_segment, self.segment_data)
+        return map(self._make_track_segment, self.frd.segment_data)
 
     @property
     def light_dummies(self) -> Iterator[LightStub]:
-        lights = chain.from_iterable(segment.light_sources for segment in self.segment_data)
+        lights = chain.from_iterable(segment.light_sources for segment in self.frd.segment_data)
         return map(self._make_dummy, lights)
