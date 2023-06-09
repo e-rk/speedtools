@@ -204,7 +204,8 @@ class TrackData:
         @lru_cache
         def sort_key(p: Vector3d, x: Tuple[Vector3d, float]) -> float:
             v, _ = x
-            return p.horizontal_plane_distance(v)
+            diff = p.subtract(v)
+            return diff.magnitude()
 
         def get_height(x: Tuple[Vector3d, float]) -> float:
             _, height = x

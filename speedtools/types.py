@@ -66,9 +66,11 @@ class Vector3d(NamedTuple):
     def horizontal_plane_length(self) -> float:
         return sqrt(self.x**2 + self.z**2)
 
-    def horizontal_plane_distance(self, x: Vector3d) -> float:
-        v = Vector3d(x=(self.x - x.x), y=(self.y - x.y), z=(self.z - x.z))
-        return v.horizontal_plane_length()
+    def magnitude(self) -> float:
+        return sqrt(self.x**2 + self.y**2 + self.z**2)
+
+    def subtract(self, x: Vector3d) -> Vector3d:
+        return Vector3d(x=self.x - x.x, y=self.y - x.y, z=self.z - x.z)
 
 
 class UV(NamedTuple):
