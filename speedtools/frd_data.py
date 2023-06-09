@@ -7,12 +7,12 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import suppress
 from functools import partial
 from itertools import accumulate, chain, compress, groupby, starmap
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 
 from more_itertools import (
     chunked,
@@ -32,6 +32,7 @@ from speedtools.types import (
     Animation,
     AnimationAction,
     BasePolygon,
+    BaseMesh,
     CollisionMesh,
     CollisionPolygon,
     CollisionType,
@@ -49,7 +50,7 @@ from speedtools.types import (
     Vector3d,
     Vertex,
 )
-from speedtools.utils import islicen
+from speedtools.utils import islicen, make_subset_mesh
 
 logger = logging.getLogger(__name__)
 
@@ -189,19 +190,53 @@ class FrdData:
         )
 
     @classmethod
+    def _make_collision_poly_constructor(
+        cls,
+        polygon: FrdParser.DriveablePolygon,
+    ) -> Callable[[Tuple[int, ...]], CollisionPolygon]:
+        edges: list[Edge] = []
+        edges.append(Edge.FRONT) if polygon.front_edge else None
+        edges.append(Edge.LEFT) if polygon.left_edge else None
+        edges.append(Edge.BACK) if polygon.back_edge else None
+        edges.append(Edge.RIGHT) if polygon.right_edge else None
+        return partial(
+            CollisionPolygon,
+            edges=edges,
+            has_finite_height=polygon.has_finite_height,
+            has_wall_collision=polygon.has_wall_collision,
+        )
+
+    @classmethod
+    def _high_poly_track_chunk(cls, segment: FrdParser.SegmentData) -> Sequence[FrdParser.Polygon]:
+        return segment.chunks[4].polygons
+
+    @classmethod
     def _make_collision_mesh(
         cls,
         segment: FrdParser.SegmentData,
         road_effect: int,
-        driveable_polygons: FrdParser.DriveablePolygon,
+        driveable_polygons: Iterable[FrdParser.DriveablePolygon],
     ) -> CollisionMesh:
-        polygons = [
-            cls._make_collision_polygon(segment, polygon) for polygon in driveable_polygons
-        ]
+        selectors: Iterable[bool]
+        track_polygons: Iterable[Polygon]
         vertex_locations = [Vector3d.from_frd_float3(vertex) for vertex in segment.vertices]
         vertices = [Vertex(location=loc) for loc in vertex_locations]
-        return CollisionMesh(
-            vertices=vertices, polygons=polygons, collision_effect=RoadEffect(road_effect)
+        driveable_polygons = list(driveable_polygons)
+        polygon_idx = set(x.polygon for x in driveable_polygons)
+        mapped = starmap(
+            lambda i, poly: (i in polygon_idx, cls._make_polygon(poly)),
+            enumerate(cls._high_poly_track_chunk(segment)),
+        )
+        selectors, track_polygons = unzip(mapped)  # type: ignore[assignment] # pylint: disable=unbalanced-tuple-unpacking
+        track_mesh = BaseMesh(vertices=vertices, polygons=list(track_polygons))
+        driveable_polygons = list(driveable_polygons)
+        polygon_constructors = map(cls._make_collision_poly_constructor, driveable_polygons)
+        mesh_constructor = partial(CollisionMesh, collision_effect=RoadEffect(road_effect))
+        return make_subset_mesh(
+            mesh=track_mesh,
+            mesh_constructor=mesh_constructor,
+            polygon_constructors=polygon_constructors,
+            selectors=selectors,
         )
 
     @classmethod
