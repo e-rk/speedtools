@@ -10,10 +10,10 @@ from collections.abc import Callable, Hashable, Iterable, Iterator, Sequence
 from contextlib import suppress
 from functools import partial, singledispatch
 from io import BytesIO
-from itertools import chain, islice
+from itertools import chain, compress, islice
 from operator import getitem
 from pathlib import Path
-from typing import Any, Dict, TypeVar
+from typing import Any, Dict, Tuple, TypeVar
 
 from PIL import Image as pil_Image
 
@@ -25,6 +25,7 @@ from speedtools.types import (
     DrawableMesh,
     Image,
     Resource,
+    Vector3d,
 )
 
 logger = logging.getLogger(__name__)
@@ -117,3 +118,24 @@ def remove_unused_vertices(mesh: BaseMesh) -> BaseMesh:
 
     polygons = [_make_polygon(polygon) for polygon in mesh.polygons]
     return BaseMesh(vertices=used_vertices, polygons=polygons)
+
+
+def make_subset_mesh(
+    mesh: BaseMesh,
+    mesh_constructor: Callable[[Iterable[Vector3d], Sequence[Ty]], T],
+    polygon_constructors: Iterable[Callable[[Tuple[int, ...]], Ty]],
+    selectors: Iterable[bool],
+) -> T:
+    selected_polygons = list(compress(mesh.polygons, selectors))
+    minimal_mesh = remove_unused_vertices(
+        BaseMesh(vertices=mesh.vertices, polygons=selected_polygons)
+    )
+    logger.error(f"Selected: {selected_polygons}")
+    # minimal_mesh = BaseMesh(vertices=mesh.vertices, polygons=mesh.polygons)
+    logger.error(f"minimal: {minimal_mesh}")
+    constructed_polygons = list(
+        map(lambda f, x: f(x.face), polygon_constructors, minimal_mesh.polygons)
+    )
+    logger.error(f"poly: {constructed_polygons}")
+    constructed_mesh = mesh_constructor(minimal_mesh.vertices, constructed_polygons)
+    return constructed_mesh
