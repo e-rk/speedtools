@@ -139,3 +139,10 @@ def make_subset_mesh(
     logger.error(f"poly: {constructed_polygons}")
     constructed_mesh = mesh_constructor(minimal_mesh.vertices, constructed_polygons)
     return constructed_mesh
+
+
+def merge_mesh(a: BaseMesh, b: BaseMesh) -> BaseMesh:
+    vertices = list(chain(a.vertices, b.vertices))
+    b_polygons = map(lambda x: BasePolygon(tuple(f + len(a.vertices) for f in x.face)), b.polygons)
+    polygons = list(chain(a.polygons, b_polygons))
+    return BaseMesh(vertices=vertices, polygons=polygons)
