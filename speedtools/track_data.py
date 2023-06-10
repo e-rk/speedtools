@@ -8,7 +8,7 @@ import logging
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import suppress
 from functools import lru_cache, partial, partialmethod, reduce
-from itertools import accumulate, chain, starmap
+from itertools import accumulate, chain, cycle, starmap
 from math import atan2, cos, tau
 from operator import add
 from pathlib import Path
@@ -16,7 +16,7 @@ from typing import Tuple, TypeVar
 
 from speedtools.cam_data import CamData
 from speedtools.can_data import CanData
-from more_itertools import take, triplewise
+from more_itertools import collapse, map_except, take, triplewise
 from speedtools.frd_data import FrdData
 from speedtools.fsh_data import FshData
 from speedtools.parsers import HeightsParser
@@ -28,6 +28,7 @@ from speedtools.types import (
     CollisionType,
     Color,
     CollisionFlags,
+    BaseMesh,
     CollisionMesh,
     DirectionalLight,
     Edge,
@@ -42,7 +43,13 @@ from speedtools.types import (
     TrackSegment,
     Vector3d,
 )
-from speedtools.utils import islicen, slicen, unique_named_resources
+from speedtools.utils import (
+    islicen,
+    make_subset_mesh,
+    merge_mesh,
+    slicen,
+    unique_named_resources,
+)
 
 logger = logging.getLogger(__name__)
 T = TypeVar("T")
@@ -195,11 +202,41 @@ class TrackData:
             face = (f[0], f[3], offset + f[3], offset + f[0])
         if not face:
             raise RuntimeError("Error during wall creation")
-        return CollisionPolygon(face=face, edges=[])
+        return CollisionPolygon(face=face)
+
+    @classmethod
+    def _make_wall_from_polygon(
+        cls, offset: int, polygon: CollisionPolygon
+    ) -> Iterable[CollisionPolygon]:
+        return map_except(
+            partial(cls._make_wall_polygon, offset, polygon.face),
+            polygon.edges,
+            RuntimeError,
+            IndexError,
+        )
+
+    @classmethod
+    def _make_wall_mesh(cls, floor: CollisionMesh, ceiling: CollisionMesh) -> CollisionMesh:
+        merged = merge_mesh(floor, ceiling)
+        polys_with_walls = filter(lambda x: x.has_wall_collision, floor.polygons)
+        polygons = collapse(
+            map(
+                lambda x: cls._make_wall_from_polygon(len(floor.vertices), x),
+                polys_with_walls,
+            )
+        )
+        walls = BaseMesh(vertices=merged.vertices, polygons=list(polygons))
+        mesh_constructor = partial(CollisionMesh)
+        return make_subset_mesh(
+            mesh=walls,
+            mesh_constructor=mesh_constructor,
+            polygon_constructors=cycle([CollisionPolygon]),
+            selectors=cycle([True]),
+        )
 
     @classmethod
     def _make_ceiling(
-        cls, height: Iterable[Tuple[Vector3d, float]], mesh: CollisionMesh
+        cls, heights: Sequence[Tuple[Vector3d, float]], mesh: CollisionMesh
     ) -> CollisionMesh:
         @lru_cache
         def sort_key(p: Vector3d, x: Tuple[Vector3d, float]) -> float:
@@ -212,11 +249,14 @@ class TrackData:
             return height
 
         k = map(lambda x: partial(sort_key, x), mesh.vertices)
-        f = partial(sorted, list(height))
+        f = partial(sorted, heights)
         closest = map(lambda x: f(key=x), k)
-        heights = map(partial(take, 3), closest)
-        heights = map(partial(min, key=get_height), heights)
-        vertices = list(map(cls._raise_vertice, heights, mesh.vertices))
+        target_heights = map(partial(take, 3), closest)
+        target_heights = map(partial(min, key=get_height), target_heights)
+        vertices = [
+            cls._raise_vertice(height, vertice)
+            for height, vertice in zip(target_heights, mesh.vertices, strict=True)
+        ]
         return CollisionMesh(
             vertices=vertices, polygons=mesh.polygons, collision_effect=RoadEffect.not_driveable
         )
@@ -226,22 +266,19 @@ class TrackData:
         cls, heights: Iterable[Tuple[Vector3d, float]], segment: TrackSegment
     ) -> TrackSegment:
         heights = list(heights)
-        collision_meshes = chain(
-            segment.collision_meshes,
-            map(partial(cls._make_ceiling, heights), segment.collision_meshes),
-        )
+        floor = segment.collision_meshes
+        ceiling = [cls._make_ceiling(heights, mesh) for mesh in segment.collision_meshes]
+        walls = [
+            cls._make_wall_mesh(floor, ceiling)
+            for floor, ceiling in zip(floor, ceiling, strict=True)
+        ]
+        collision_meshes = chain(floor, ceiling, walls)
         return TrackSegment(
             mesh=segment.mesh, collision_meshes=list(collision_meshes), waypoints=segment.waypoints
         )
 
-    def _make_waypoint_height_pair(
-        cls, heights: Sequence[float], height_idx: int, segment: TrackSegment
-    ) -> Tuple[Iterable[Vector3d], Iterable[float]]:
-        waypoints = segment.waypoints
-        return (waypoints, islicen(heights, height_idx, len(waypoints)))
-
     @classmethod
-    def _make_waypoint_height_pair2(
+    def _make_waypoint_height_pair(
         cls,
         first: Tuple[Iterable[Vector3d], Iterable[float]],
         middle: Tuple[Iterable[Vector3d], Iterable[float]],
@@ -273,7 +310,7 @@ class TrackData:
             waypoints_and_heights[0],
         ]
         triples = triplewise(waypoints_and_heights)
-        chained = starmap(self._make_waypoint_height_pair2, triples)
+        chained = starmap(self._make_waypoint_height_pair, triples)
         return map(self._finalize_segment, chained, segments)
 
     @property
