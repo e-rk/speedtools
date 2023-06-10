@@ -190,7 +190,6 @@ class TrackData:
 
     @classmethod
     def _make_wall_polygon(cls, offset: int, f: tuple[int, ...], edge: Edge) -> CollisionPolygon:
-        # logger.error(f"Face: {f}, edge: {edge}")
         face = None
         if edge is Edge.FRONT:
             face = (f[1], f[0], offset + f[0], offset + f[1])
@@ -230,8 +229,8 @@ class TrackData:
         return make_subset_mesh(
             mesh=walls,
             mesh_constructor=mesh_constructor,
-            polygon_constructors=cycle([CollisionPolygon]),
-            selectors=cycle([True]),
+            polygon_constructors=repeat(CollisionPolygon),
+            selectors=repeat(True),
         )
 
     @classmethod
