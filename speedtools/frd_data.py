@@ -229,7 +229,6 @@ class FrdData:
         )
         selectors, track_polygons = unzip(mapped)  # type: ignore[assignment] # pylint: disable=unbalanced-tuple-unpacking
         track_mesh = BaseMesh(vertices=vertices, polygons=list(track_polygons))
-        driveable_polygons = list(driveable_polygons)
         polygon_constructors = map(cls._make_collision_poly_constructor, driveable_polygons)
         mesh_constructor = partial(CollisionMesh, collision_effect=RoadEffect(road_effect))
         return make_subset_mesh(
@@ -273,7 +272,7 @@ class FrdData:
             for loc, color in zip(vertex_locations, vertex_colors, strict=True)
         ]
         mesh = DrawableMesh(vertices=vertices, polygons=track_polygons)
-        waypoints = list(map(cls._make_waypoints, road_blocks))
+        waypoints = [cls._make_waypoints(block) for block in road_blocks]
         return TrackSegment(mesh=mesh, collision_meshes=collision_meshes, waypoints=waypoints)
 
     @classmethod
