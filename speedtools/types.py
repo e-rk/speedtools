@@ -228,15 +228,15 @@ class TrackObject:
 
 @dataclass(frozen=True)
 class CollisionPolygon(BasePolygon):
-    edges: Sequence[Edge]
-    has_finite_height: bool
-    has_wall_collision: bool
+    edges: Sequence[Edge] = field(default_factory=list)
+    has_finite_height: bool = False
+    has_wall_collision: bool = False
 
 
 @dataclass(frozen=True)
 class CollisionMesh(BaseMesh):
     polygons: Sequence[CollisionPolygon]
-    collision_effect: RoadEffect
+    collision_effect: RoadEffect = RoadEffect.not_driveable
 
 
 @dataclass(frozen=True)
