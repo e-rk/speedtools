@@ -7,13 +7,13 @@
 
 import logging
 import os
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Hashable, Iterable, Iterator
 from contextlib import suppress
 from functools import singledispatch
 from io import BytesIO
 from itertools import islice
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Any, Dict, TypeVar
 
 from PIL import Image as pil_Image
 
@@ -22,10 +22,21 @@ from speedtools.types import Bitmap, Image, Resource
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
+Ty = TypeVar("Ty")
 
 
 def islicen(iterable: Iterable[T], start: int, num: int) -> Iterable[T]:
     return islice(iterable, start, start + num)
+
+
+def count_repeats_and_map(
+    iterable: Iterable[T], func: Callable[[T, int], Ty], key: Callable[[T], Hashable]
+) -> Iterable[Ty]:
+    count: Dict[Hashable, int] = {}
+    for item in iterable:
+        k = key(item)
+        count[k] = count.setdefault(k, -1) + 1
+        yield func(item, count[k])
 
 
 @singledispatch

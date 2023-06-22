@@ -23,6 +23,7 @@ from speedtools.types import (
     TrackObject,
     TrackSegment,
 )
+from speedtools.utils import count_repeats_and_map
 
 logger = logging.getLogger(__name__)
 T = TypeVar("T")
@@ -111,6 +112,18 @@ class TrackData:
     def track_resources(self) -> Iterator[Resource]:
         return self.qfs.resources
 
+    @classmethod
+    def _make_unique_resource_name(cls, resource: Resource, repeats: int) -> Resource:
+        if repeats == 0:
+            return resource
+        return Resource(
+            name=f"{resource.name}-{repeats}",
+            image=resource.image,
+            mirrored=resource.mirrored,
+            nonmirrored=resource.nonmirrored,
+            additive=resource.additive,
+        )
+
     def get_polygon_material(self, polygon: Polygon) -> Resource:
         if not self.resources:
             if self.mirrored:
@@ -123,7 +136,10 @@ class TrackData:
                     lambda resource: resource.nonmirrored or not resource.mirrored,
                     self.qfs.resources,
                 )
-            for index, resource in enumerate(resources):
+            unique_named_resources = count_repeats_and_map(
+                iterable=resources, func=self._make_unique_resource_name, key=lambda x: x.name
+            )
+            for index, resource in enumerate(unique_named_resources):
                 self.resources[index] = resource
         return self.resources[polygon.material]
 
