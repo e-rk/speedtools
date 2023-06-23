@@ -25,6 +25,7 @@ from speedtools.types import (
     Animation,
     BaseMesh,
     DrawableMesh,
+    Light,
     Part,
     Polygon,
     Resource,
@@ -152,6 +153,18 @@ class BaseImporter(metaclass=ABCMeta):
         bpy_obj = bpy.data.objects.new(name, bpy_mesh)
         return bpy_obj
 
+    def make_light_object(self, name: str, light: Light) -> bpy.types.Object:
+        bpy_light = bpy.data.lights.new(name=name, type="POINT")
+        bpy_light.color = light.attributes.color.rgb_float
+        bpy_light.use_custom_distance = True
+        bpy_light.cutoff_distance = 15.0
+        bpy_light.specular_factor = 0.2
+        bpy_light.energy = 500  # type: ignore[attr-defined]
+        bpy_light.use_shadow = False  # type: ignore[attr-defined]
+        bpy_obj = bpy.data.objects.new(name=name, object_data=bpy_light)
+        self.set_object_location(obj=bpy_obj, location=light.location)
+        return bpy_obj
+
 
 class TrackImportStrategy(metaclass=ABCMeta):
     @abstractmethod
@@ -185,15 +198,7 @@ class TrackImportFlat(TrackImportStrategy, BaseImporter):
             track_collection.objects.link(bpy_obj)
         for index, light in enumerate(track.lights):
             name = f"Track light {index}"
-            bpy_light = bpy.data.lights.new(name=name, type="POINT")
-            bpy_light.color = light.attributes.color.rgb_float
-            bpy_light.use_custom_distance = True
-            bpy_light.cutoff_distance = 15.0
-            bpy_light.specular_factor = 0.2
-            bpy_light.energy = 500  # type: ignore[attr-defined]
-            bpy_light.use_shadow = False  # type: ignore[attr-defined]
-            bpy_obj = bpy.data.objects.new(name=name, object_data=bpy_light)
-            self.set_object_location(obj=bpy_obj, location=light.location)
+            bpy_obj = self.make_light_object(name=name, light=light)
             track_collection.objects.link(bpy_obj)
 
 
