@@ -124,23 +124,19 @@ class TrackData:
             additive=resource.additive,
         )
 
+    def _init_resources(self) -> None:
+        if self.mirrored:
+            resources = filter(lambda resource: not resource.nonmirrored, self.qfs.resources)
+        else:
+            resources = filter(lambda resource: not resource.mirrored, self.qfs.resources)
+        unique_named_resources = count_repeats_and_map(
+            iterable=resources, func=self._make_unique_resource_name, key=lambda x: x.name
+        )
+        self.resources = dict(enumerate(unique_named_resources))
+
     def get_polygon_material(self, polygon: Polygon) -> Resource:
         if not self.resources:
-            if self.mirrored:
-                resources = filter(
-                    lambda resource: resource.mirrored or not resource.nonmirrored,
-                    self.qfs.resources,
-                )
-            else:
-                resources = filter(
-                    lambda resource: resource.nonmirrored or not resource.mirrored,
-                    self.qfs.resources,
-                )
-            unique_named_resources = count_repeats_and_map(
-                iterable=resources, func=self._make_unique_resource_name, key=lambda x: x.name
-            )
-            for index, resource in enumerate(unique_named_resources):
-                self.resources[index] = resource
+            self._init_resources()
         return self.resources[polygon.material]
 
     def _make_light(self, stub: LightStub) -> Light:
