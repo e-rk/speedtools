@@ -17,7 +17,7 @@ from typing import Any
 
 import bpy
 import mathutils
-from bpy.props import BoolProperty, StringProperty
+from bpy.props import BoolProperty, EnumProperty, StringProperty
 from more_itertools import collapse
 
 from speedtools import TrackData, VivData
@@ -172,7 +172,29 @@ class TrackImportStrategy(metaclass=ABCMeta):
         pass
 
 
-class TrackImportFlat(TrackImportStrategy, BaseImporter):
+class TrackImportSimple(TrackImportStrategy, BaseImporter):
+    def import_track(self, track: TrackData) -> None:
+        track_collection = bpy.data.collections.new("Track segments")
+        bpy.context.scene.collection.children.link(track_collection)
+        for index, segment in enumerate(track.track_segments):
+            name = f"Track segment {index}"
+            bpy_obj = self.make_drawable_object(name=name, mesh=segment.mesh)
+            track_collection.objects.link(bpy_obj)
+        for index, obj in enumerate(track.objects):
+            name = f"Track object {index}"
+            bpy_obj = self.make_drawable_object(name=name, mesh=obj.mesh)
+            if obj.location:
+                self.set_object_location(obj=bpy_obj, location=obj.location)
+            if obj.animation:
+                self.set_object_animation(obj=bpy_obj, animation=obj.animation)
+            track_collection.objects.link(bpy_obj)
+        for index, light in enumerate(track.lights):
+            name = f"Track light {index}"
+            bpy_obj = self.make_light_object(name=name, light=light)
+            track_collection.objects.link(bpy_obj)
+
+
+class TrackImportAdvanced(TrackImportStrategy, BaseImporter):
     def import_track(self, track: TrackData) -> None:
         track_collection = bpy.data.collections.new("Track segments")
         bpy.context.scene.collection.children.link(track_collection)
@@ -228,6 +250,23 @@ class TrackImporter(bpy.types.Operator):
         maxlen=1024,
         default="",
     )
+    mode: EnumProperty(  # type: ignore[valid-type]
+        name="Mode",
+        items=(
+            (
+                "SIMPLE",
+                "Simple",
+                "Import only visible track geometry, lights and animations.",
+            ),
+            (
+                "ADVANCED",
+                "Advanced (experimental)",
+                "Parametrized import of visible track geometry, lights, animations, "
+                "collision geometry and more",
+            ),
+        ),
+        description="Select importer mode",
+    )
     night: BoolProperty(  # type: ignore[valid-type]
         name="Night on", description="Import night track variant", default=False
     )
@@ -250,7 +289,13 @@ class TrackImporter(bpy.types.Operator):
             night=self.night,
             weather=self.weather,
         )
-        import_strategy = TrackImportFlat(material_map=track.get_polygon_material)
+        import_strategy: TrackImportStrategy
+        if self.mode == "SIMPLE":
+            import_strategy = TrackImportSimple(material_map=track.get_polygon_material)
+        elif self.mode == "ADVANCED":
+            import_strategy = TrackImportAdvanced(material_map=track.get_polygon_material)
+        else:
+            return {"CANCELLED"}
         import_strategy.import_track(track=track)
         return {"FINISHED"}
 
