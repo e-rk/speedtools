@@ -19,7 +19,6 @@ from .viv import Viv as VivParser
 from .ctb import Ctb as CtbParser
 
 __all__ = [
-    "bnk_audio_stream",
     "BnkParser",
     "FceParser",
     "FrdParser",
