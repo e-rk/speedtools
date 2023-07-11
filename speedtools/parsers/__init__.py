@@ -17,7 +17,6 @@ from .qfs import Qfs as QfsParser
 from .viv import Viv as VivParser
 
 __all__ = [
-    "bnk_audio_stream",
     "BnkParser",
     "FceParser",
     "FrdParser",
