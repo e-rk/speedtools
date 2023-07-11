@@ -18,7 +18,6 @@ from .sim import Sim as HeightsParser
 from .viv import Viv as VivParser
 
 __all__ = [
-    "bnk_audio_stream",
     "BnkParser",
     "FceParser",
     "FrdParser",
