@@ -24,6 +24,7 @@ from speedtools import TrackData, VivData
 from speedtools.types import (
     Animation,
     BaseMesh,
+    DirectionalLight,
     DrawableMesh,
     Light,
     Part,
@@ -165,6 +166,16 @@ class BaseImporter(metaclass=ABCMeta):
         self.set_object_location(obj=bpy_obj, location=light.location)
         return bpy_obj
 
+    def make_directional_light_object(
+        self, name: str, light: DirectionalLight
+    ) -> bpy.types.Object:
+        bpy_sun = bpy.data.lights.new(name=name, type="SUN")
+        bpy_obj = bpy.data.objects.new(name=name, object_data=bpy_sun)
+        mu_euler = mathutils.Euler(light.euler_xyz)
+        bpy_obj.rotation_mode = "XYZ"
+        bpy_obj.rotation_euler = mu_euler  # type: ignore[assignment]
+        return bpy_obj
+
 
 class TrackImportStrategy(metaclass=ABCMeta):
     @abstractmethod
@@ -191,6 +202,10 @@ class TrackImportSimple(TrackImportStrategy, BaseImporter):
         for index, light in enumerate(track.lights):
             name = f"Track light {index}"
             bpy_obj = self.make_light_object(name=name, light=light)
+            track_collection.objects.link(bpy_obj)
+        directional_light = track.directional_light
+        if directional_light:
+            bpy_obj = self.make_directional_light_object(name="sun", light=directional_light)
             track_collection.objects.link(bpy_obj)
 
 
@@ -221,6 +236,10 @@ class TrackImportAdvanced(TrackImportStrategy, BaseImporter):
         for index, light in enumerate(track.lights):
             name = f"Track light {index}"
             bpy_obj = self.make_light_object(name=name, light=light)
+            track_collection.objects.link(bpy_obj)
+        directional_light = track.directional_light
+        if directional_light:
+            bpy_obj = self.make_directional_light_object(name="sun", light=directional_light)
             track_collection.objects.link(bpy_obj)
 
 
