@@ -5,8 +5,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
+from __future__ import annotations
+
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from math import pi
 from typing import NamedTuple, Optional, TypeAlias
 
 from speedtools.parsers import FrdParser, FshParser
@@ -154,3 +157,16 @@ class Light:
 class LightStub:
     location: Vector3d
     glow_id: int
+
+
+@dataclass(frozen=True)
+class DirectionalLight:
+    rho: float
+    theta: float
+    radius: float
+
+    @property
+    def euler_xyz(self) -> Vector3d:
+        z = pi / 2 - self.rho
+        y = self.theta
+        return Vector3d(x=0, y=y, z=z)

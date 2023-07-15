@@ -8,6 +8,7 @@
 import logging
 from collections.abc import Callable, Iterator
 from contextlib import suppress
+from math import atan2, cos, tau
 from pathlib import Path
 from typing import TypeVar
 
@@ -15,6 +16,7 @@ from speedtools.frd_data import FrdData
 from speedtools.qfs_data import QfsData
 from speedtools.tr_ini import TrackIni
 from speedtools.types import (
+    DirectionalLight,
     Light,
     LightAttributes,
     LightStub,
@@ -30,6 +32,8 @@ T = TypeVar("T")
 
 
 class TrackData:
+    SUN_DISTANCE = 3000
+
     def __init__(
         self, directory: Path, mirrored: bool = False, night: bool = False, weather: bool = False
     ) -> None:
@@ -149,3 +153,17 @@ class TrackData:
             for attribute in self.ini.glows:
                 self.light_glows[attribute.identifier] = attribute
         return map(self._make_light, self.frd.light_dummies)
+
+    @property
+    def directional_light(self) -> DirectionalLight | None:
+        sun = self.ini.sun
+        if sun is None:
+            return None
+        # Angles in INI are in turns. Turns are converted to radians here.
+        # The INI angleRho value is not really a spherical coordinate.
+        # Some approximations are done here to convert to spherical coordinates.
+        rho = sun.angle_rho * tau
+        z = self.SUN_DISTANCE * cos(rho)
+        phi = atan2(z, self.SUN_DISTANCE)
+        theta = sun.angle_theta * tau
+        return DirectionalLight(rho=phi, theta=theta, radius=sun.radius)

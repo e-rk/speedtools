@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterator
 from configparser import ConfigParser
+from dataclasses import dataclass
 from itertools import starmap
 from pathlib import Path
 
@@ -17,6 +18,16 @@ from parse import parse, search  # type: ignore[import]
 from speedtools.types import Color, LightAttributes
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class SunIni:
+    angle_theta: float
+    angle_rho: float
+    radius: float
+    rotates: bool
+    additive: bool
+    in_front: bool
 
 
 class TrackIni:
@@ -48,3 +59,20 @@ class TrackIni:
     @property
     def glows(self) -> Iterator[LightAttributes]:
         return starmap(self._make_glow, self.parser["track glows"].items())
+
+    @property
+    def sun(self) -> SunIni | None:
+        try:
+            sun = self.parser["sun"]
+            if bool(sun["hasSun"]) is False:
+                return None
+            return SunIni(
+                angle_theta=float(sun["angleTheta"]),
+                angle_rho=float(sun["angleRho"]),
+                radius=float(sun["radius"]),
+                rotates=bool(sun.get("rotates", "0")),
+                additive=bool(sun.get("additive", "0")),
+                in_front=bool(sun.get("inFront", "0")),
+            )
+        except KeyError:
+            return None
