@@ -76,3 +76,14 @@ class TrackIni:
             )
         except KeyError:
             return None
+
+    @property
+    def ambient_color(self) -> Color:
+        light = self.parser["light"]
+        red = int(light["AmbientRed"])
+        green = int(light["AmbientGreen"])
+        blue = int(light["AmbientBlue"])
+        red = (red * 255) // 100
+        green = (green * 255) // 100
+        blue = (blue * 255) // 100
+        return Color(alpha=255, red=red, green=green, blue=blue)
