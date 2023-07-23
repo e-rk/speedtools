@@ -218,21 +218,33 @@ class BaseImporter(metaclass=ABCMeta):
 
 class TrackImportStrategy(metaclass=ABCMeta):
     @abstractmethod
-    def import_track(self, track: TrackData) -> None:
+    def import_track(self, track: TrackData, import_collision: bool = False) -> None:
         pass
 
 
-class TrackImportSimple(TrackImportStrategy, BaseImporter):
-    def import_track(self, track: TrackData) -> None:
+class TrackImportGLTF(TrackImportStrategy, BaseImporter):
+    def import_track(self, track: TrackData, import_collision: bool = False) -> None:
         bpy.context.scene.render.fps = track.ANIMATION_FPS
         track_collection = bpy.data.collections.new("Track segments")
         bpy.context.scene.collection.children.link(track_collection)
         for index, segment in enumerate(track.track_segments):
-            name = f"Track segment {index}"
+            name = f"Segment {index}"
+            segment_collection = bpy.data.collections.new(name=name)
+            track_collection.children.link(segment_collection)
             bpy_obj = self.make_drawable_object(name=name, mesh=segment.mesh)
-            track_collection.objects.link(bpy_obj)
+            segment_collection.objects.link(bpy_obj)
+            if import_collision:
+                for collision_index, collision_mesh in enumerate(segment.collision_meshes):
+                    effect = collision_mesh.collision_effect
+                    name = f"Collision {collision_index}.{effect}-colonly"
+                    bpy_mesh = self.make_base_mesh(name=name, mesh=collision_mesh)
+                    bpy_obj = bpy.data.objects.new(name, bpy_mesh)
+                    segment_collection.objects.link(bpy_obj)
+                    bpy_obj.hide_set(True)
+        object_collection = bpy.data.collections.new("Objects")
+        bpy.context.scene.collection.children.link(object_collection)
         for index, obj in enumerate(track.objects):
-            name = f"Track object {index}"
+            name = f"Object {index}"
             mesh = self.duplicate_common_vertices(mesh=obj.mesh)
             bpy_obj = self.make_drawable_object(name=name, mesh=mesh)
             if obj.location:
@@ -241,51 +253,17 @@ class TrackImportSimple(TrackImportStrategy, BaseImporter):
                 self.set_object_animation(obj=bpy_obj, animation=obj.animation)
             if obj.transform:
                 self.set_object_rotation(obj=bpy_obj, transform=obj.transform)
-            track_collection.objects.link(bpy_obj)
+            object_collection.objects.link(bpy_obj)
+        light_collection = bpy.data.collections.new("Lights")
+        bpy.context.scene.collection.children.link(light_collection)
         for index, light in enumerate(track.lights):
-            name = f"Track light {index}"
+            name = f"Light {index}"
             bpy_obj = self.make_light_object(name=name, light=light)
-            track_collection.objects.link(bpy_obj)
+            light_collection.objects.link(bpy_obj)
         directional_light = track.directional_light
         if directional_light:
             bpy_obj = self.make_directional_light_object(name="sun", light=directional_light)
-            track_collection.objects.link(bpy_obj)
-
-
-class TrackImportAdvanced(TrackImportStrategy, BaseImporter):
-    def import_track(self, track: TrackData) -> None:
-        bpy.context.scene.render.fps = track.ANIMATION_FPS
-        track_collection = bpy.data.collections.new("Track segments")
-        bpy.context.scene.collection.children.link(track_collection)
-        for index, segment in enumerate(track.track_segments):
-            name = f"Track segment {index}"
-            bpy_obj = self.make_drawable_object(name=name, mesh=segment.mesh)
-            track_collection.objects.link(bpy_obj)
-            for collision_mesh in segment.collision_meshes:
-                name = (
-                    f"Track segment collission {index}.{collision_mesh.collision_effect}-colonly"
-                )
-                bpy_mesh = self.make_base_mesh(name=name, mesh=collision_mesh)
-                bpy_obj = bpy.data.objects.new(name, bpy_mesh)
-                track_collection.objects.link(bpy_obj)
-                bpy_obj.hide_set(True)
-        for index, obj in enumerate(track.objects):
-            name = f"Track object {index}"
-            mesh = self.duplicate_common_vertices(mesh=obj.mesh)
-            bpy_obj = self.make_drawable_object(name=name, mesh=mesh)
-            if obj.location:
-                self.set_object_location(obj=bpy_obj, location=obj.location)
-            if obj.animation:
-                self.set_object_animation(obj=bpy_obj, animation=obj.animation)
-            track_collection.objects.link(bpy_obj)
-        for index, light in enumerate(track.lights):
-            name = f"Track light {index}"
-            bpy_obj = self.make_light_object(name=name, light=light)
-            track_collection.objects.link(bpy_obj)
-        directional_light = track.directional_light
-        if directional_light:
-            bpy_obj = self.make_directional_light_object(name="sun", light=directional_light)
-            track_collection.objects.link(bpy_obj)
+            light_collection.objects.link(bpy_obj)
 
 
 class CarImporterSimple(BaseImporter):
@@ -318,15 +296,11 @@ class TrackImporter(bpy.types.Operator):
         name="Mode",
         items=(
             (
-                "SIMPLE",
-                "Simple",
-                "Import only visible track geometry, lights and animations.",
-            ),
-            (
-                "ADVANCED",
-                "Advanced (experimental)",
+                "GLTF",
+                "GLTF target",
                 "Parametrized import of visible track geometry, lights, animations, "
-                "collision geometry and more",
+                "collision geometry and more. Stores data that can't be represented in "
+                "GLTF 'extras' fields.",
             ),
         ),
         description="Select importer mode",
@@ -339,6 +313,11 @@ class TrackImporter(bpy.types.Operator):
     )
     mirrored: BoolProperty(  # type: ignore[valid-type]
         name="Mirrored on", description="Import mirrored track variant", default=False
+    )
+    import_collision: BoolProperty(  # type: ignore[valid-type]
+        name="Import collision (experimental)",
+        description="Import collision meshes (ending with -colonly)",
+        default=False,
     )
 
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[int] | set[str]:
@@ -358,13 +337,11 @@ class TrackImporter(bpy.types.Operator):
             weather=self.weather,
         )
         import_strategy: TrackImportStrategy
-        if self.mode == "SIMPLE":
-            import_strategy = TrackImportSimple(material_map=track.get_polygon_material)
-        elif self.mode == "ADVANCED":
-            import_strategy = TrackImportAdvanced(material_map=track.get_polygon_material)
+        if self.mode == "GLTF":
+            import_strategy = TrackImportGLTF(material_map=track.get_polygon_material)
         else:
             return {"CANCELLED"}
-        import_strategy.import_track(track=track)
+        import_strategy.import_track(track=track, import_collision=self.import_collision)
         return {"FINISHED"}
 
 
