@@ -388,6 +388,8 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
             ambient_color = track.ambient_color
             bpy.context.scene.world.use_nodes = False
             bpy.context.scene.world.color = ambient_color.rgb_float
+            red, green, blue = ambient_color.rgb_float
+            bpy.context.scene["SPT_ambient"] = {"red": red, "green": green, "blue": blue}
 
 
 class TrackImportBlender(TrackImportGLTF):
