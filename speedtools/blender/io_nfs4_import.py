@@ -11,14 +11,14 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from functools import total_ordering
-from itertools import groupby
+from itertools import chain, groupby
 from pathlib import Path
 from typing import Any
 
 import bpy
 import mathutils
 from bpy.props import BoolProperty, EnumProperty, StringProperty
-from more_itertools import collapse
+from more_itertools import collapse, duplicates_everseen, unique_everseen
 
 from speedtools import TrackData, VivData
 from speedtools.types import (
@@ -65,6 +65,30 @@ class BaseImporter(metaclass=ABCMeta):
     def __init__(self, material_map: Callable[[Polygon], Resource]) -> None:
         self.materials: dict[ExtendedResource, bpy.types.Material] = {}
         self.material_map = material_map
+
+    @classmethod
+    def duplicate_common_vertices(cls, mesh: DrawableMesh) -> DrawableMesh:
+        unique_vert_polys = list(unique_everseen(mesh.polygons, key=lambda x: frozenset(x.face)))
+        duplicate_vert_polys = list(
+            duplicates_everseen(mesh.polygons, key=lambda x: frozenset(x.face))
+        )
+        faces = chain.from_iterable(poly.face for poly in duplicate_vert_polys)
+        verts_to_duplicate = frozenset(mesh.vertices[x] for x in faces)
+        mapping = {v: i for i, v in enumerate(verts_to_duplicate, start=len(mesh.vertices))}
+
+        def _make_polygon(polygon: Polygon) -> Polygon:
+            vertices = tuple(mesh.vertices[x] for x in polygon.face)
+            face = tuple(mapping[v] for v in vertices)
+            return Polygon(
+                face=face,
+                uv=polygon.uv,
+                material=polygon.material,
+                backface_culling=polygon.backface_culling,
+            )
+
+        polygons = unique_vert_polys + [_make_polygon(polygon) for polygon in duplicate_vert_polys]
+        vertices = list(mesh.vertices) + list(verts_to_duplicate)
+        return DrawableMesh(vertices=vertices, polygons=polygons, normals=mesh.normals)
 
     def _extender_resource_map(self, polygon: Polygon) -> ExtendedResource:
         resource = self.material_map(polygon)
@@ -193,7 +217,8 @@ class TrackImportSimple(TrackImportStrategy, BaseImporter):
             track_collection.objects.link(bpy_obj)
         for index, obj in enumerate(track.objects):
             name = f"Track object {index}"
-            bpy_obj = self.make_drawable_object(name=name, mesh=obj.mesh)
+            mesh = self.duplicate_common_vertices(mesh=obj.mesh)
+            bpy_obj = self.make_drawable_object(name=name, mesh=mesh)
             if obj.location:
                 self.set_object_location(obj=bpy_obj, location=obj.location)
             if obj.animation:
@@ -227,7 +252,8 @@ class TrackImportAdvanced(TrackImportStrategy, BaseImporter):
                 bpy_obj.hide_set(True)
         for index, obj in enumerate(track.objects):
             name = f"Track object {index}"
-            bpy_obj = self.make_drawable_object(name=name, mesh=obj.mesh)
+            mesh = self.duplicate_common_vertices(mesh=obj.mesh)
+            bpy_obj = self.make_drawable_object(name=name, mesh=mesh)
             if obj.location:
                 self.set_object_location(obj=bpy_obj, location=obj.location)
             if obj.animation:
