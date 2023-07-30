@@ -64,15 +64,15 @@ class TrackIni:
     def sun(self) -> SunIni | None:
         try:
             sun = self.parser["sun"]
-            if bool(sun["hasSun"]) is False:
+            if sun["hasSun"] == "0":
                 return None
             return SunIni(
                 angle_theta=float(sun["angleTheta"]),
                 angle_rho=float(sun["angleRho"]),
                 radius=float(sun["radius"]),
-                rotates=bool(sun.get("rotates", "0")),
-                additive=bool(sun.get("additive", "0")),
-                in_front=bool(sun.get("inFront", "0")),
+                rotates=sun.get("rotates", "0") != "0",
+                additive=sun.get("additive", "0") != "0",
+                in_front=sun.get("inFront", "0") != "0",
             )
         except KeyError:
             return None
