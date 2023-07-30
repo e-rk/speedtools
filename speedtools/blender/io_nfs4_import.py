@@ -150,8 +150,9 @@ class BaseImporter(metaclass=ABCMeta):
             mu_quaternion = mu_quaternion.inverted()
             obj.location = mu_location
             obj.rotation_quaternion = mu_quaternion  # type: ignore[assignment]
-            obj.keyframe_insert(data_path="location", frame=index * animation.delay)
-            obj.keyframe_insert(data_path="rotation_quaternion", frame=index * animation.delay)
+            interval = index * animation.delay
+            obj.keyframe_insert(data_path="location", frame=interval)
+            obj.keyframe_insert(data_path="rotation_quaternion", frame=interval)
         obj.animation_data.action.name = f"{obj.name}-loop"
 
     def make_drawable_object(self, name: str, mesh: DrawableMesh) -> bpy.types.Object:
@@ -209,6 +210,7 @@ class TrackImportStrategy(metaclass=ABCMeta):
 
 class TrackImportSimple(TrackImportStrategy, BaseImporter):
     def import_track(self, track: TrackData) -> None:
+        bpy.context.scene.render.fps = track.ANIMATION_FPS
         track_collection = bpy.data.collections.new("Track segments")
         bpy.context.scene.collection.children.link(track_collection)
         for index, segment in enumerate(track.track_segments):
@@ -236,6 +238,7 @@ class TrackImportSimple(TrackImportStrategy, BaseImporter):
 
 class TrackImportAdvanced(TrackImportStrategy, BaseImporter):
     def import_track(self, track: TrackData) -> None:
+        bpy.context.scene.render.fps = track.ANIMATION_FPS
         track_collection = bpy.data.collections.new("Track segments")
         bpy.context.scene.collection.children.link(track_collection)
         for index, segment in enumerate(track.track_segments):
