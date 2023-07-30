@@ -44,6 +44,7 @@ Make sure the binary directories are in your `PATH`.
 # Known issues and limitations
 
 * Tested only with PC tracks
+* Road lanes are missing
 * The bear has left the park!
 
 [1]: https://pypi.org/project/speedtools/
