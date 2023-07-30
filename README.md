@@ -44,6 +44,7 @@ Make sure the binary directories are in your `PATH`.
 # Known issues and limitations
 
 * Tested only with PC tracks
+* The bear has left the park!
 
 [1]: https://pypi.org/project/speedtools/
 [2]: https://github.com/e-rk/speedtools/blob/master/speedtools/blender/io_nfs4_import.py
