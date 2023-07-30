@@ -33,6 +33,7 @@ T = TypeVar("T")
 
 class TrackData:
     SUN_DISTANCE = 3000
+    ANIMATION_FPS = 64
 
     def __init__(
         self, directory: Path, mirrored: bool = False, night: bool = False, weather: bool = False
