@@ -46,7 +46,13 @@ class FshData:
     def _make_bitmap(cls, resource: FshParser.Resource) -> Bitmap:
         bitmap = one(
             cls._get_data_by_code(
-                codes=[FshDataType.bitmap8, FshDataType.bitmap32], resource=resource
+                codes=(
+                    FshDataType.bitmap8,
+                    FshDataType.bitmap32,
+                    FshDataType.bitmap16,
+                    FshDataType.bitmap16_alpha,
+                ),
+                resource=resource,
             )
         )
         if bitmap.code is FshDataType.bitmap8:
@@ -59,7 +65,11 @@ class FshData:
                 height=bitmap.height,
                 data=rgba_bytes,
             )
-        elif bitmap.code is FshDataType.bitmap32:
+        elif bitmap.code in (
+            FshDataType.bitmap32,
+            FshDataType.bitmap16,
+            FshDataType.bitmap16_alpha,
+        ):
             rgba_int = [elem.color for elem in bitmap.data.data]
             rgba_bytes = pack(f"<{len(rgba_int)}I", *rgba_int)
             bitmap_object = Bitmap(

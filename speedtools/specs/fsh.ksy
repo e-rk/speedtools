@@ -83,8 +83,10 @@ types:
         type:
           switch-on: _parent.code
           cases:
+            data_type::bitmap16: pixel_16_element
             data_type::bitmap8: u1
             data_type::bitmap32: pixel_32_element
+            data_type::bitmap16_alpha: pixel_16_alpha_element
             data_type::palette: palette_element
         repeat: expr
         repeat-expr: _parent.width * _parent.height
@@ -102,6 +104,40 @@ types:
         value: (value >> 16) & 0xff
       alpha:
         value: (value >> 24) & 0xff
+      color:
+        value: 'blue + green * 0x100 + red * 0x10000 + alpha * 0x1000000'
+        doc: ARGB color value
+  pixel_16_element:
+    seq:
+      - id: value
+        type: u2
+        doc: Raw 16-bit pixel value
+    instances:
+      red:
+        value: (value & 0x1f) * 8
+      green:
+        value: ((value >> 5) & 0x3f) * 4
+      blue:
+        value: ((value >> 11) & 0x1f) * 8
+      alpha:
+        value: 0xff
+      color:
+        value: 'blue + green * 0x100 + red * 0x10000  + alpha * 0x1000000'
+        doc: ARGB color value
+  pixel_16_alpha_element:
+    seq:
+      - id: value
+        type: u2
+        doc: Raw 16-bit pixel value
+    instances:
+      red:
+        value: (value & 0x1f) * 8
+      green:
+        value: ((value >> 5) & 0x1f) * 8
+      blue:
+        value: ((value >> 10) & 0x1f) * 8
+      alpha:
+        value: '(value & 0x8000) != 0 ? 0xff : 0'
       color:
         value: 'blue + green * 0x100 + red * 0x10000 + alpha * 0x1000000'
         doc: ARGB color value
@@ -124,7 +160,9 @@ types:
         doc: ARGB color value
 enums:
   data_type:
+    0x78: bitmap16
     0x7b: bitmap8
     0x7d: bitmap32
+    0x7e: bitmap16_alpha
     0x2d: palette
     0x6f: text
