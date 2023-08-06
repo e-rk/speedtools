@@ -21,14 +21,20 @@ from speedtools.types import Bitmap, FshDataType, Resource
 logger = logging.getLogger(__name__)
 
 
-class QfsData:
-    def __init__(self, qfs_parser: QfsParser) -> None:
-        self.qfs = qfs_parser
+class FshData:
+    def __init__(self, fsh_parser: FshParser) -> None:
+        self.fsh = fsh_parser
 
     @classmethod
-    def from_file(cls, filename: Path) -> QfsData:
-        parser = QfsParser.from_file(filename=filename)
-        return cls(qfs_parser=parser)
+    def from_file(cls, filename: Path) -> FshData:
+        suffix = filename.suffix.lower()
+        if suffix == ".qfs":
+            parser = QfsParser.from_file(filename=filename).data
+        elif suffix == ".fsh":
+            parser = FshParser.from_file(filename=filename)
+        else:
+            raise ValueError("Invalid fsh file extension")
+        return cls(fsh_parser=parser)
 
     @classmethod
     def _get_data_by_code(
@@ -83,4 +89,4 @@ class QfsData:
 
     @property
     def resources(self) -> Iterator[Resource]:
-        return map(self._make_resource, self.qfs.data.resources)
+        return map(self._make_resource, self.fsh.resources)

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import TypeVar
 
 from speedtools.frd_data import FrdData
-from speedtools.qfs_data import QfsData
+from speedtools.fsh_data import FshData
 from speedtools.tr_ini import TrackIni
 from speedtools.types import (
     DirectionalLight,
@@ -48,8 +48,8 @@ class TrackData:
             night=night,
             weather=weather,
         )
-        self.qfs: QfsData = self.tr_open(
-            constructor=QfsData.from_file,
+        self.qfs: FshData = self.tr_open(
+            constructor=FshData.from_file,
             directory=directory,
             prefix="TR",
             postfix="0.QFS",
@@ -57,8 +57,8 @@ class TrackData:
             night=night,
             weather=weather,
         )
-        self.sky: QfsData = self.tr_open(
-            constructor=QfsData.from_file,
+        self.sky: FshData = self.tr_open(
+            constructor=FshData.from_file,
             directory=directory,
             prefix="SKY",
             postfix=".QFS",
