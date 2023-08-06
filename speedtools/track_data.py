@@ -34,9 +34,15 @@ T = TypeVar("T")
 class TrackData:
     SUN_DISTANCE = 3000
     ANIMATION_FPS = 64
+    SFX_RESOURCE_FILE = "Data/GAMEART/SFX.FSH"
 
     def __init__(
-        self, directory: Path, mirrored: bool = False, night: bool = False, weather: bool = False
+        self,
+        directory: Path,
+        game_root: Path,
+        mirrored: bool = False,
+        night: bool = False,
+        weather: bool = False,
     ) -> None:
         logger.debug(f"Opening directory {directory}")
         self.frd: FrdData = self.tr_open(
@@ -75,7 +81,9 @@ class TrackData:
             night=night,
             weather=weather,
         )
+        self.sfx: FshData = FshData.from_file(Path(game_root, self.SFX_RESOURCE_FILE))
         self.resources: dict[int, Resource] = {}
+        self.sfx_resources: dict[str, Resource] = {}
         self.light_glows: dict[int, LightAttributes] = {}
         self.mirrored: bool = mirrored
         self.night: bool = night
@@ -138,11 +146,15 @@ class TrackData:
             iterable=resources, func=self._make_unique_resource_name, key=lambda x: x.name
         )
         self.resources = dict(enumerate(unique_named_resources))
+        self.sfx_resources = {res.name: res for res in self.sfx.resources}
 
     def get_polygon_material(self, polygon: Polygon) -> Resource:
+        mat = polygon.material
         if not self.resources:
             self._init_resources()
-        return self.resources[polygon.material]
+        if polygon.is_lane:
+            return self.sfx_resources[f"lin{mat}"]
+        return self.resources[mat]
 
     def _make_light(self, stub: LightStub) -> Light:
         attributes = self.light_glows[stub.glow_id]

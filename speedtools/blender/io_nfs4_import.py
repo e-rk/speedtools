@@ -331,8 +331,12 @@ class TrackImporter(bpy.types.Operator):
         return {"RUNNING_MODAL"}
 
     def execute(self, context: bpy.types.Context) -> set[int] | set[str]:
+        directory = Path(self.directory)
+        # This should get us from track directory to game root directory
+        game_root = directory.parent.parent.parent
         track = TrackData(
-            directory=self.directory,
+            directory=Path(self.directory),
+            game_root=game_root,
             mirrored=self.mirrored,
             night=self.night,
             weather=self.weather,

@@ -46,7 +46,7 @@ class FrdData:
         False,  # Medium-resolution misc geometry
         True,  # High-resolution track geometry
         True,  # High-resolution misc geometry
-        False,  # Road lanes
+        True,  # Road lanes
         True,  # High-resolution misc geometry
         True,  # High-resolution misc geometry
         True,  # High-resolution misc geometry
@@ -70,7 +70,7 @@ class FrdData:
 
     @classmethod
     def _make_polygon(cls, polygon: FrdParser.Polygon) -> Polygon:
-        material = polygon.texture & 0x7FF
+        material = polygon.texture_id
         backface_culling = polygon.backface_culling
         quads_or_triangles = cls._validate_polygon(polygon.face, cls._texture_flags_to_uv(polygon))
         face, uv = unzip(quads_or_triangles)  # pylint: disable=unbalanced-tuple-unpacking
@@ -79,6 +79,7 @@ class FrdData:
             uv=tuple(uv),
             material=material,
             backface_culling=backface_culling,
+            is_lane=polygon.lane,
         )
 
     @classmethod

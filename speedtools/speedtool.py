@@ -25,7 +25,7 @@ logger.addHandler(sh)
 @click.option("--output", help="Output directory", type=click.Path())
 @click.argument("path", type=click.Path())
 def unpack(output: Path, path: Path) -> None:
-    data = TrackData(path)
+    data = TrackData(directory=path, game_root=path.parent.parent.parent)
     nonmirrored = filter(lambda x: not x.mirrored, data.track_resources)
     export_resource(nonmirrored, directory=output)
 
@@ -36,7 +36,7 @@ def unpack(output: Path, path: Path) -> None:
 def mesh(output: Path, path: Path) -> None:
     with suppress(FileExistsError):
         os.makedirs(output)
-    data = TrackData(path)
+    data = TrackData(directory=path, game_root=path.parent.parent.parent)
     materials = set()
     for index, obj in enumerate(data.objects):
         with open(Path(output, f"object_{index}.obj"), "w", encoding="utf-8") as obj_file:

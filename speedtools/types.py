@@ -70,6 +70,7 @@ class Polygon(BasePolygon):
     uv: tuple[UV, ...]
     material: int
     backface_culling: bool
+    is_lane: bool = False
 
 
 @dataclass(frozen=True)
