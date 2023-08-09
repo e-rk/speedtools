@@ -53,6 +53,12 @@ class Color(NamedTuple):
         return tuple(map(lambda x: x / 255, self.rgb))  # type: ignore[return-value]
 
 
+class Matrix3x3(NamedTuple):
+    x: Vector3d
+    z: Vector3d
+    y: Vector3d
+
+
 @dataclass(frozen=True)
 class BasePolygon:
     face: tuple[int, ...]
@@ -120,6 +126,7 @@ class TrackObject:
     collision_type: CollisionType
     location: Optional[Vector3d] = None
     animation: Optional[Animation] = None
+    transform: Optional[Matrix3x3] = None
 
 
 @dataclass(frozen=True)

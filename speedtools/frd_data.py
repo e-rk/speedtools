@@ -15,7 +15,15 @@ from itertools import chain, compress, groupby, starmap
 from pathlib import Path
 from typing import Any, Optional
 
-from more_itertools import collapse, nth, unique_everseen, unzip
+from more_itertools import (
+    chunked,
+    collapse,
+    nth,
+    strictly_n,
+    transpose,
+    unique_everseen,
+    unzip,
+)
 
 from speedtools.parsers import FrdParser
 from speedtools.types import (
@@ -26,6 +34,7 @@ from speedtools.types import (
     CollisionType,
     DrawableMesh,
     LightStub,
+    Matrix3x3,
     ObjectType,
     Polygon,
     Quaternion,
@@ -98,8 +107,27 @@ class FrdData:
         return collision_type
 
     @classmethod
-    def _int3_to_vector3d(cls, location: FrdParser.Int3) -> Vector3d:
-        return Vector3d(x=location.x / 65536.0, y=location.y / 65536.0, z=location.z / 65536.0)
+    def _int3_to_vector3d(cls, value: FrdParser.Int3) -> Vector3d:
+        return Vector3d(
+            x=value.x / 65536.0,
+            y=value.y / 65536.0,
+            z=value.z / 65536.0,
+        )
+
+    @classmethod
+    def _short4_to_quaternion(cls, value: FrdParser.Short4) -> Quaternion:
+        return Quaternion(
+            x=value.x / 65536.0,
+            y=value.y / 65536.0,
+            z=value.z / 65536.0,
+            w=value.w / 65536.0,
+        )
+
+    @classmethod
+    def _make_matrix(cls, value: Sequence[float]) -> Matrix3x3:
+        val = list(strictly_n(value, 9))
+        rows = [Vector3d(x=x, y=y, z=z) for x, y, z in transpose(chunked(val, 3, strict=True))]
+        return Matrix3x3(x=rows[0], y=rows[1], z=rows[2])
 
     @classmethod
     def _make_object(
@@ -110,24 +138,18 @@ class FrdData:
     ) -> TrackObject:
         location = None
         animation = None
+        transform = None
         if obj.type in (ObjectType.normal1, ObjectType.normal2):
             location = Vector3d(x=obj.location.x, y=obj.location.y, z=obj.location.z)
-        if obj.type == ObjectType.animated:
+        if obj.type == ObjectType.special:
+            location = Vector3d(x=obj.location.x, y=obj.location.y, z=obj.location.z)
+            transform = cls._make_matrix(extra.special.transform)
+        elif obj.type == ObjectType.animated:
             locations = [
-                Vector3d(
-                    x=keyframe.location.x / 65536.0,
-                    y=keyframe.location.y / 65536.0,
-                    z=keyframe.location.z / 65536.0,
-                )
-                for keyframe in extra.animation.keyframes
+                cls._int3_to_vector3d(keyframe.location) for keyframe in extra.animation.keyframes
             ]
             quaternions = [
-                Quaternion(
-                    x=keyframe.quaternion.x,
-                    y=keyframe.quaternion.y,
-                    z=keyframe.quaternion.z,
-                    w=keyframe.quaternion.w,
-                )
+                cls._short4_to_quaternion(keyframe.quaternion)
                 for keyframe in extra.animation.keyframes
             ]
             animation = Animation(
@@ -141,7 +163,11 @@ class FrdData:
         mesh = DrawableMesh(vertices=vertices, polygons=polygons)
         collision_type = cls._get_object_collision_type(segment=segment, obj=obj)
         return TrackObject(
-            mesh=mesh, collision_type=collision_type, location=location, animation=animation
+            mesh=mesh,
+            collision_type=collision_type,
+            location=location,
+            animation=animation,
+            transform=transform,
         )
 
     @classmethod
@@ -207,8 +233,14 @@ class FrdData:
 
     @classmethod
     def _make_segment_objects(cls, segment: FrdParser.SegmentData) -> Iterator[TrackObject]:
+        return cls._make_objects_from_chunks(segment=segment, chunks=segment.object_chunks)
+
+    @classmethod
+    def _make_objects_from_chunks(
+        cls, segment: FrdParser.SegmentData | None, chunks: Iterable[FrdParser.ObjectChunk]
+    ) -> Iterator[TrackObject]:
         objects = chain.from_iterable(
-            zip(obj.objects, obj.object_extras, strict=True) for obj in segment.object_chunks
+            zip(obj.objects, obj.object_extras, strict=True) for obj in chunks
         )
         return starmap(partial(cls._make_object, segment), objects)
 
@@ -223,11 +255,8 @@ class FrdData:
         segment_objects = collapse(
             map(self._make_segment_objects, self.frd.segment_data), levels=1
         )
-        global_objects = map(
-            partial(self._make_object, None),
-            self.frd.global_objects.objects,
-            self.frd.global_objects.object_extras,
-        )
+        global_chunks = (global_chunk.chunk for global_chunk in self.frd.global_objects)
+        global_objects = self._make_objects_from_chunks(None, global_chunks)
         return chain(segment_objects, global_objects)
 
     @property

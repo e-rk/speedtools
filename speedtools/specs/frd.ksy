@@ -23,10 +23,10 @@ seq:
     parent: segment_headers[_index]
     repeat: expr
     repeat-expr: num_segments + 1
-  - id: num_global_objects
-    type: u4
   - id: global_objects
-    type: object_chunk(num_global_objects)
+    type: global_object_chunk
+    repeat: expr
+    repeat-expr: 2
 types:
   float3:
     seq:
@@ -35,6 +35,16 @@ types:
       - id: y
         type: f4
       - id: z
+        type: f4
+  float4:
+    seq:
+      - id: x
+        type: f4
+      - id: y
+        type: f4
+      - id: z
+        type: f4
+      - id: w
         type: f4
   int3:
     seq:
@@ -426,6 +436,12 @@ types:
         parent: objects[_index]
         repeat: expr
         repeat-expr: objects.size
+  global_object_chunk:
+    seq:
+      - id: num_objects
+        type: u4
+      - id: chunk
+        type: object_chunk(num_objects)
   object_header:
     seq:
       - id: type
@@ -467,6 +483,12 @@ types:
         type: animation
         if: _parent.type == object_header::object_type::animated
         doc: Animation data
+        size: _parent.specific_data_size
+      - id: special
+        type: special_data
+        if: _parent.type == object_header::object_type::special
+        doc: Special object data
+        size: _parent.specific_data_size
       - id: vertices
         type: float3
         repeat: expr
@@ -504,6 +526,24 @@ types:
         repeat: expr
         repeat-expr: num_keyframes
         doc: Animation keyframes
+  special_data:
+    seq:
+      - id: location
+        type: float3
+      - id: unknown1
+        type: u4
+      - id: transform
+        type: f4
+        repeat: expr
+        repeat-expr: 9
+      - id: unknown2
+        type: float3
+      - id: unknown3
+        type: u4
+      - id: unknown4
+        type: u2
+      - id: unknown5
+        type: u2
   keyframe:
     seq:
       - id: location
