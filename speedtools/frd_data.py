@@ -86,7 +86,7 @@ class FrdData:
     def _get_object_collision_type(
         cls, segment: Optional[FrdParser.SegmentData], obj: FrdParser.ObjectHeader
     ) -> CollisionType:
-        logger.info(f"Object: {vars(obj)}")
+        logger.debug(f"Object: {vars(obj)}")
         if (
             obj.type is not ObjectType.normal1 and obj.type is not ObjectType.normal2
         ) or segment is None:
