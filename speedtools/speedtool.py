@@ -12,8 +12,9 @@ from pathlib import Path
 
 import click
 
+from speedtools.fsh_data import FshData
 from speedtools.track_data import TrackData
-from speedtools.utils import export_resource
+from speedtools.utils import export_resource, unique_named_resources
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -25,9 +26,9 @@ logger.addHandler(sh)
 @click.option("--output", help="Output directory", type=click.Path())
 @click.argument("path", type=click.Path())
 def unpack(output: Path, path: Path) -> None:
-    data = TrackData(directory=path, game_root=path.parent.parent.parent)
-    nonmirrored = filter(lambda x: not x.mirrored, data.track_resources)
-    export_resource(nonmirrored, directory=output)
+    data = FshData.from_file(Path(path))
+    resources = unique_named_resources(data.resources)
+    export_resource(resources, directory=output)
 
 
 @click.command()

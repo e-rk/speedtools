@@ -39,6 +39,21 @@ def count_repeats_and_map(
         yield func(item, count[k])
 
 
+def unique_named_resources(iterable: Iterable[Resource]) -> Iterable[Resource]:
+    def make_unique_name(resource: Resource, repeats: int) -> Resource:
+        if repeats == 0:
+            return resource
+        return Resource(
+            name=f"{resource.name}-{repeats}",
+            image=resource.image,
+            mirrored=resource.mirrored,
+            nonmirrored=resource.nonmirrored,
+            additive=resource.additive,
+        )
+
+    return count_repeats_and_map(iterable=iterable, func=make_unique_name, key=lambda x: x.name)
+
+
 @singledispatch
 def create_pil_image(image: Image) -> Any:
     buffer = BytesIO(image.data)
