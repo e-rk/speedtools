@@ -10,8 +10,6 @@ authors = [{ name = "Rafał Kuźnia" }, { email = "rafal.kuznia@protonmail.com" 
 readme = { file = 'README.md', content-type = 'text/markdown' }
 dependencies = ["kaitaistruct", "pillow", "click", "more-itertools", "parse"]
 license = { text = "GPL-3.0-or-later" }
-homepage = "https://github.com/e-rk/speedtools"
-repository = "https://github.com/e-rk/speedtools"
 classifiers = [
     'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
     'Operating System :: OS Independent',
@@ -27,6 +25,10 @@ classifiers = [
 [project.scripts]
 speedtool-unpack = "speedtools.speedtool:unpack"
 speedtool-obj = "speedtools.speedtool:obj"
+
+[project.urls]
+homepage = "https://github.com/e-rk/speedtools"
+repository = "https://github.com/e-rk/speedtools"
 
 [tool.isort]
 profile = "black"
