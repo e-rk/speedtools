@@ -34,7 +34,7 @@ T = TypeVar("T")
 class TrackData:
     SUN_DISTANCE = 3000
     ANIMATION_FPS = 64
-    SFX_RESOURCE_FILE = "Data/GAMEART/SFX.FSH"
+    SFX_RESOURCE_FILE = Path("Data", "GAMEART", "SFX.FSH")
 
     def __init__(
         self,
