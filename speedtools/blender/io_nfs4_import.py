@@ -27,6 +27,7 @@ from speedtools.types import (
     DirectionalLight,
     DrawableMesh,
     Light,
+    Matrix3x3,
     Part,
     Polygon,
     Resource,
@@ -155,6 +156,12 @@ class BaseImporter(metaclass=ABCMeta):
             obj.keyframe_insert(data_path="rotation_quaternion", frame=interval)
         obj.animation_data.action.name = f"{obj.name}-loop"
 
+    def set_object_rotation(self, obj: bpy.types.Object, transform: Matrix3x3) -> None:
+        mu_matrix = mathutils.Matrix(transform)
+        mu_euler = mu_matrix.to_euler("XYZ")  # type: ignore # pylint: disable=all
+        obj.rotation_mode = "XYZ"
+        obj.rotation_euler = mu_euler  # type: ignore[assignment]
+
     def make_drawable_object(self, name: str, mesh: DrawableMesh) -> bpy.types.Object:
         bpy_mesh = self.make_base_mesh(name=name, mesh=mesh)
         uv_layer = bpy_mesh.uv_layers.new()
@@ -225,6 +232,8 @@ class TrackImportSimple(TrackImportStrategy, BaseImporter):
                 self.set_object_location(obj=bpy_obj, location=obj.location)
             if obj.animation:
                 self.set_object_animation(obj=bpy_obj, animation=obj.animation)
+            if obj.transform:
+                self.set_object_rotation(obj=bpy_obj, transform=obj.transform)
             track_collection.objects.link(bpy_obj)
         for index, light in enumerate(track.lights):
             name = f"Track light {index}"
