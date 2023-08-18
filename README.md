@@ -8,6 +8,10 @@ Additionally, Blender addon is provided to directly import track and car data.
 
 # Setup (Blender addon version)
 
+> **Warning**: It is recommended to use this addon with Blender 3.5 or newer. Using older Blender versions may cause difficult to troubleshoot
+problems during the installation step with `pip`, because the built-in python is unable to import packages from the user site directory.
+Newer Blender versions don't have this problem.
+
 1. Create new empty Blender project and save it
    > **Warning**: Not saving the project may cause errors during import. The importer saves all texture images to `<project-dir>/images` directory.
 2. Open the __Scripting__ tab
