@@ -32,6 +32,7 @@ from speedtools.types import (
     BasePolygon,
     CollisionMesh,
     CollisionType,
+    Color,
     DrawableMesh,
     LightStub,
     Matrix3x3,
@@ -144,7 +145,14 @@ class FrdData:
             )
         vertex_locations = [Vector3d.from_frd_float3(vertex) for vertex in extra.vertices]
         polygons = [cls._make_polygon(polygon) for polygon in extra.polygons]
-        vertices = [Vertex(location=loc) for loc in vertex_locations]
+        vertex_colors = [
+            Color(alpha=shading.alpha, red=shading.red, green=shading.green, blue=shading.blue)
+            for shading in extra.vertex_shadings
+        ]
+        vertices = [
+            Vertex(location=loc, color=color)
+            for loc, color in zip(vertex_locations, vertex_colors, strict=True)
+        ]
         mesh = DrawableMesh(vertices=vertices, polygons=polygons)
         collision_type = cls._get_object_collision_type(segment=segment, obj=obj)
         return TrackObject(
@@ -188,7 +196,14 @@ class FrdData:
         vertex_locations = [Vector3d.from_frd_float3(vertex) for vertex in segment.vertices]
         track_polygons = [cls._make_polygon(polygon) for polygon in polygons]
         collision_meshes = list(cls._make_collision_meshes(segment))
-        vertices = [Vertex(location=loc) for loc in vertex_locations]
+        vertex_colors = [
+            Color(alpha=shading.alpha, red=shading.red, green=shading.green, blue=shading.blue)
+            for shading in segment.vertex_shadings
+        ]
+        vertices = [
+            Vertex(location=loc, color=color)
+            for loc, color in zip(vertex_locations, vertex_colors, strict=True)
+        ]
         mesh = DrawableMesh(vertices=vertices, polygons=track_polygons)
         return TrackSegment(mesh=mesh, collision_meshes=collision_meshes)
 

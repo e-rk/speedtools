@@ -214,11 +214,11 @@ types:
         repeat: expr
         repeat-expr: _parent.num_vertices
         doc: Vertice coordinates
-      - id: vertice_shadings
+      - id: vertex_shadings
         type: color
         repeat: expr
         repeat-expr: _parent.num_vertices
-        doc: Vertice shading color
+        doc: Vertex shading color
       - id: driveable_polygons
         type: driveable_polygon
         repeat: expr
@@ -494,11 +494,11 @@ types:
         repeat: expr
         repeat-expr: _parent.num_vertices
         doc: Vertice coordinates
-      - id: vertice_shadings
+      - id: vertex_shadings
         type: color
         repeat: expr
         repeat-expr: _parent.num_vertices
-        doc: Vertice shading color
+        doc: Vertex shading color
       - id: polygons
         type: polygon
         repeat: expr
@@ -554,15 +554,15 @@ types:
         doc: Object rotation at keyframe
   color:
     seq:
-      - id: red
-        type: u1
-        doc: Red color channel
-      - id: green
-        type: u1
-        doc: Green color channel
       - id: blue
         type: u1
         doc: Blue color channel
+      - id: green
+        type: u1
+        doc: Green color channel
+      - id: red
+        type: u1
+        doc: Red color channel
       - id: alpha
         type: u1
         doc: Alpha color channel
