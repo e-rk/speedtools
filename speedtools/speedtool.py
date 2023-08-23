@@ -7,6 +7,7 @@
 
 import logging
 import os
+from collections.abc import Sequence
 from contextlib import suppress
 from pathlib import Path
 
@@ -23,12 +24,15 @@ logger.addHandler(sh)
 
 
 @click.command()
-@click.option("--output", help="Output directory", type=click.Path())
-@click.argument("path", type=click.Path())
-def unpack(output: Path, path: Path) -> None:
-    data = FshData.from_file(Path(path))
-    resources = unique_named_resources(data.resources)
-    export_resource(resources, directory=output)
+@click.option("--output", help="Output directory", type=click.Path(path_type=Path))
+@click.argument("files", type=click.Path(path_type=Path), nargs=-1)
+def unpack(output: Path | None, files: Sequence[Path]) -> None:
+    for file in files:
+        logger.info(f"Unpacking: {file}")
+        out = Path(file.stem) if output is None else output
+        data = FshData.from_file(file)
+        resources = unique_named_resources(data.resources)
+        export_resource(resources, directory=out)
 
 
 @click.command()
