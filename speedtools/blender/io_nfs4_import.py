@@ -170,6 +170,12 @@ class BaseImporter(metaclass=ABCMeta):
             normals = tuple(mesh.vertex_normals)
             # I have no idea if setting the normals even works
             bpy_mesh.normals_split_custom_set_from_vertices(normals)  # type: ignore[arg-type]
+        if mesh.vertex_colors:
+            colors = collapse(color.rgba_float for color in mesh.vertex_colors)
+            bpy_colors = bpy_mesh.color_attributes.new(
+                name="Shading", type="FLOAT_COLOR", domain="POINT"
+            )
+            bpy_colors.data.foreach_set("color", tuple(colors))  # type: ignore[attr-defined]
         polygon_pairs = zip(mesh.polygons, bpy_mesh.polygons)
         sorted_by_material = sorted(polygon_pairs, key=lambda x: self._extender_resource_map(x[0]))
         grouped_by_material = groupby(
