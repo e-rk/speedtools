@@ -47,7 +47,8 @@ def mesh(output: Path, path: Path) -> None:
         with open(Path(output, f"object_{index}.obj"), "w", encoding="utf-8") as obj_file:
             obj_file.write(f"mtllib materials_{index}.mtl{os.linesep}")
             for vertex in obj.mesh.vertices:
-                obj_file.write(f"v {vertex.x} {vertex.y} {vertex.z}{os.linesep}")
+                loc = vertex.location
+                obj_file.write(f"v {loc.x} {loc.y} {loc.z}{os.linesep}")
             for i, polygon in enumerate(obj.mesh.polygons):
                 for uv in polygon.uv:
                     obj_file.write(f"vt {uv[0]} {uv[1]}{os.linesep}")

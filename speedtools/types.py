@@ -8,11 +8,11 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from math import pi
 from typing import NamedTuple, Optional, TypeAlias
 
-from speedtools.parsers import FrdParser, FshParser
+from speedtools.parsers import FceParser, FrdParser, FshParser
 
 RoadEffect: TypeAlias = FrdParser.DriveablePolygon.RoadEffect
 CollisionType: TypeAlias = FrdParser.ObjectAttribute.CollisionType
@@ -24,6 +24,22 @@ class Vector3d(NamedTuple):
     x: float
     z: float
     y: float
+
+    @classmethod
+    def from_frd_float3(cls, value: FrdParser.Float3) -> Vector3d:
+        return Vector3d(x=value.x, y=value.y, z=value.z)
+
+    @classmethod
+    def from_frd_int3(cls, value: FrdParser.Int3) -> Vector3d:
+        return Vector3d(
+            x=value.x / 65536.0,
+            y=value.y / 65536.0,
+            z=value.z / 65536.0,
+        )
+
+    @classmethod
+    def from_fce_float3(cls, value: FceParser.Float3) -> Vector3d:
+        return Vector3d(x=value.x, y=value.y, z=value.z)
 
 
 class UV(NamedTuple):
@@ -37,12 +53,21 @@ class Quaternion(NamedTuple):
     z: float
     y: float
 
+    @classmethod
+    def from_frd_short4(cls, value: FrdParser.Short4) -> Quaternion:
+        return Quaternion(
+            x=value.x / 65536.0,
+            y=value.y / 65536.0,
+            z=value.z / 65536.0,
+            w=value.w / 65536.0,
+        )
+
 
 class Color(NamedTuple):
-    alpha: int
     red: int
     green: int
     blue: int
+    alpha: int
 
     @property
     def rgb(self) -> tuple[int, int, int]:
@@ -50,7 +75,11 @@ class Color(NamedTuple):
 
     @property
     def rgb_float(self) -> tuple[float, float, float]:
-        return tuple(map(lambda x: x / 255, self.rgb))  # type: ignore[return-value]
+        return (self.red / 255, self.green / 255, self.blue / 255)
+
+    @property
+    def rgba_float(self) -> tuple[float, float, float, float]:
+        return (self.red / 255, self.green / 255, self.blue / 255, self.alpha / 255)
 
 
 class Matrix3x3(NamedTuple):
@@ -60,14 +89,39 @@ class Matrix3x3(NamedTuple):
 
 
 @dataclass(frozen=True)
+class Vertex:
+    location: Vector3d
+    normal: Vector3d | None = None
+    color: Color | None = None
+
+
+@dataclass(frozen=True)
 class BasePolygon:
     face: tuple[int, ...]
 
 
 @dataclass(frozen=True)
 class BaseMesh:
-    vertices: Sequence[Vector3d]
+    vertices: Sequence[Vertex]
     polygons: Sequence[BasePolygon]
+
+    @property
+    def vertex_locations(self) -> Sequence[Vector3d]:
+        return [vert.location for vert in self.vertices]
+
+    @property
+    def vertex_normals(self) -> Sequence[Vector3d]:
+        normals = [vert.normal for vert in self.vertices]
+        if None not in normals:
+            return normals  # type: ignore[return-value]
+        return []
+
+    @property
+    def vertex_colors(self) -> Sequence[Color]:
+        colors = [vert.color for vert in self.vertices]
+        if None not in colors:
+            return colors  # type: ignore[return-value]
+        return []
 
 
 @dataclass(frozen=True)
@@ -90,7 +144,6 @@ class Animation:
 @dataclass(frozen=True)
 class DrawableMesh(BaseMesh):
     polygons: Sequence[Polygon]
-    normals: Sequence[Vector3d] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

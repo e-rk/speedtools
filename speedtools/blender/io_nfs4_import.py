@@ -73,13 +73,12 @@ class BaseImporter(metaclass=ABCMeta):
         duplicate_vert_polys = list(
             duplicates_everseen(mesh.polygons, key=lambda x: frozenset(x.face))
         )
-        faces = chain.from_iterable(poly.face for poly in duplicate_vert_polys)
-        verts_to_duplicate = frozenset(mesh.vertices[x] for x in faces)
-        mapping = {v: i for i, v in enumerate(verts_to_duplicate, start=len(mesh.vertices))}
+        faces = frozenset(chain.from_iterable(poly.face for poly in duplicate_vert_polys))
+        verts_to_duplicate = [mesh.vertices[x] for x in faces]
+        mapping = {f: i for i, f in enumerate(faces, start=len(mesh.vertices))}
 
         def _make_polygon(polygon: Polygon) -> Polygon:
-            vertices = tuple(mesh.vertices[x] for x in polygon.face)
-            face = tuple(mapping[v] for v in vertices)
+            face = tuple(mapping[f] for f in polygon.face)
             return Polygon(
                 face=face,
                 uv=polygon.uv,
@@ -88,8 +87,8 @@ class BaseImporter(metaclass=ABCMeta):
             )
 
         polygons = unique_vert_polys + [_make_polygon(polygon) for polygon in duplicate_vert_polys]
-        vertices = list(mesh.vertices) + list(verts_to_duplicate)
-        return DrawableMesh(vertices=vertices, polygons=polygons, normals=mesh.normals)
+        vertices = list(mesh.vertices) + verts_to_duplicate
+        return DrawableMesh(vertices=vertices, polygons=polygons)
 
     def _extender_resource_map(self, polygon: Polygon) -> ExtendedResource:
         resource = self.material_map(polygon)
@@ -130,7 +129,7 @@ class BaseImporter(metaclass=ABCMeta):
     def make_base_mesh(self, name: str, mesh: BaseMesh) -> bpy.types.Mesh:
         bpy_mesh = bpy.data.meshes.new(name)
         bpy_mesh.from_pydata(
-            vertices=list(mesh.vertices),
+            vertices=list(mesh.vertex_locations),
             edges=[],
             faces=[polygon.face for polygon in mesh.polygons],
         )
@@ -167,8 +166,8 @@ class BaseImporter(metaclass=ABCMeta):
         uv_layer = bpy_mesh.uv_layers.new()
         uvs = collapse(polygon.uv for polygon in mesh.polygons)
         uv_layer.data.foreach_set("uv", list(uvs))
-        if mesh.normals:
-            normals = tuple(mesh.normals)
+        if mesh.vertex_normals:
+            normals = tuple(mesh.vertex_normals)
             # I have no idea if setting the normals even works
             bpy_mesh.normals_split_custom_set_from_vertices(normals)  # type: ignore[arg-type]
         polygon_pairs = zip(mesh.polygons, bpy_mesh.polygons)

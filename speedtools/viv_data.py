@@ -17,7 +17,16 @@ from typing import NamedTuple
 from more_itertools import one
 
 from speedtools.parsers import FceParser, VivParser
-from speedtools.types import UV, DrawableMesh, Image, Part, Polygon, Resource, Vector3d
+from speedtools.types import (
+    UV,
+    DrawableMesh,
+    Image,
+    Part,
+    Polygon,
+    Resource,
+    Vector3d,
+    Vertex,
+)
 from speedtools.utils import islicen
 
 
@@ -105,7 +114,7 @@ class VivData:
 
     @classmethod
     def _make_polygon(cls, polygon: FceParser.Polygon) -> Polygon:
-        face = tuple(vertice for vertice in polygon.face)
+        face = tuple(vertex for vertex in polygon.face)
         uv = tuple(UV(u, 1 - v) for u, v in zip(polygon.u, polygon.v))
         return Polygon(face=face, uv=uv, material=polygon.texture, backface_culling=True)
 
@@ -124,10 +133,14 @@ class VivData:
         part_normals: Iterable[FceParser.Float3],
         part_polygons: Iterable[FceParser.Polygon],
     ) -> DrawableMesh:
-        vertices = [Vector3d(x=vert.x, y=vert.y, z=vert.z) for vert in part_vertices]
-        normals = [Vector3d(x=normal.x, y=normal.y, z=normal.z) for normal in part_normals]
+        vertex_locations = [Vector3d.from_fce_float3(vert) for vert in part_vertices]
+        vertex_normals = [Vector3d.from_fce_float3(normal) for normal in part_normals]
+        vertices = [
+            Vertex(location=loc, normal=norm)
+            for loc, norm in zip(vertex_locations, vertex_normals, strict=True)
+        ]
         polygons = [cls._make_polygon(polygon) for polygon in part_polygons]
-        return DrawableMesh(vertices=vertices, normals=normals, polygons=polygons)
+        return DrawableMesh(vertices=vertices, polygons=polygons)
 
     @classmethod
     def _make_part(

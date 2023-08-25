@@ -42,6 +42,7 @@ from speedtools.types import (
     TrackObject,
     TrackSegment,
     Vector3d,
+    Vertex,
 )
 
 logger = logging.getLogger(__name__)
@@ -107,23 +108,6 @@ class FrdData:
         return collision_type
 
     @classmethod
-    def _int3_to_vector3d(cls, value: FrdParser.Int3) -> Vector3d:
-        return Vector3d(
-            x=value.x / 65536.0,
-            y=value.y / 65536.0,
-            z=value.z / 65536.0,
-        )
-
-    @classmethod
-    def _short4_to_quaternion(cls, value: FrdParser.Short4) -> Quaternion:
-        return Quaternion(
-            x=value.x / 65536.0,
-            y=value.y / 65536.0,
-            z=value.z / 65536.0,
-            w=value.w / 65536.0,
-        )
-
-    @classmethod
     def _make_matrix(cls, value: Sequence[float]) -> Matrix3x3:
         val = list(strictly_n(value, 9))
         rows = [Vector3d(x=x, y=y, z=z) for x, y, z in transpose(chunked(val, 3, strict=True))]
@@ -146,10 +130,10 @@ class FrdData:
             transform = cls._make_matrix(extra.special.transform)
         elif obj.type == ObjectType.animated:
             locations = [
-                cls._int3_to_vector3d(keyframe.location) for keyframe in extra.animation.keyframes
+                Vector3d.from_frd_int3(keyframe.location) for keyframe in extra.animation.keyframes
             ]
             quaternions = [
-                cls._short4_to_quaternion(keyframe.quaternion)
+                Quaternion.from_frd_short4(keyframe.quaternion)
                 for keyframe in extra.animation.keyframes
             ]
             animation = Animation(
@@ -158,8 +142,9 @@ class FrdData:
                 locations=locations,
                 quaternions=quaternions,
             )
-        vertices = [Vector3d(x=vertice.x, y=vertice.y, z=vertice.z) for vertice in extra.vertices]
+        vertex_locations = [Vector3d.from_frd_float3(vertex) for vertex in extra.vertices]
         polygons = [cls._make_polygon(polygon) for polygon in extra.polygons]
+        vertices = [Vertex(location=loc) for loc in vertex_locations]
         mesh = DrawableMesh(vertices=vertices, polygons=polygons)
         collision_type = cls._get_object_collision_type(segment=segment, obj=obj)
         return TrackObject(
@@ -181,9 +166,8 @@ class FrdData:
             BasePolygon(face=segment.chunks[4].polygons[polygon.polygon].face)
             for polygon in driveable_polygons
         ]
-        vertices = [
-            Vector3d(x=vertice.x, y=vertice.y, z=vertice.z) for vertice in segment.vertices
-        ]
+        vertex_locations = [Vector3d.from_frd_float3(vertex) for vertex in segment.vertices]
+        vertices = [Vertex(location=loc) for loc in vertex_locations]
         return CollisionMesh(
             vertices=vertices, polygons=polygons, collision_effect=RoadEffect(road_effect)
         )
@@ -201,11 +185,10 @@ class FrdData:
     @classmethod
     def _make_track_segment(cls, segment: FrdParser.SegmentData) -> TrackSegment:
         polygons = chain.from_iterable(chunk.polygons for chunk in cls._high_poly_chunks(segment))
-        vertices = [
-            Vector3d(x=vertice.x, y=vertice.y, z=vertice.z) for vertice in segment.vertices
-        ]
+        vertex_locations = [Vector3d.from_frd_float3(vertex) for vertex in segment.vertices]
         track_polygons = [cls._make_polygon(polygon) for polygon in polygons]
         collision_meshes = list(cls._make_collision_meshes(segment))
+        vertices = [Vertex(location=loc) for loc in vertex_locations]
         mesh = DrawableMesh(vertices=vertices, polygons=track_polygons)
         return TrackSegment(mesh=mesh, collision_meshes=collision_meshes)
 
@@ -246,7 +229,7 @@ class FrdData:
 
     @classmethod
     def _make_dummy(cls, dummy: FrdParser.SourceType) -> LightStub:
-        location = cls._int3_to_vector3d(dummy.location)
+        location = Vector3d.from_frd_int3(dummy.location)
         identifier = dummy.type & 0x1F
         return LightStub(location=location, glow_id=identifier)
 
