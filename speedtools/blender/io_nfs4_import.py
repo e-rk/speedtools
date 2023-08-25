@@ -108,13 +108,15 @@ class BaseImporter(metaclass=ABCMeta):
         image_texture.extension = "CLIP"  # type: ignore[attr-defined]
         bsdf = node_tree.nodes["Principled BSDF"]
         bsdf.inputs["Specular"].default_value = 0  # type: ignore[attr-defined]
+        bsdf.inputs["Roughness"].default_value = 1  # type: ignore[attr-defined]
+        bsdf.inputs["Sheen Tint"].default_value = 0  # type: ignore[attr-defined]
         node_tree.links.new(image_texture.outputs["Color"], bsdf.inputs["Base Color"])
         node_tree.links.new(image_texture.outputs["Alpha"], bsdf.inputs["Alpha"])
         if resource.additive:
             bpy_material.blend_method = "BLEND"
         else:
             bpy_material.blend_method = "CLIP"
-        bpy_material.alpha_threshold = 0
+        bpy_material.alpha_threshold = 0.001
         bpy_material.use_backface_culling = ext_resource.backface_culling
         return bpy_material
 
