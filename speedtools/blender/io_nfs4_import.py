@@ -94,6 +94,12 @@ class BaseImporter(metaclass=ABCMeta):
         resource = self.material_map(polygon)
         return ExtendedResource(resource=resource, backface_culling=polygon.backface_culling)
 
+    def _link_texture_to_shader(
+        self, node_tree: bpy.types.NodeTree, texture: bpy.types.Node, shader: bpy.types.Node
+    ) -> None:
+        node_tree.links.new(texture.outputs["Color"], shader.inputs["Base Color"])
+        node_tree.links.new(texture.outputs["Alpha"], shader.inputs["Alpha"])
+
     def _make_material(self, ext_resource: ExtendedResource) -> bpy.types.Material:
         resource = ext_resource.resource
         images_dir = Path(bpy.path.abspath("//images"))
@@ -110,8 +116,7 @@ class BaseImporter(metaclass=ABCMeta):
         bsdf.inputs["Specular"].default_value = 0  # type: ignore[attr-defined]
         bsdf.inputs["Roughness"].default_value = 1  # type: ignore[attr-defined]
         bsdf.inputs["Sheen Tint"].default_value = 0  # type: ignore[attr-defined]
-        node_tree.links.new(image_texture.outputs["Color"], bsdf.inputs["Base Color"])
-        node_tree.links.new(image_texture.outputs["Alpha"], bsdf.inputs["Alpha"])
+        self._link_texture_to_shader(node_tree=node_tree, texture=image_texture, shader=bsdf)
         if resource.additive:
             bpy_material.blend_method = "BLEND"
         else:
@@ -276,6 +281,22 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
             light_collection.objects.link(bpy_obj)
 
 
+class TrackImportBlender(TrackImportGLTF):
+    def _link_texture_to_shader(
+        self, node_tree: bpy.types.NodeTree, texture: bpy.types.Node, shader: bpy.types.Node
+    ) -> None:
+        color_attributes = node_tree.nodes.new("ShaderNodeAttribute")
+        color_attributes.attribute_name = "Shading"  # type: ignore[attr-defined]
+        mixer = node_tree.nodes.new("ShaderNodeMixRGB")
+        mixer.blend_type = "MULTIPLY"  # type: ignore[attr-defined]
+        mixer.inputs["Fac"].default_value = 1.0  # type: ignore[attr-defined]
+        logger.error(f"Inputs: {mixer.inputs.values()}")
+        node_tree.links.new(texture.outputs["Color"], mixer.inputs["Color1"])
+        node_tree.links.new(color_attributes.outputs["Color"], mixer.inputs["Color2"])
+        node_tree.links.new(mixer.outputs["Color"], shader.inputs["Base Color"])
+        node_tree.links.new(texture.outputs["Alpha"], shader.inputs["Alpha"])
+
+
 class CarImporterSimple(BaseImporter):
     def import_car(self, parts: Iterable[Part]) -> None:
         car_collection = bpy.data.collections.new("Car parts")
@@ -311,6 +332,15 @@ class TrackImporter(bpy.types.Operator):
                 "Parametrized import of visible track geometry, lights, animations, "
                 "collision geometry and more. Stores data that can't be represented in "
                 "GLTF 'extras' fields.",
+            ),
+            (
+                "BLENDER",
+                "Blender target",
+                "This option should be used when accurate look in Blender is desired."
+                "Some data, such as vertex shading, can't be viewed in Blender without specific"
+                "shader node connections. Such connections are on the other hand poorly understood"
+                "by exporters, such as the GLTF exporter. Therefore this mode must never be"
+                "used if you intent to export the track to GLTF.",
             ),
         ),
         description="Select importer mode",
@@ -354,6 +384,8 @@ class TrackImporter(bpy.types.Operator):
         import_strategy: TrackImportStrategy
         if self.mode == "GLTF":
             import_strategy = TrackImportGLTF(material_map=track.get_polygon_material)
+        elif self.mode == "BLENDER":
+            import_strategy = TrackImportBlender(material_map=track.get_polygon_material)
         else:
             return {"CANCELLED"}
         import_strategy.import_track(
