@@ -163,7 +163,9 @@ class BaseImporter(metaclass=ABCMeta):
         obj.rotation_mode = "XYZ"
         obj.rotation_euler = mu_euler  # type: ignore[assignment]
 
-    def make_drawable_object(self, name: str, mesh: DrawableMesh) -> bpy.types.Object:
+    def make_drawable_object(
+        self, name: str, mesh: DrawableMesh, import_shading: bool = False
+    ) -> bpy.types.Object:
         bpy_mesh = self.make_base_mesh(name=name, mesh=mesh)
         uv_layer = bpy_mesh.uv_layers.new()
         uvs = collapse(polygon.uv for polygon in mesh.polygons)
@@ -172,7 +174,7 @@ class BaseImporter(metaclass=ABCMeta):
             normals = tuple(mesh.vertex_normals)
             # I have no idea if setting the normals even works
             bpy_mesh.normals_split_custom_set_from_vertices(normals)  # type: ignore[arg-type]
-        if mesh.vertex_colors:
+        if mesh.vertex_colors and import_shading:
             colors = collapse(color.rgba_float for color in mesh.vertex_colors)
             bpy_colors = bpy_mesh.color_attributes.new(
                 name="Shading", type="FLOAT_COLOR", domain="POINT"
@@ -218,12 +220,16 @@ class BaseImporter(metaclass=ABCMeta):
 
 class TrackImportStrategy(metaclass=ABCMeta):
     @abstractmethod
-    def import_track(self, track: TrackData, import_collision: bool = False) -> None:
+    def import_track(
+        self, track: TrackData, import_collision: bool = False, import_shading: bool = False
+    ) -> None:
         pass
 
 
 class TrackImportGLTF(TrackImportStrategy, BaseImporter):
-    def import_track(self, track: TrackData, import_collision: bool = False) -> None:
+    def import_track(
+        self, track: TrackData, import_collision: bool = False, import_shading: bool = False
+    ) -> None:
         bpy.context.scene.render.fps = track.ANIMATION_FPS
         track_collection = bpy.data.collections.new("Track segments")
         bpy.context.scene.collection.children.link(track_collection)
@@ -231,7 +237,9 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
             name = f"Segment {index}"
             segment_collection = bpy.data.collections.new(name=name)
             track_collection.children.link(segment_collection)
-            bpy_obj = self.make_drawable_object(name=name, mesh=segment.mesh)
+            bpy_obj = self.make_drawable_object(
+                name=name, mesh=segment.mesh, import_shading=import_shading
+            )
             segment_collection.objects.link(bpy_obj)
             if import_collision:
                 for collision_index, collision_mesh in enumerate(segment.collision_meshes):
@@ -246,7 +254,9 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
         for index, obj in enumerate(track.objects):
             name = f"Object {index}"
             mesh = self.duplicate_common_vertices(mesh=obj.mesh)
-            bpy_obj = self.make_drawable_object(name=name, mesh=mesh)
+            bpy_obj = self.make_drawable_object(
+                name=name, mesh=mesh, import_shading=import_shading
+            )
             if obj.location:
                 self.set_object_location(obj=bpy_obj, location=obj.location)
             if obj.animation:
@@ -314,6 +324,11 @@ class TrackImporter(bpy.types.Operator):
     mirrored: BoolProperty(  # type: ignore[valid-type]
         name="Mirrored on", description="Import mirrored track variant", default=False
     )
+    import_shading: BoolProperty(  # type: ignore[valid-type]
+        name="Import vertex shading",
+        description="Import original vertex shading to obtain the 'original' track look.",
+        default=False,
+    )
     import_collision: BoolProperty(  # type: ignore[valid-type]
         name="Import collision (experimental)",
         description="Import collision meshes (ending with -colonly)",
@@ -341,7 +356,11 @@ class TrackImporter(bpy.types.Operator):
             import_strategy = TrackImportGLTF(material_map=track.get_polygon_material)
         else:
             return {"CANCELLED"}
-        import_strategy.import_track(track=track, import_collision=self.import_collision)
+        import_strategy.import_track(
+            track=track,
+            import_collision=self.import_collision,
+            import_shading=self.import_shading,
+        )
         return {"FINISHED"}
 
 
