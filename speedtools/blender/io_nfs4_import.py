@@ -336,11 +336,12 @@ class TrackImporter(bpy.types.Operator):
             (
                 "BLENDER",
                 "Blender target",
-                "This option should be used when accurate look in Blender is desired."
-                "Some data, such as vertex shading, can't be viewed in Blender without specific"
-                "shader node connections. Such connections are on the other hand poorly understood"
-                "by exporters, such as the GLTF exporter. Therefore this mode must never be"
-                "used if you intent to export the track to GLTF.",
+                "This option should be used when accurate look in Blender is desired. "
+                "Some data, such as vertex shading, can't be viewed in Blender without specific "
+                "shader node connections. Such connections are on the other hand poorly understood "
+                "by exporters, such as the GLTF exporter. Therefore this mode must never be "
+                "used if you intent to export the track to GLTF. Vertex shading is always enabled "
+                "in this mode.",
             ),
         ),
         description="Select importer mode",
@@ -356,7 +357,7 @@ class TrackImporter(bpy.types.Operator):
     )
     import_shading: BoolProperty(  # type: ignore[valid-type]
         name="Import vertex shading",
-        description="Import original vertex shading to obtain the 'original' track look.",
+        description="Import original vertex shading to obtain the 'original' track look",
         default=False,
     )
     import_collision: BoolProperty(  # type: ignore[valid-type]
@@ -381,17 +382,19 @@ class TrackImporter(bpy.types.Operator):
             night=self.night,
             weather=self.weather,
         )
+        import_shading = self.import_shading
         import_strategy: TrackImportStrategy
         if self.mode == "GLTF":
             import_strategy = TrackImportGLTF(material_map=track.get_polygon_material)
         elif self.mode == "BLENDER":
             import_strategy = TrackImportBlender(material_map=track.get_polygon_material)
+            import_shading = True
         else:
             return {"CANCELLED"}
         import_strategy.import_track(
             track=track,
             import_collision=self.import_collision,
-            import_shading=self.import_shading,
+            import_shading=import_shading,
         )
         return {"FINISHED"}
 
