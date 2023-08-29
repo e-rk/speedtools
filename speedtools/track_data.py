@@ -8,7 +8,7 @@ import logging
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import suppress
 from functools import lru_cache, partial, partialmethod, reduce
-from itertools import accumulate, chain, cycle, starmap
+from itertools import accumulate, chain, cycle, repeat, starmap
 from math import atan2, cos, tau
 from operator import add
 from pathlib import Path
@@ -42,6 +42,7 @@ from speedtools.types import (
     TrackObject,
     TrackSegment,
     Vector3d,
+    Vertex,
 )
 from speedtools.utils import (
     islicen,
@@ -183,10 +184,11 @@ class TrackData:
         return Vector3d(x=vertice.x, y=y, z=vertice.z)
 
     @classmethod
-    def _raise_vertice(cls, height: Tuple[Vector3d, float], vertice: Vector3d) -> Vector3d:
+    def _raise_vertex(cls, height: Tuple[Vector3d, float], vertice: Vertex) -> Vertex:
         _, h = height
-        y = vertice.y + h
-        return Vector3d(x=vertice.x, y=y, z=vertice.z)
+        y = vertice.location.y + h
+        location = Vector3d(x=vertice.location.x, y=y, z=vertice.location.z)
+        return Vertex(location=location)
 
     @classmethod
     def _make_wall_polygon(cls, offset: int, f: tuple[int, ...], edge: Edge) -> CollisionPolygon:
@@ -238,9 +240,9 @@ class TrackData:
         cls, heights: Sequence[Tuple[Vector3d, float]], mesh: CollisionMesh
     ) -> CollisionMesh:
         @lru_cache
-        def sort_key(p: Vector3d, x: Tuple[Vector3d, float]) -> float:
-            v, _ = x
-            diff = p.subtract(v)
+        def sort_key(vertex: Vertex, x: Tuple[Vector3d, float]) -> float:
+            location, _ = x
+            diff = vertex.location.subtract(location)
             return diff.magnitude()
 
         def get_height(x: Tuple[Vector3d, float]) -> float:
@@ -253,7 +255,7 @@ class TrackData:
         target_heights = map(partial(take, 3), closest)
         target_heights = map(partial(min, key=get_height), target_heights)
         vertices = [
-            cls._raise_vertice(height, vertice)
+            cls._raise_vertex(height, vertice)
             for height, vertice in zip(target_heights, mesh.vertices, strict=True)
         ]
         return CollisionMesh(
@@ -271,7 +273,7 @@ class TrackData:
             cls._make_wall_mesh(floor, ceiling)
             for floor, ceiling in zip(floor, ceiling, strict=True)
         ]
-        collision_meshes = chain(floor, ceiling, walls)
+        collision_meshes = chain(floor, walls)
         return TrackSegment(
             mesh=segment.mesh, collision_meshes=list(collision_meshes), waypoints=segment.waypoints
         )
