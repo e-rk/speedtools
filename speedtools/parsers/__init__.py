@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
+from .can import Can as CanParser
 from .fce import Fce as FceParser
 from .frd import Frd as FrdParser
 from .fsh import Fsh as FshParser
@@ -17,4 +18,5 @@ __all__ = [
     "QfsParser",
     "VivParser",
     "FceParser",
+    "CanParser",
 ]
