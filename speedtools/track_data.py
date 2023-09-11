@@ -6,16 +6,21 @@
 #
 
 import logging
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import suppress
+from functools import partial
 from math import atan2, cos, tau
 from pathlib import Path
 from typing import TypeVar
 
+from speedtools.can_data import CanData
 from speedtools.frd_data import FrdData
 from speedtools.fsh_data import FshData
 from speedtools.tr_ini import TrackIni
 from speedtools.types import (
+    Action,
+    AnimationAction,
+    CollisionType,
     DirectionalLight,
     Light,
     LightAttributes,
@@ -32,6 +37,10 @@ T = TypeVar("T")
 
 
 class TrackData:
+    ANIMATION_ACTIONS = (
+        (Action.DESTROY_LOW_SPEED, "TR02.CAN"),
+        (Action.DESTROY_HIGH_SPEED, "TR03.CAN"),
+    )
     SUN_DISTANCE = 3000
     ANIMATION_FPS = 64
     SFX_RESOURCE_FILE = Path("Data", "GAMEART", "SFX.FSH")
@@ -82,6 +91,7 @@ class TrackData:
             weather=weather,
         )
         self.sfx: FshData = FshData.from_file(Path(game_root, self.SFX_RESOURCE_FILE))
+        self.can: Sequence[tuple[Action, CanData]] = self.tr_can_open(directory=directory)
         self.resources: dict[int, Resource] = {}
         self.sfx_resources: dict[str, Resource] = {}
         self.light_glows: dict[int, LightAttributes] = {}
@@ -113,9 +123,36 @@ class TrackData:
                 return constructor(Path(directory, f"{prefix}{variant}{postfix}"))
         raise FileNotFoundError(f"File {prefix}{postfix} or its variants not found")
 
+    @classmethod
+    def tr_can_open(cls, directory: Path) -> Sequence[tuple[Action, CanData]]:
+        data = [
+            (action, CanData.from_file(Path(directory, filename)))
+            for action, filename in cls.ANIMATION_ACTIONS
+        ]
+        return data
+
+    @classmethod
+    def _finalize_object(cls, actions: Iterable[AnimationAction], obj: TrackObject) -> TrackObject:
+        object_actions = list(obj.actions)
+        if obj.collision_type is CollisionType.destructible:
+            filtered_actions = filter(
+                lambda x: x.action in (Action.DESTROY_LOW_SPEED, Action.DESTROY_HIGH_SPEED),
+                actions,
+            )
+            for action in filtered_actions:
+                object_actions.append(action)
+        return TrackObject(
+            mesh=obj.mesh,
+            collision_type=obj.collision_type,
+            location=obj.location,
+            actions=object_actions,
+            transform=obj.transform,
+        )
+
     @property
     def objects(self) -> Iterator[TrackObject]:
-        return self.frd.objects
+        actions = [AnimationAction(action, can.animation) for action, can in self.can]
+        return map(partial(self._finalize_object, actions), self.frd.objects)
 
     @property
     def track_segments(self) -> Iterator[TrackSegment]:
