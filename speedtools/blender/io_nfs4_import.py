@@ -155,12 +155,21 @@ class BaseImporter(metaclass=ABCMeta):
             mu_quaternion = mathutils.Quaternion(quaternion)
             mu_quaternion = mu_quaternion.normalized()
             mu_quaternion = mu_quaternion.inverted()
-            obj.location = mu_location
-            obj.rotation_quaternion = mu_quaternion  # type: ignore[assignment]
+            obj.delta_location = mu_location
+            obj.delta_rotation_quaternion = mu_quaternion  # type: ignore[assignment]
             interval = index * animation.delay
-            obj.keyframe_insert(data_path="location", frame=interval)
-            obj.keyframe_insert(data_path="rotation_quaternion", frame=interval)
+            obj.keyframe_insert(
+                data_path="delta_location", frame=interval, options={"INSERTKEY_CYCLE_AWARE"}
+            )
+            obj.keyframe_insert(
+                data_path="delta_rotation_quaternion",
+                frame=interval,
+                options={"INSERTKEY_CYCLE_AWARE"},
+            )
         obj.animation_data.action.name = f"{obj.name}-loop"
+        points = chain.from_iterable(fcurve.keyframe_points for fcurve in bpy_action.fcurves)
+        for point in points:
+            point.interpolation = "LINEAR"
 
     def set_object_rotation(self, obj: bpy.types.Object, transform: Matrix3x3) -> None:
         mu_matrix = mathutils.Matrix(transform)
