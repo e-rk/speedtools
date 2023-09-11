@@ -333,7 +333,7 @@ types:
       collision_type:
         0x00: none
         0x01: static
-        0x02: rigid
+        0x02: destructible
         0x03: unknown
   object_attribute_2_padded:
     params:
