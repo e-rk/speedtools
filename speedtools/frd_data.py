@@ -28,7 +28,9 @@ from more_itertools import (
 from speedtools.parsers import FrdParser
 from speedtools.types import (
     UV,
+    Action,
     Animation,
+    AnimationAction,
     BasePolygon,
     CollisionMesh,
     CollisionType,
@@ -122,7 +124,7 @@ class FrdData:
         extra: FrdParser.ObjectData,
     ) -> TrackObject:
         location = None
-        animation = None
+        actions = []
         transform = None
         if obj.type in (ObjectType.normal1, ObjectType.normal2):
             location = Vector3d(x=obj.location.x, y=obj.location.y, z=obj.location.z)
@@ -143,6 +145,7 @@ class FrdData:
                 locations=locations,
                 quaternions=quaternions,
             )
+            actions = [AnimationAction(action=Action.DEFAULT_LOOP, animation=animation)]
         vertex_locations = [Vector3d.from_frd_float3(vertex) for vertex in extra.vertices]
         polygons = [cls._make_polygon(polygon) for polygon in extra.polygons]
         vertex_colors = [
@@ -159,7 +162,7 @@ class FrdData:
             mesh=mesh,
             collision_type=collision_type,
             location=location,
-            animation=animation,
+            actions=actions,
             transform=transform,
         )
 

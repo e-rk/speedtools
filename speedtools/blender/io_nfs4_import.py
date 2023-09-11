@@ -22,7 +22,8 @@ from more_itertools import collapse, duplicates_everseen, unique_everseen
 
 from speedtools import TrackData, VivData
 from speedtools.types import (
-    Animation,
+    Action,
+    AnimationAction,
     BaseMesh,
     DirectionalLight,
     DrawableMesh,
@@ -146,8 +147,15 @@ class BaseImporter(metaclass=ABCMeta):
         mu_location = mathutils.Vector(location)
         obj.location = mu_location
 
-    def set_object_animation(self, obj: bpy.types.Object, animation: Animation) -> None:
+    def set_object_action(self, obj: bpy.types.Object, action: AnimationAction) -> None:
+        animation = action.animation
         obj.rotation_mode = "QUATERNION"
+        if obj.animation_data is None:
+            anim_data = obj.animation_data_create()
+        else:
+            anim_data = obj.animation_data
+        bpy_action = bpy.data.actions.new(name=str(action.action))
+        anim_data.action = bpy_action
         for index, (location, quaternion) in enumerate(
             zip(animation.locations, animation.quaternions)
         ):
@@ -166,10 +174,12 @@ class BaseImporter(metaclass=ABCMeta):
                 frame=interval,
                 options={"INSERTKEY_CYCLE_AWARE"},
             )
-        obj.animation_data.action.name = f"{obj.name}-loop"
         points = chain.from_iterable(fcurve.keyframe_points for fcurve in bpy_action.fcurves)
         for point in points:
             point.interpolation = "LINEAR"
+        bpy_action.name = f"{obj.name}-action-{action.action}"
+        track = anim_data.nla_tracks.new()
+        track.strips.new(name=bpy_action.name, start=0, action=bpy_action)
 
     def set_object_rotation(self, obj: bpy.types.Object, transform: Matrix3x3) -> None:
         mu_matrix = mathutils.Matrix(transform)
@@ -271,10 +281,10 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
             bpy_obj = self.make_drawable_object(
                 name=name, mesh=mesh, import_shading=import_shading
             )
+            for action in obj.actions:
+                self.set_object_action(obj=bpy_obj, action=action)
             if obj.location:
                 self.set_object_location(obj=bpy_obj, location=obj.location)
-            if obj.animation:
-                self.set_object_animation(obj=bpy_obj, animation=obj.animation)
             if obj.transform:
                 self.set_object_rotation(obj=bpy_obj, transform=obj.transform)
             object_collection.objects.link(bpy_obj)

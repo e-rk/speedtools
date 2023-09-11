@@ -8,7 +8,8 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from enum import Enum
 from math import pi
 from typing import NamedTuple, Optional, TypeAlias
 
@@ -18,6 +19,12 @@ RoadEffect: TypeAlias = FrdParser.DriveablePolygon.RoadEffect
 CollisionType: TypeAlias = FrdParser.ObjectAttribute.CollisionType
 ObjectType: TypeAlias = FrdParser.ObjectHeader.ObjectType
 FshDataType: TypeAlias = FshParser.DataType
+
+
+class Action(Enum):
+    DEFAULT_LOOP = 1
+    DESTROY_LOW_SPEED = 2
+    DESTROY_HIGH_SPEED = 3
 
 
 class Vector3d(NamedTuple):
@@ -142,6 +149,12 @@ class Animation:
 
 
 @dataclass(frozen=True)
+class AnimationAction:
+    action: Action
+    animation: Animation
+
+
+@dataclass(frozen=True)
 class DrawableMesh(BaseMesh):
     polygons: Sequence[Polygon]
 
@@ -178,7 +191,7 @@ class TrackObject:
     mesh: DrawableMesh
     collision_type: CollisionType
     location: Optional[Vector3d] = None
-    animation: Optional[Animation] = None
+    actions: Sequence[AnimationAction] = field(default_factory=tuple)
     transform: Optional[Matrix3x3] = None
 
 
