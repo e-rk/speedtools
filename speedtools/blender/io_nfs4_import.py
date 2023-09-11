@@ -245,14 +245,22 @@ class BaseImporter(metaclass=ABCMeta):
 class TrackImportStrategy(metaclass=ABCMeta):
     @abstractmethod
     def import_track(
-        self, track: TrackData, import_collision: bool = False, import_shading: bool = False
+        self,
+        track: TrackData,
+        import_collision: bool = False,
+        import_shading: bool = False,
+        import_actions: bool = False,
     ) -> None:
         pass
 
 
 class TrackImportGLTF(TrackImportStrategy, BaseImporter):
     def import_track(
-        self, track: TrackData, import_collision: bool = False, import_shading: bool = False
+        self,
+        track: TrackData,
+        import_collision: bool = False,
+        import_shading: bool = False,
+        import_actions: bool = False,
     ) -> None:
         bpy.context.scene.render.fps = track.ANIMATION_FPS
         track_collection = bpy.data.collections.new("Track segments")
@@ -281,7 +289,12 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
             bpy_obj = self.make_drawable_object(
                 name=name, mesh=mesh, import_shading=import_shading
             )
-            for action in obj.actions:
+            actions = (
+                obj.actions
+                if import_actions
+                else filter(lambda x: x.action is Action.DEFAULT_LOOP, obj.actions)
+            )
+            for action in actions:
                 self.set_object_action(obj=bpy_obj, action=action)
             if obj.location:
                 self.set_object_location(obj=bpy_obj, location=obj.location)
@@ -384,6 +397,11 @@ class TrackImporter(bpy.types.Operator):
         description="Import collision meshes (ending with -colonly)",
         default=False,
     )
+    import_actions: BoolProperty(  # type: ignore[valid-type]
+        name="Import animation actions (experimental)",
+        description="Import track animation actions from CAN files, such as object destruction animation",
+        default=False,
+    )
 
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[int] | set[str]:
         wm = context.window_manager
@@ -414,6 +432,7 @@ class TrackImporter(bpy.types.Operator):
             track=track,
             import_collision=self.import_collision,
             import_shading=import_shading,
+            import_actions=self.import_actions,
         )
         return {"FINISHED"}
 
