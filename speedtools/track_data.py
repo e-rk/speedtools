@@ -13,6 +13,7 @@ from math import atan2, cos, tau
 from pathlib import Path
 from typing import TypeVar
 
+from speedtools.cam_data import CamData
 from speedtools.can_data import CanData
 from speedtools.frd_data import FrdData
 from speedtools.fsh_data import FshData
@@ -20,6 +21,7 @@ from speedtools.tr_ini import TrackIni
 from speedtools.types import (
     Action,
     AnimationAction,
+    Camera,
     CollisionType,
     DirectionalLight,
     Light,
@@ -86,6 +88,15 @@ class TrackData:
             directory=directory,
             prefix="TR",
             postfix=".INI",
+            mirrored=mirrored,
+            night=night,
+            weather=weather,
+        )
+        self.cam: CamData = self.tr_open(
+            constructor=CamData.from_file,
+            directory=directory,
+            prefix="TR",
+            postfix=".CAM",
             mirrored=mirrored,
             night=night,
             weather=weather,
@@ -203,3 +214,7 @@ class TrackData:
         phi = atan2(z, self.SUN_DISTANCE)
         theta = sun.angle_theta * tau
         return DirectionalLight(rho=phi, theta=theta, radius=sun.radius)
+
+    @property
+    def cameras(self) -> Iterable[Camera]:
+        return self.cam.cameras
