@@ -12,6 +12,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from functools import total_ordering
 from itertools import chain, groupby
+from math import pi
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,7 @@ from speedtools.types import (
     Action,
     AnimationAction,
     BaseMesh,
+    Camera,
     DirectionalLight,
     DrawableMesh,
     Light,
@@ -181,9 +183,18 @@ class BaseImporter(metaclass=ABCMeta):
         track = anim_data.nla_tracks.new()
         track.strips.new(name=bpy_action.name, start=0, action=bpy_action)
 
-    def set_object_rotation(self, obj: bpy.types.Object, transform: Matrix3x3) -> None:
+    def set_object_rotation(
+        self,
+        obj: bpy.types.Object,
+        transform: Matrix3x3,
+        offset: mathutils.Euler | None = None,
+    ) -> None:
         mu_matrix = mathutils.Matrix(transform)
-        mu_euler = mu_matrix.to_euler("XYZ")  # type: ignore # pylint: disable=all
+        if offset:
+            mu_euler = offset
+            mu_euler.rotate(mu_matrix.to_euler("XYZ"))  # type: ignore # pylint: disable=all
+        else:
+            mu_euler = mu_matrix.to_euler("XYZ")  # type: ignore # pylint: disable=all
         obj.rotation_mode = "XYZ"
         obj.rotation_euler = mu_euler  # type: ignore[assignment]
 
@@ -241,6 +252,14 @@ class BaseImporter(metaclass=ABCMeta):
         bpy_obj.rotation_euler = mu_euler  # type: ignore[assignment]
         return bpy_obj
 
+    def make_camera_object(self, name: str, camera: Camera) -> bpy.types.Object:
+        bpy_camera = bpy.data.cameras.new(name=name)
+        bpy_obj = bpy.data.objects.new(name=name, object_data=bpy_camera)
+        offset = mathutils.Euler((pi / 2, 0, 0))
+        self.set_object_location(obj=bpy_obj, location=camera.location)
+        self.set_object_rotation(obj=bpy_obj, transform=camera.transform, offset=offset)
+        return bpy_obj
+
 
 class TrackImportStrategy(metaclass=ABCMeta):
     @abstractmethod
@@ -250,6 +269,7 @@ class TrackImportStrategy(metaclass=ABCMeta):
         import_collision: bool = False,
         import_shading: bool = False,
         import_actions: bool = False,
+        import_cameras: bool = False,
     ) -> None:
         pass
 
@@ -261,6 +281,7 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
         import_collision: bool = False,
         import_shading: bool = False,
         import_actions: bool = False,
+        import_cameras: bool = False,
     ) -> None:
         bpy.context.scene.render.fps = track.ANIMATION_FPS
         track_collection = bpy.data.collections.new("Track segments")
@@ -311,6 +332,12 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
         if directional_light:
             bpy_obj = self.make_directional_light_object(name="sun", light=directional_light)
             light_collection.objects.link(bpy_obj)
+        if import_cameras:
+            camera_collection = bpy.data.collections.new("Cameras")
+            bpy.context.scene.collection.children.link(camera_collection)
+            for index, camera in enumerate(track.cameras):
+                bpy_obj = self.make_camera_object(name=f"Camera {index}", camera=camera)
+                camera_collection.objects.link(bpy_obj)
 
 
 class TrackImportBlender(TrackImportGLTF):
@@ -402,6 +429,11 @@ class TrackImporter(bpy.types.Operator):
         description="Import track animation actions from CAN files, such as object destruction animation",
         default=False,
     )
+    import_cameras: BoolProperty(  # type: ignore[valid-type]
+        name="Import cameras (experimental)",
+        description="Import track-specific replay cameras",
+        default=False,
+    )
 
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[int] | set[str]:
         wm = context.window_manager
@@ -433,6 +465,7 @@ class TrackImporter(bpy.types.Operator):
             import_collision=self.import_collision,
             import_shading=import_shading,
             import_actions=self.import_actions,
+            import_cameras=self.import_cameras,
         )
         return {"FINISHED"}
 
