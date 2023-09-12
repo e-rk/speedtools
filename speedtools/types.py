@@ -244,3 +244,9 @@ class DirectionalLight:
         z = pi / 2 - self.rho
         y = self.theta
         return Vector3d(x=0, y=y, z=z)
+
+
+@dataclass(frozen=True)
+class Camera:
+    location: Vector3d
+    transform: Matrix3x3

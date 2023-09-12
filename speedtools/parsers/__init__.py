@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
+from .cam import Cam as CamParser
 from .can import Can as CanParser
 from .fce import Fce as FceParser
 from .frd import Frd as FrdParser
@@ -19,4 +20,5 @@ __all__ = [
     "VivParser",
     "FceParser",
     "CanParser",
+    "CamParser",
 ]
