@@ -87,7 +87,7 @@ types:
             data_type::bitmap8: u1
             data_type::bitmap32: pixel_32_element
             data_type::bitmap16_alpha: pixel_16_alpha_element
-            data_type::palette: palette_element
+            data_type::palette: pixel_16_alpha_element
         repeat: expr
         repeat-expr: _parent.width * _parent.height
   pixel_32_element:
@@ -129,23 +129,6 @@ types:
       - id: value
         type: u2
         doc: Raw 16-bit pixel value
-    instances:
-      red:
-        value: (value & 0x1f) * 8
-      green:
-        value: ((value >> 5) & 0x1f) * 8
-      blue:
-        value: ((value >> 10) & 0x1f) * 8
-      alpha:
-        value: '(value & 0x8000) != 0 ? 0xff : 0'
-      color:
-        value: 'blue + green * 0x100 + red * 0x10000 + alpha * 0x1000000'
-        doc: ARGB color value
-  palette_element:
-    seq:
-      - id: value
-        type: u2
-        doc: Raw palette value
     instances:
       red:
         value: (value & 0x1f) * 8
