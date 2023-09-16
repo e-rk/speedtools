@@ -99,9 +99,20 @@ class VivData:
         ":OT": PartAttributes(resolution=Resolution.HIGH, name="top"),
         # Optional spoiler
         ":OS": PartAttributes(resolution=Resolution.HIGH, name="spoiler"),
+        # Helicopter main rotor
+        "main": PartAttributes(resolution=Resolution.HIGH, name="main_rotor"),
+        # Helicopter tail rotor
+        "tail": PartAttributes(resolution=Resolution.HIGH, name="tail_rotor"),
+        # Helicopter body
+        "body": PartAttributes(resolution=Resolution.HIGH, name="body"),
+        # Low resolution main rotor
+        ":Lmain": PartAttributes(resolution=Resolution.LOW, name="main_rotor"),
+        # Low resolution tail rotor
+        ":Ltail": PartAttributes(resolution=Resolution.LOW, name="tail_rotor"),
     }
 
-    body_textures = ["car00.tga"]
+    body_geometry = {"car.fce", "hel.fce"}
+    body_textures = {"car00.tga", "hel00.tga"}
 
     def __init__(self, parser: VivParser) -> None:
         self.viv = parser
@@ -123,7 +134,10 @@ class VivData:
 
     @classmethod
     def _get_part_attributes(cls, strings: FceParser.Part) -> PartAttributes:
-        return cls.known_parts[strings.value[0]]
+        try:
+            return cls.known_parts[strings.value[0]]
+        except KeyError:
+            return PartAttributes(name=strings.value[0])
 
     @classmethod
     def _make_part_mesh(
@@ -155,7 +169,7 @@ class VivData:
 
     @property
     def parts(self) -> Iterator[Part]:
-        fce = one(filter(lambda x: x.name == "car.fce", self.viv.entries))
+        fce = one(filter(lambda x: x.name in self.body_geometry, self.viv.entries))
         body = fce.body
         slice_vert = partial(islicen, body.vertices)
         part_vertices_iter = map(slice_vert, body.part_vertex_index, body.part_num_vertices)

@@ -43,4 +43,5 @@ types:
             '"carp.txt"': strz
             '"car.fce"': fce
             '"dash.fce"': fce
+            '"hel.fce"': fce
         size: length
