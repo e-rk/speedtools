@@ -47,7 +47,7 @@ def unique_named_resources(iterable: Iterable[Resource]) -> Iterable[Resource]:
             image=resource.image,
             mirrored=resource.mirrored,
             nonmirrored=resource.nonmirrored,
-            additive=resource.additive,
+            blend_mode=resource.blend_mode,
         )
 
     return count_repeats_and_map(iterable=iterable, func=make_unique_name, key=lambda x: x.name)

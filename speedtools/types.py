@@ -26,6 +26,11 @@ class Action(Enum):
     DESTROY_HIGH_SPEED = 3
 
 
+class BlendMode(Enum):
+    ALPHA = 1
+    ADDITIVE = 2
+
+
 class Vector3d(NamedTuple):
     x: float
     z: float
@@ -175,7 +180,7 @@ class Resource:
     image: Image
     mirrored: bool = False
     nonmirrored: bool = False
-    additive: bool = False
+    blend_mode: BlendMode | None = None
 
 
 @dataclass(frozen=True)

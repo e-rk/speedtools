@@ -15,7 +15,7 @@ from typing import Container
 from more_itertools import one, only
 
 from speedtools.parsers import FshParser, QfsParser
-from speedtools.types import Bitmap, FshDataType, Resource
+from speedtools.types import Bitmap, BlendMode, FshDataType, Resource
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ class FshData:
         return filter(lambda x: x.code in codes, resource.body.blocks)
 
     @classmethod
-    def _make_bitmap(cls, resource: FshParser.Resource) -> Bitmap:
+    def _make_bitmap(cls, resource: FshParser.Resource) -> tuple[Bitmap, FshDataType]:
         bitmap = one(
             cls._get_data_by_code(
                 codes=(
@@ -54,7 +54,8 @@ class FshData:
                 resource=resource,
             )
         )
-        if bitmap.code is FshDataType.bitmap8:
+        bitmap_type = bitmap.code
+        if bitmap_type is FshDataType.bitmap8:
             palette = one(cls._get_data_by_code(codes=[FshDataType.palette], resource=resource))
             palette_colors = [element.color for element in palette.data.data]
             rgba_int = [palette_colors[element] for element in bitmap.data.data]
@@ -64,7 +65,7 @@ class FshData:
                 height=bitmap.height,
                 data=rgba_bytes,
             )
-        elif bitmap.code in (
+        elif bitmap_type in (
             FshDataType.bitmap32,
             FshDataType.bitmap16,
             FshDataType.bitmap16_alpha,
@@ -78,22 +79,28 @@ class FshData:
             )
         else:
             raise RuntimeError("Bitmap resource not recognized")
-        return bitmap_object
+        return bitmap_object, bitmap_type
 
     @classmethod
     def _make_resource(cls, resource: FshParser.Resource) -> Resource:
-        bitmap = cls._make_bitmap(resource)
+        bitmap, bitmap_type = cls._make_bitmap(resource)
+        is_32bit = bitmap_type is FshDataType.bitmap32
         text = only(cls._get_data_by_code(codes=[FshDataType.text], resource=resource))
         text_data = text.data if text is not None else None
         mirrored = "<mirrored>" in text_data if text_data is not None else False
         nonmirrored = "<nonmirrored>" in text_data if text_data is not None else False
         additive = "<additive>" in text_data if text_data is not None else False
+        blend_mode = None
+        if is_32bit:
+            blend_mode = BlendMode.ALPHA
+        elif additive:
+            blend_mode = BlendMode.ADDITIVE
         return Resource(
             name=resource.name,
             image=bitmap,
             mirrored=mirrored,
             nonmirrored=nonmirrored,
-            additive=additive,
+            blend_mode=blend_mode,
         )
 
     @property
