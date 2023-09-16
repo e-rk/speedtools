@@ -2,9 +2,7 @@ name: Basic checks
 
 on:
   push:
-    branches:
-      - "master"
-      - "ci/**"
+    branches: []
   pull_request:
     branches: [ "master" ]
 
