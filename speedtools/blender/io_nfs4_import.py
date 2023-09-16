@@ -26,6 +26,7 @@ from speedtools.types import (
     Action,
     AnimationAction,
     BaseMesh,
+    BlendMode,
     Camera,
     DirectionalLight,
     DrawableMesh,
@@ -103,6 +104,22 @@ class BaseImporter(metaclass=ABCMeta):
         node_tree.links.new(texture.outputs["Color"], shader.inputs["Base Color"])
         node_tree.links.new(texture.outputs["Alpha"], shader.inputs["Alpha"])
 
+    def _set_blend_mode(
+        self,
+        node_tree: bpy.types.NodeTree,
+        shader_output: bpy.types.NodeSocket,
+        bpy_material: bpy.types.Material,
+        resource: Resource,
+    ) -> bpy.types.NodeSocket:
+        if resource.blend_mode is BlendMode.ALPHA:
+            bpy_material.blend_method = "BLEND"
+        elif resource.blend_mode is BlendMode.ADDITIVE:
+            bpy_material["SPT_additive"] = True
+        else:
+            bpy_material.alpha_threshold = 0.001
+            bpy_material.blend_method = "CLIP"
+        return shader_output
+
     def _make_material(self, ext_resource: ExtendedResource) -> bpy.types.Material:
         resource = ext_resource.resource
         images_dir = Path(bpy.path.abspath("//images"))
@@ -112,6 +129,7 @@ class BaseImporter(metaclass=ABCMeta):
         image_path = Path(images_dir, f"{resource.name}.png")
         image = bpy.data.images.load(str(image_path), check_existing=True)
         node_tree = bpy_material.node_tree
+        material_output = node_tree.nodes.get("Material Output")
         image_texture = node_tree.nodes.new("ShaderNodeTexImage")
         image_texture.image = image  # type: ignore[attr-defined]
         image_texture.extension = "CLIP"  # type: ignore[attr-defined]
@@ -120,11 +138,13 @@ class BaseImporter(metaclass=ABCMeta):
         bsdf.inputs["Roughness"].default_value = 1  # type: ignore[attr-defined]
         bsdf.inputs["Sheen Tint"].default_value = 0  # type: ignore[attr-defined]
         self._link_texture_to_shader(node_tree=node_tree, texture=image_texture, shader=bsdf)
-        if resource.additive:
-            bpy_material.blend_method = "BLEND"
-        else:
-            bpy_material.blend_method = "CLIP"
-        bpy_material.alpha_threshold = 0.001
+        output_socket = self._set_blend_mode(
+            node_tree=node_tree,
+            shader_output=bsdf.outputs["BSDF"],
+            bpy_material=bpy_material,
+            resource=resource,
+        )
+        node_tree.links.new(output_socket, material_output.inputs["Surface"])
         bpy_material.use_backface_culling = ext_resource.backface_culling
         return bpy_material
 
@@ -349,11 +369,33 @@ class TrackImportBlender(TrackImportGLTF):
         mixer = node_tree.nodes.new("ShaderNodeMixRGB")
         mixer.blend_type = "MULTIPLY"  # type: ignore[attr-defined]
         mixer.inputs["Fac"].default_value = 1.0  # type: ignore[attr-defined]
-        logger.error(f"Inputs: {mixer.inputs.values()}")
         node_tree.links.new(texture.outputs["Color"], mixer.inputs["Color1"])
         node_tree.links.new(color_attributes.outputs["Color"], mixer.inputs["Color2"])
         node_tree.links.new(mixer.outputs["Color"], shader.inputs["Base Color"])
         node_tree.links.new(texture.outputs["Alpha"], shader.inputs["Alpha"])
+
+    def _set_blend_mode(
+        self,
+        node_tree: bpy.types.NodeTree,
+        shader_output: bpy.types.NodeSocket,
+        bpy_material: bpy.types.Material,
+        resource: Resource,
+    ) -> bpy.types.NodeSocket:
+        shader_output = super()._set_blend_mode(
+            node_tree=node_tree,
+            shader_output=shader_output,
+            bpy_material=bpy_material,
+            resource=resource,
+        )
+        output_socket = shader_output
+        if resource.blend_mode is BlendMode.ADDITIVE:
+            bpy_material.blend_method = "BLEND"
+            transparent_bsdf = node_tree.nodes.new("ShaderNodeBsdfTransparent")
+            add_shader = node_tree.nodes.new("ShaderNodeAddShader")
+            node_tree.links.new(shader_output, add_shader.inputs[0])
+            node_tree.links.new(transparent_bsdf.outputs["BSDF"], add_shader.inputs[1])
+            output_socket = add_shader.outputs["Shader"]
+        return output_socket
 
 
 class CarImporterSimple(BaseImporter):
