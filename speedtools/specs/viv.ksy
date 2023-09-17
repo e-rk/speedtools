@@ -2,8 +2,10 @@ meta:
   id: viv
   file-extension: viv
   license: CC0-1.0
+  ks-opaque-types: true
   imports:
     - fce
+    - bnk
   endian: be
   encoding: ASCII
 seq:
@@ -44,4 +46,5 @@ types:
             '"car.fce"': fce
             '"dash.fce"': fce
             '"hel.fce"': fce
+            '"careng.bnk"': bnk
         size: length

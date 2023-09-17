@@ -5,8 +5,11 @@
 #
 
 import logging
+from typing import Any
 
-# from speedtools.utils import bnk_find_tlv
+from more_itertools import only
+
+import speedtools.parsers.bnk as bnk
 
 logger = logging.getLogger(__name__)
 # sh = logging.StreamHandler()
@@ -15,9 +18,9 @@ logger = logging.getLogger(__name__)
 # logger.addHandler(sh)
 
 
-def bnk_find_tlv(header, tlv_type, subheader=False):
-    TlvType = header._root.TvType
-    tlv = next(filter(lambda tlv: tlv.type is tlv_type, header.tlvs), None)
+def bnk_find_tlv(header, tlv_type: Any, subheader: bool = False) -> Any:
+    TlvType = bnk.Bnk.TvType
+    tlv = only(filter(lambda tlv: tlv.type is tlv_type, header.tlvs), None)
     logger.debug(f"Tlv = {tlv}, type = {tlv_type}")
     if tlv is None and not subheader:
         subheader = bnk_find_tlv(header=header, tlv_type=TlvType.subheader, subheader=True)
@@ -27,16 +30,15 @@ def bnk_find_tlv(header, tlv_type, subheader=False):
 
 class BnkAudioStream:
     def __init__(self, header, stream):
-        logger.debug(f"{vars(header)}")
-        TlvType = header._root.TvType
+        TlvType = bnk.Bnk.TvType
         types = (TlvType.num_samples, TlvType.channels, TlvType.bytes_per_sample)
         tlvs = (bnk_find_tlv(header=header, tlv_type=tlv_type) for tlv_type in types)
         num_samples, channels, bytes_per_sample = tlvs
         self.num_samples = num_samples.value
         self.num_channels = channels.value if channels is not None else 1
         self.bytes_per_sample = bytes_per_sample.value if bytes_per_sample is not None else 2
-        logger.debug(
+        logger.error(
             f"Samples: {self.num_samples}, Channels: {self.num_channels}, Bytes: {self.bytes_per_sample}"
         )
-        bytes = self.num_samples * self.num_channels * self.bytes_per_sample
-        self.samples = stream.read_bytes(bytes)
+        data = self.num_samples * self.num_channels * self.bytes_per_sample
+        self.samples = stream.read_bytes(data)
