@@ -87,13 +87,3 @@ def _(resource: Resource, directory: Path) -> None:
     image = create_pil_image(resource.image)
     logger.info(f"Writing image: {output_file}")
     image.save(output_file)
-
-
-def bnk_find_tlv(header, tlv_type, subheader=False):
-    TlvType = header._root.TvType
-    tlv = next(filter(lambda tlv: tlv.type is tlv_type, header.tlvs), None)
-    logger.debug(f"Tlv = {tlv}, type = {tlv_type}")
-    if tlv is None and not subheader:
-        subheader = bnk_find_tlv(header=header, tlv_type=TlvType.subheader, subheader=True)
-        return bnk_find_tlv(header=subheader, tlv_type=tlv_type, subheader=True)
-    return tlv.value if tlv is not None else None

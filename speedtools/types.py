@@ -32,6 +32,10 @@ class BlendMode(Enum):
     ADDITIVE = 2
 
 
+class AudioEncoding(Enum):
+    PCM_S16LE = 1
+
+
 class Vector3d(NamedTuple):
     x: float
     z: float
@@ -255,3 +259,10 @@ class DirectionalLight:
 class Camera:
     location: Vector3d
     transform: Matrix3x3
+
+
+@dataclass(frozen=True)
+class AudioStream:
+    num_channels: int
+    sample_rate: int
+    audio_samples: bytes
