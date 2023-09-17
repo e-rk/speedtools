@@ -43,6 +43,10 @@ class Edge(Enum):
     RIGHT = 3
 
 
+class AudioEncoding(Enum):
+    PCM_S16LE = 1
+
+
 class Vector3d(NamedTuple):
     x: float
     z: float
@@ -325,3 +329,10 @@ class SoundTables:
             "load": [x.to_dict() for x in self.load],
             "cruise": [x.to_dict() for x in self.cruise],
         }
+
+
+@dataclass(frozen=True)
+class AudioStream:
+    num_channels: int
+    sample_rate: int
+    audio_samples: bytes
