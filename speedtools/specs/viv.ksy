@@ -2,9 +2,14 @@ meta:
   id: viv
   file-extension: viv
   license: CC0-1.0
+  ks-opaque-types: true
   imports:
     - fce
+<<<<<<< HEAD
     - ctb
+=======
+    - bnk
+>>>>>>> ca2402a (cleanup a bit)
   endian: be
   encoding: ASCII
 seq:
@@ -47,4 +52,5 @@ types:
             '"hel.fce"': fce
             '"careng.ctb"': ctb
             '"careng.ltb"': ctb
+            '"careng.bnk"': bnk
         size: length
