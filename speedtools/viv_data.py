@@ -113,6 +113,8 @@ class VivData:
 
     body_geometry = {"car.fce", "hel.fce"}
     body_textures = {"car00.tga", "hel00.tga"}
+    interior_geometry = {"dash.fce"}
+    interior_textures = {"dash00.tga"}
 
     def __init__(self, parser: VivParser) -> None:
         self.viv = parser
@@ -167,27 +169,35 @@ class VivData:
         tga = Image(entry.body)
         return Resource(name=entry.name, image=tga)
 
-    @property
-    def parts(self) -> Iterator[Part]:
-        fce = one(filter(lambda x: x.name in self.body_geometry, self.viv.entries))
-        body = fce.body
-        slice_vert = partial(islicen, body.vertices)
-        part_vertices_iter = map(slice_vert, body.part_vertex_index, body.part_num_vertices)
-        slice_norm = partial(islicen, body.normals)
-        part_normals_iter = map(slice_norm, body.part_vertex_index, body.part_num_vertices)
-        slice_norm = partial(islicen, body.polygons)
-        part_polygons_iter = map(slice_norm, body.part_polygon_index, body.part_num_polygons)
+    @classmethod
+    def _make_geometry(cls, fce: FceParser) -> Iterator[Part]:
+        slice_vert = partial(islicen, fce.vertices)
+        part_vertices_iter = map(slice_vert, fce.part_vertex_index, fce.part_num_vertices)
+        slice_norm = partial(islicen, fce.normals)
+        part_normals_iter = map(slice_norm, fce.part_vertex_index, fce.part_num_vertices)
+        slice_norm = partial(islicen, fce.polygons)
+        part_polygons_iter = map(slice_norm, fce.part_polygon_index, fce.part_num_polygons)
         meshes = map(
-            self._make_part_mesh,
+            cls._make_part_mesh,
             part_vertices_iter,
             part_normals_iter,
             part_polygons_iter,
         )
-        attributes = list(map(self._get_part_attributes, body.part_strings))
-        part_data = zip(body.part_locations, meshes, attributes, strict=True)
-        selectors = map(self._match_attributes, attributes)
+        attributes = list(map(cls._get_part_attributes, fce.part_strings))
+        part_data = zip(fce.part_locations, meshes, attributes, strict=True)
+        selectors = map(cls._match_attributes, attributes)
         filtered_parts = compress(part_data, selectors)
-        return starmap(self._make_part, filtered_parts)
+        return starmap(cls._make_part, filtered_parts)
+
+    @property
+    def parts(self) -> Iterator[Part]:
+        fce = one(filter(lambda x: x.name in self.body_geometry, self.viv.entries))
+        return self._make_geometry(fce.body)
+
+    @property
+    def interior(self) -> Iterator[Part]:
+        fce = one(filter(lambda x: x.name in self.interior_geometry, self.viv.entries))
+        return self._make_geometry(fce.body)
 
     @property
     def materials(self) -> Iterator[Resource]:
@@ -198,3 +208,7 @@ class VivData:
     @property
     def body_materials(self) -> Iterator[Resource]:
         return filter(lambda x: x.name in self.body_textures, self.materials)
+
+    @property
+    def interior_materials(self) -> Iterator[Resource]:
+        return filter(lambda x: x.name in self.interior_textures, self.materials)
