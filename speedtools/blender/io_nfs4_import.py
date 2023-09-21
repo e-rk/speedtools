@@ -19,7 +19,7 @@ from typing import Any
 import bpy
 import mathutils
 from bpy.props import BoolProperty, EnumProperty, StringProperty
-from more_itertools import collapse, duplicates_everseen, unique_everseen
+from more_itertools import collapse, duplicates_everseen, one, unique_everseen
 
 from speedtools import TrackData, VivData
 from speedtools.types import (
@@ -528,6 +528,9 @@ class CarImporter(bpy.types.Operator):
         maxlen=1024,
         default="",
     )
+    import_interior: BoolProperty(  # type: ignore[valid-type]
+        name="Import interior", description="Import car interior geometry", default=False
+    )
 
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[int] | set[str]:
         wm = context.window_manager
@@ -538,9 +541,14 @@ class CarImporter(bpy.types.Operator):
         car = VivData.from_file(Path(self.directory, "CAR.VIV"))
         logger.debug(car)
 
-        resource = next(car.body_materials)
+        if self.import_interior:
+            resource = one(car.interior_materials)
+            parts = car.interior
+        else:
+            resource = one(car.body_materials)
+            parts = car.parts
         importer = CarImporterSimple(material_map=lambda _: resource)
-        importer.import_car(car.parts)
+        importer.import_car(parts)
 
         return {"FINISHED"}
 
