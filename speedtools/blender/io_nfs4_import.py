@@ -35,7 +35,9 @@ from speedtools.types import (
     Part,
     Polygon,
     Resource,
+    ShapeKey,
     Vector3d,
+    Vertex,
 )
 from speedtools.utils import export_resource
 
@@ -248,6 +250,8 @@ class BaseImporter(metaclass=ABCMeta):
                 bpy_polygon.material_index = index
         bpy_mesh.validate()
         bpy_obj = bpy.data.objects.new(name, bpy_mesh)
+        if mesh.shape_keys:
+            bpy_obj.shape_key_add(name="Basis")
         return bpy_obj
 
     def make_light_object(self, name: str, light: Light) -> bpy.types.Object:
@@ -279,6 +283,12 @@ class BaseImporter(metaclass=ABCMeta):
         self.set_object_location(obj=bpy_obj, location=camera.location)
         self.set_object_rotation(obj=bpy_obj, transform=camera.transform, offset=offset)
         return bpy_obj
+
+    def make_shape_key(self, obj: bpy.types.Object, shape_key: ShapeKey) -> None:
+        bpy_shape_key = obj.shape_key_add(name=shape_key.type.name)
+        bpy_shape_key.interpolation = "KEY_LINEAR"
+        for data, vertex in zip(bpy_shape_key.data, shape_key.vertices, strict=True):
+            data.co = vertex.location  # type: ignore[attr-defined]
 
 
 class TrackImportStrategy(metaclass=ABCMeta):
@@ -406,6 +416,8 @@ class CarImporterSimple(BaseImporter):
             bpy_obj = self.make_drawable_object(name=part.name, mesh=part.mesh)
             self.set_object_location(obj=bpy_obj, location=part.location)
             car_collection.objects.link(bpy_obj)
+            for shape_key in part.mesh.shape_keys:
+                self.make_shape_key(obj=bpy_obj, shape_key=shape_key)
 
 
 class TrackImporter(bpy.types.Operator):
