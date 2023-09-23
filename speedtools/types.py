@@ -31,6 +31,10 @@ class BlendMode(Enum):
     ADDITIVE = 2
 
 
+class ShapeKeyType(Enum):
+    DAMAGE = 1
+
+
 class Vector3d(NamedTuple):
     x: float
     z: float
@@ -112,6 +116,12 @@ class BasePolygon:
 
 
 @dataclass(frozen=True)
+class ShapeKey:
+    type: ShapeKeyType
+    vertices: Sequence[Vertex]
+
+
+@dataclass(frozen=True)
 class BaseMesh:
     vertices: Sequence[Vertex]
     polygons: Sequence[BasePolygon]
@@ -161,6 +171,7 @@ class AnimationAction:
 @dataclass(frozen=True)
 class DrawableMesh(BaseMesh):
     polygons: Sequence[Polygon]
+    shape_keys: Sequence[ShapeKey] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

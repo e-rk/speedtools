@@ -23,6 +23,8 @@ from speedtools.types import (
     Part,
     Polygon,
     Resource,
+    ShapeKey,
+    ShapeKeyType,
     Vector3d,
     Vertex,
 )
@@ -142,20 +144,33 @@ class VivData:
             return PartAttributes(name=strings.value[0])
 
     @classmethod
+    def _make_vertex(
+        cls, vertex: Iterable[FceParser.Float3], normal: Iterable[FceParser.Float3]
+    ) -> Vertex:
+        location = Vector3d.from_fce_float3(vertex)
+        normal_vec = Vector3d.from_fce_float3(normal)
+        return Vertex(location=location, normal=normal_vec)
+
+    @classmethod
+    def _make_part_shape_key(
+        cls, vertices: Iterable[FceParser.Float3], normals: Iterable[FceParser.Float3]
+    ) -> ShapeKey:
+        vert = list(map(cls._make_vertex, vertices, normals))
+        return ShapeKey(type=ShapeKeyType.DAMAGE, vertices=vert)
+
+    @classmethod
     def _make_part_mesh(
         cls,
         part_vertices: Iterable[FceParser.Float3],
         part_normals: Iterable[FceParser.Float3],
         part_polygons: Iterable[FceParser.Polygon],
+        part_damaged_vertices: Iterable[FceParser.Float3],
+        part_damaged_normals: Iterable[FceParser.Float3],
     ) -> DrawableMesh:
-        vertex_locations = [Vector3d.from_fce_float3(vert) for vert in part_vertices]
-        vertex_normals = [Vector3d.from_fce_float3(normal) for normal in part_normals]
-        vertices = [
-            Vertex(location=loc, normal=norm)
-            for loc, norm in zip(vertex_locations, vertex_normals, strict=True)
-        ]
+        vertices = list(map(cls._make_vertex, part_vertices, part_normals))
+        shape_key = cls._make_part_shape_key(part_damaged_vertices, part_damaged_normals)
         polygons = [cls._make_polygon(polygon) for polygon in part_polygons]
-        return DrawableMesh(vertices=vertices, polygons=polygons)
+        return DrawableMesh(vertices=vertices, polygons=polygons, shape_keys=[shape_key])
 
     @classmethod
     def _make_part(
@@ -177,11 +192,21 @@ class VivData:
         part_normals_iter = map(slice_norm, fce.part_vertex_index, fce.part_num_vertices)
         slice_norm = partial(islicen, fce.polygons)
         part_polygons_iter = map(slice_norm, fce.part_polygon_index, fce.part_num_polygons)
+        slice_damaged_vert = partial(islicen, fce.damaged_vertices)
+        part_damaged_vertices_iter = map(
+            slice_damaged_vert, fce.part_vertex_index, fce.part_num_vertices
+        )
+        slice_damaged_norm = partial(islicen, fce.damaged_normals)
+        part_damaged_normals_iter = map(
+            slice_damaged_norm, fce.part_vertex_index, fce.part_num_vertices
+        )
         meshes = map(
             cls._make_part_mesh,
             part_vertices_iter,
             part_normals_iter,
             part_polygons_iter,
+            part_damaged_vertices_iter,
+            part_damaged_normals_iter,
         )
         attributes = list(map(cls._get_part_attributes, fce.part_strings))
         part_data = zip(fce.part_locations, meshes, attributes, strict=True)
