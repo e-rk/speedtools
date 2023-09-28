@@ -195,9 +195,9 @@ class VivData:
 
     @classmethod
     def _make_geometry(cls, fce: FceParser) -> Iterator[Part]:
-        slice_vert = partial(islicen, fce.vertices)
+        slice_vert = partial(islicen, fce.undamaged_vertices)
         part_vertices_iter = map(slice_vert, fce.part_vertex_index, fce.part_num_vertices)
-        slice_norm = partial(islicen, fce.normals)
+        slice_norm = partial(islicen, fce.undamaged_normals)
         part_normals_iter = map(slice_norm, fce.part_vertex_index, fce.part_num_vertices)
         slice_norm = partial(islicen, fce.polygons)
         part_polygons_iter = map(slice_norm, fce.part_polygon_index, fce.part_num_polygons)
