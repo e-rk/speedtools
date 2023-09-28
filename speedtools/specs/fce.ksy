@@ -189,6 +189,18 @@ instances:
     repeat: expr
     repeat-expr: num_polygons
     doc: Polygon table
+  undamaged_vertices:
+    pos: 8248 + undamaged_vertices_offset
+    type: float3
+    repeat: expr
+    repeat-expr: num_vertices
+    doc: Undamaged vertice table
+  undamaged_normals:
+    pos: 8248 + undamaged_normals_offset
+    type: float3
+    repeat: expr
+    repeat-expr: num_vertices
+    doc: Undamaged normal table
   damaged_vertices:
     pos: 8248 + damaged_vertices_offset
     type: float3
