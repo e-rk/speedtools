@@ -41,8 +41,8 @@ seq:
   - id: damaged_normals_offset
     type: u4
     doc: Offset of the damaged normals in bytes after the FCE header
-  - id: unknown3
-    size: 4
+  - id: damage_weights_offset
+    type: u4
   - id: driver_movement_offset
     type: u4
     doc: Offset of the driver movement data in bytes after the FCE header
@@ -213,6 +213,18 @@ instances:
     repeat: expr
     repeat-expr: num_vertices
     doc: Damaged normal table
+  vertex_damage_weights:
+    pos: 8248 + damage_weights_offset
+    type: f4
+    repeat: expr
+    repeat-expr: num_vertices
+    doc: Vertex damage weights
+  movement_data:
+    pos: 8248 + driver_movement_offset
+    type: u4
+    repeat: expr
+    repeat-expr: num_vertices
+    doc: Vertex movement data
 types:
   float3:
     seq:
