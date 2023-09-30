@@ -12,7 +12,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass, replace
 from functools import total_ordering
 from itertools import chain, groupby
-from math import pi
+from math import pi, radians
 from pathlib import Path
 from typing import Any, Literal
 
@@ -38,6 +38,7 @@ from speedtools.types import (
     Resource,
     ShapeKey,
     Vector3d,
+    VehicleLightType,
     Vertex,
 )
 from speedtools.utils import image_to_png, make_horizon_texture, pil_image_to_png
@@ -299,10 +300,10 @@ class BaseImporter(metaclass=ABCMeta):
     def set_object_rotation(
         self,
         obj: bpy.types.Object,
-        transform: Matrix3x3,
+        transform: Matrix3x3 | mathutils.Matrix,
         offset: mathutils.Euler | None = None,
     ) -> None:
-        mu_matrix = self.rot_mat @ mathutils.Matrix(transform)
+        mu_matrix = self.rot_mat @ mathutils.Matrix(transform)  # type: ignore[arg-type]
         if offset:
             mu_euler = offset
             mu_euler.rotate(mu_matrix.to_euler("XYZ"))  # pylint: disable=all
@@ -343,14 +344,41 @@ class BaseImporter(metaclass=ABCMeta):
             bpy_obj.shape_key_add(name="Basis")
         return bpy_obj
 
-    def make_light_object(self, name: str, light: Light) -> bpy.types.Object:
-        bpy_light = bpy.data.lights.new(name=name, type="POINT")
-        bpy_light.color = light.attributes.color.rgb_float
+    def make_base_light(
+        self,
+        name: str,
+        light: Light,
+        light_type: Literal["POINT", "SUN", "SPOT", "AREA"] | None = "POINT",
+        energy: int = 500,
+        cutoff_distance: float = 15.0,
+    ) -> bpy.types.Light:
+        bpy_light = bpy.data.lights.new(name=name, type=light_type)
+        bpy_light.color = light.color.rgb_float
         bpy_light.use_custom_distance = True
-        bpy_light.cutoff_distance = 15.0
+        bpy_light.cutoff_distance = cutoff_distance
         bpy_light.specular_factor = 0.2
-        bpy_light.energy = 500  # type: ignore[attr-defined]
+        bpy_light.energy = energy  # type: ignore[attr-defined]
         bpy_light.use_shadow = False
+        return bpy_light
+
+    def make_point_light_object(self, name: str, light: Light) -> bpy.types.Object:
+        bpy_light = self.make_base_light(name=name, light=light, light_type="POINT")
+        bpy_obj = bpy.data.objects.new(name=name, object_data=bpy_light)
+        self.set_object_location(obj=bpy_obj, location=light.location)
+        return bpy_obj
+
+    def make_spot_light_object(
+        self, name: str, light: Light, energy: int, angle: float, cutoff_distance: float
+    ) -> bpy.types.Object:
+        bpy_light = self.make_base_light(
+            name=name,
+            light=light,
+            energy=energy,
+            light_type="SPOT",
+            cutoff_distance=cutoff_distance,
+        )
+        bpy_light.spot_size = angle  # type: ignore[attr-defined]
+        bpy_light.spot_blend = 0.5  # type: ignore[attr-defined]
         bpy_obj = bpy.data.objects.new(name=name, object_data=bpy_light)
         self.set_object_location(obj=bpy_obj, location=light.location)
         return bpy_obj
@@ -444,7 +472,7 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
         bpy.context.scene.collection.children.link(light_collection)
         for index, light in enumerate(track.lights):
             name = f"Light {index}"
-            bpy_obj = self.make_light_object(name=name, light=light)
+            bpy_obj = self.make_point_light_object(name=name, light=light)
             light_collection.objects.link(bpy_obj)
         directional_light = track.directional_light
         if directional_light:
@@ -485,7 +513,36 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
 
 
 class CarImporterSimple(BaseImporter):
-    def import_car(self, car: VivData, import_interior: bool) -> None:
+    car_light_attributes = {  # (Energy, angle, cutoff, rotation)
+        VehicleLightType.HEADLIGHT: (
+            200,
+            90,
+            100.0,
+            mathutils.Matrix.Rotation(radians(90), 3, "X"),
+        ),
+        VehicleLightType.DIRECTIONAL: (
+            20,
+            160,
+            1.0,
+            mathutils.Matrix.Rotation(radians(-90), 3, "X"),
+        ),
+        VehicleLightType.BRAKELIGHT: (
+            20,
+            160,
+            1.0,
+            mathutils.Matrix.Rotation(radians(-90), 3, "X"),
+        ),
+        VehicleLightType.REVERSE: (20, 160, 1.0, mathutils.Matrix.Rotation(radians(-90), 3, "X")),
+        VehicleLightType.TAILLIGHT: (
+            10,
+            160,
+            1.0,
+            mathutils.Matrix.Rotation(radians(-90), 3, "X"),
+        ),
+        VehicleLightType.SIREN: (100, 180, 40.0, mathutils.Matrix.Rotation(radians(-90), 3, "X")),
+    }
+
+    def import_car(self, car: VivData, import_interior: bool, import_lights: bool) -> None:
         car_collection = bpy.data.collections.new("Car parts")
         bpy.context.scene.collection.children.link(car_collection)
         parts = car.interior if import_interior else car.parts
@@ -495,6 +552,21 @@ class CarImporterSimple(BaseImporter):
             car_collection.objects.link(bpy_obj)
             for shape_key in part.mesh.shape_keys:
                 self.make_shape_key(obj=bpy_obj, shape_key=shape_key)
+        light_collection = bpy.data.collections.new("Car lights")
+        bpy.context.scene.collection.children.link(light_collection)
+        if import_lights:
+            for index, light in enumerate(car.lights):
+                name = f"{light.type.name.lower()}-{index}"
+                attributes = self.car_light_attributes[light.type]
+                bpy_obj = self.make_spot_light_object(
+                    name=name,
+                    light=light,
+                    energy=attributes[0],
+                    angle=radians(attributes[1]),
+                    cutoff_distance=attributes[2],
+                )
+                self.set_object_rotation(obj=bpy_obj, transform=attributes[3])
+                light_collection.objects.link(bpy_obj)
         dimensions = car.dimensions
         car_metadata = {
             "performance": car.performance,
@@ -608,6 +680,12 @@ class CarImporter(bpy.types.Operator):
         name="Import interior", description="Import car interior geometry", default=False
     )
 
+    import_lights: BoolProperty(  # type: ignore[valid-type]
+        name="Import car lights",
+        description="Import car lights and assign default attribute values",
+        default=False,
+    )
+
     def invoke(
         self, context: bpy.types.Context, event: bpy.types.Event
     ) -> set[Literal["RUNNING_MODAL", "CANCELLED", "FINISHED", "PASS_THROUGH", "INTERFACE"]]:
@@ -626,7 +704,9 @@ class CarImporter(bpy.types.Operator):
         else:
             resource = one(car.body_materials)
         importer = CarImporterSimple(material_map=lambda _: resource)
-        importer.import_car(car, import_interior=self.import_interior)
+        importer.import_car(
+            car, import_interior=self.import_interior, import_lights=self.import_lights
+        )
 
         return {"FINISHED"}
 
