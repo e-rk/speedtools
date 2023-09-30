@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable, Iterator
 from enum import Enum
 from functools import partial
@@ -18,6 +19,7 @@ from more_itertools import one
 from speedtools.parsers import FceParser, VivParser
 from speedtools.types import (
     UV,
+    Color,
     DrawableMesh,
     Image,
     Part,
@@ -26,9 +28,13 @@ from speedtools.types import (
     ShapeKey,
     ShapeKeyType,
     Vector3d,
+    VehicleLight,
+    VehicleLightType,
     Vertex,
 )
 from speedtools.utils import islicen
+
+logger = logging.getLogger(__name__)
 
 
 class Resolution(Enum):
@@ -111,6 +117,23 @@ class VivData:
         ":Lmain": PartAttributes(resolution=Resolution.LOW, name="main_rotor"),
         # Low resolution tail rotor
         ":Ltail": PartAttributes(resolution=Resolution.LOW, name="tail_rotor"),
+    }
+
+    light_types = {
+        "H": VehicleLightType.HEADLIGHT,
+        "T": VehicleLightType.TAILLIGHT,
+        "B": VehicleLightType.BRAKELIGHT,
+        "R": VehicleLightType.REVERSE,
+        "P": VehicleLightType.DIRECTIONAL,
+        "S": VehicleLightType.SIREN,
+    }
+
+    light_colors = {
+        "R": Color(0xFF, 0, 0),
+        "B": Color(0, 0, 0xFF),
+        "W": Color(0xFF, 0xFF, 0xFF),
+        "O": Color(0xE4, 0xA4, 0),
+        "Y": Color(0xFF, 0xFF, 0),
     }
 
     body_geometry = {"car.fce", "hel.fce"}
@@ -214,6 +237,14 @@ class VivData:
         filtered_parts = compress(part_data, selectors)
         return starmap(cls._make_part, filtered_parts)
 
+    @classmethod
+    def _make_light(cls, location: FceParser.Float3, dummy: FceParser.Dummy) -> VehicleLight:
+        loc = Vector3d.from_fce_float3(location)
+        color = cls.light_colors[dummy.color]
+        light_type = cls.light_types[dummy.magic]
+        logger.error(f"Color: {color}")
+        return VehicleLight(location=loc, color=color, type=light_type)
+
     @property
     def parts(self) -> Iterator[Part]:
         fce = one(filter(lambda x: x.name in self.body_geometry, self.viv.entries))
@@ -237,3 +268,9 @@ class VivData:
     @property
     def interior_materials(self) -> Iterator[Resource]:
         return filter(lambda x: x.name in self.interior_textures, self.materials)
+
+    @property
+    def lights(self) -> Iterator[VehicleLight]:
+        fce = one(filter(lambda x: x.name in self.body_geometry, self.viv.entries))
+        lights = filter(lambda x: x.magic in self.light_types, fce.body.dummies)
+        return map(self._make_light, fce.body.light_sources, lights)
