@@ -107,7 +107,7 @@ class Color(NamedTuple):
     red: int
     green: int
     blue: int
-    alpha: int
+    alpha: int = 255
 
     @property
     def rgb(self) -> tuple[int, int, int]:
