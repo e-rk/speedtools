@@ -42,6 +42,15 @@ class Edge(Enum):
     RIGHT = 3
 
 
+class VehicleLightType(Enum):
+    HEADLIGHT = 1
+    TAILLIGHT = 2
+    BRAKELIGHT = 3
+    REVERSE = 4
+    DIRECTIONAL = 5
+    SIREN = 6
+
+
 class Vector3d(NamedTuple):
     x: float
     z: float
@@ -270,7 +279,18 @@ class LightAttributes:
 @dataclass(frozen=True)
 class Light:
     location: Vector3d
-    attributes: LightAttributes
+    color: Color
+
+
+@dataclass(frozen=True)
+class TrackLight(Light):
+    blink_interval_ms: int | None
+    flare_size: float
+
+
+@dataclass(frozen=True)
+class VehicleLight(Light):
+    type: VehicleLightType
 
 
 @dataclass(frozen=True)

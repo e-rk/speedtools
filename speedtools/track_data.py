@@ -39,6 +39,7 @@ from speedtools.types import (
     LightStub,
     Polygon,
     Resource,
+    TrackLight,
     TrackObject,
     TrackSegment,
     Vector3d,
@@ -315,12 +316,17 @@ class TrackData:
             return self.sfx_resources[f"lin{mat}"]
         return self.resources[mat]
 
-    def _make_light(self, stub: LightStub) -> Light:
+    def _make_light(self, stub: LightStub) -> TrackLight:
         attributes = self.light_glows[stub.glow_id]
-        return Light(location=stub.location, attributes=attributes)
+        return TrackLight(
+            location=stub.location,
+            color=attributes.color,
+            blink_interval_ms=attributes.blink_interval_ms,
+            flare_size=attributes.flare_size,
+        )
 
     @property
-    def lights(self) -> Iterator[Light]:
+    def lights(self) -> Iterator[TrackLight]:
         if not self.light_glows:
             for attribute in self.ini.glows:
                 self.light_glows[attribute.identifier] = attribute
