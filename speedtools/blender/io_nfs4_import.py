@@ -12,7 +12,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from functools import total_ordering
 from itertools import chain, groupby
-from math import pi
+from math import pi, radians
 from pathlib import Path
 from typing import Any
 
@@ -37,6 +37,7 @@ from speedtools.types import (
     Resource,
     ShapeKey,
     Vector3d,
+    VehicleLightType,
     Vertex,
 )
 from speedtools.utils import image_to_png
@@ -218,7 +219,7 @@ class BaseImporter(metaclass=ABCMeta):
     def set_object_rotation(
         self,
         obj: bpy.types.Object,
-        transform: Matrix3x3,
+        transform: Matrix3x3 | mathutils.Matrix,
         offset: mathutils.Euler | None = None,
     ) -> None:
         mu_matrix = mathutils.Matrix(transform)
@@ -264,14 +265,37 @@ class BaseImporter(metaclass=ABCMeta):
             bpy_obj.shape_key_add(name="Basis")
         return bpy_obj
 
-    def make_light_object(self, name: str, light: Light) -> bpy.types.Object:
-        bpy_light = bpy.data.lights.new(name=name, type="POINT")
-        bpy_light.color = light.attributes.color.rgb_float  # type: ignore[assignment]
+    def make_base_light(
+        self,
+        name: str,
+        light: Light,
+        light_type: str = "POINT",
+        energy: int = 500,
+        cutoff_distance: float = 15.0,
+    ) -> bpy.types.Light:
+        bpy_light = bpy.data.lights.new(name=name, type=light_type)
+        bpy_light.color = light.color.rgb_float
         bpy_light.use_custom_distance = True
-        bpy_light.cutoff_distance = 15.0
+        bpy_light.cutoff_distance = cutoff_distance
         bpy_light.specular_factor = 0.2
-        bpy_light.energy = 500  # type: ignore[attr-defined]
+        bpy_light.energy = energy  # type: ignore[attr-defined]
         bpy_light.use_shadow = False  # type: ignore[attr-defined]
+        return bpy_light
+
+    def make_point_light_object(self, name: str, light: Light) -> bpy.types.Object:
+        bpy_light = self.make_base_light(name=name, light=light, light_type="POINT")
+        bpy_obj = bpy.data.objects.new(name=name, object_data=bpy_light)
+        self.set_object_location(obj=bpy_obj, location=light.location)
+        return bpy_obj
+
+    def make_spot_light_object(
+        self, name: str, light: Light, angle: float, cutoff_distance: float
+    ) -> bpy.types.Object:
+        bpy_light = self.make_base_light(
+            name=name, light=light, light_type="SPOT", cutoff_distance=cutoff_distance
+        )
+        bpy_light.spot_size = angle  # type: ignore[attr-defined]
+        bpy_light.spot_blend = 0.5
         bpy_obj = bpy.data.objects.new(name=name, object_data=bpy_light)
         self.set_object_location(obj=bpy_obj, location=light.location)
         return bpy_obj
@@ -368,7 +392,7 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
         bpy.context.scene.collection.children.link(light_collection)
         for index, light in enumerate(track.lights):
             name = f"Light {index}"
-            bpy_obj = self.make_light_object(name=name, light=light)
+            bpy_obj = self.make_point_light_object(name=name, light=light)
             light_collection.objects.link(bpy_obj)
         directional_light = track.directional_light
         if directional_light:
@@ -423,16 +447,51 @@ class TrackImportBlender(TrackImportGLTF):
         return output_socket
 
 
-class CarImporterSimple(BaseImporter):
-    def import_car(self, parts: Iterable[Part]) -> None:
+class CarImporterBody(BaseImporter):
+    car_spotlight_rotation = {
+        VehicleLightType.HEADLIGHT: mathutils.Matrix.Rotation(radians(90), 3, "X"),
+        VehicleLightType.DIRECTIONAL: mathutils.Matrix.Rotation(radians(90), 3, "X"),
+        VehicleLightType.BRAKELIGHT: mathutils.Matrix.Rotation(radians(-90), 3, "X"),
+        VehicleLightType.REVERSE: mathutils.Matrix.Rotation(radians(-90), 3, "X"),
+        VehicleLightType.TAILLIGHT: mathutils.Matrix.Rotation(radians(-90), 3, "X"),
+    }
+
+    car_light_type = {
+        VehicleLightType.HEADLIGHT: "SPOT",
+        VehicleLightType.DIRECTIONAL: "SPOT",
+        VehicleLightType.BRAKELIGHT: "SPOT",
+        VehicleLightType.REVERSE: "SPOT",
+        VehicleLightType.TAILLIGHT: "SPOT",
+    }
+
+    car_light_energy_scale = {
+        VehicleLightType.HEADLIGHT: 200,
+        VehicleLightType.DIRECTIONAL: 10,
+        VehicleLightType.BRAKELIGHT: "SPOT",
+        VehicleLightType.REVERSE: "SPOT",
+        VehicleLightType.TAILLIGHT: "SPOT",
+    }
+
+    def import_car(self, car: VivData) -> None:
         car_collection = bpy.data.collections.new("Car parts")
         bpy.context.scene.collection.children.link(car_collection)
-        for part in parts:
+        for part in car.parts:
             bpy_obj = self.make_drawable_object(name=part.name, mesh=part.mesh)
             self.set_object_location(obj=bpy_obj, location=part.location)
             car_collection.objects.link(bpy_obj)
             for shape_key in part.mesh.shape_keys:
                 self.make_shape_key(obj=bpy_obj, shape_key=shape_key)
+        light_collection = bpy.data.collections.new("Car lights")
+        bpy.context.scene.collection.children.link(light_collection)
+        for index, light in enumerate(car.lights):
+            name = f"{light.type.name.lower()}-{index}"
+            bpy_obj = self.make_spot_light_object(
+                name=name, light=light, angle=radians(58), cutoff_distance=100.0
+            )
+            self.set_object_rotation(
+                obj=bpy_obj, transform=self.car_spotlight_rotation[light.type]
+            )
+            light_collection.objects.link(bpy_obj)
 
 
 class TrackImporter(bpy.types.Operator):
@@ -570,12 +629,12 @@ class CarImporter(bpy.types.Operator):
 
         if self.import_interior:
             resource = one(car.interior_materials)
-            parts = car.interior
+            importer = CarImporterBody(material_map=lambda _: resource)
         else:
             resource = one(car.body_materials)
-            parts = car.parts
-        importer = CarImporterSimple(material_map=lambda _: resource)
-        importer.import_car(parts)
+            importer = CarImporterBody(material_map=lambda _: resource)
+        importer = CarImporterBody(material_map=lambda _: resource)
+        importer.import_car(car)
 
         return {"FINISHED"}
 
