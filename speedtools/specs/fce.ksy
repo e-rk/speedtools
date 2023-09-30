@@ -275,21 +275,29 @@ types:
   dummy:
     seq:
       - id: magic
-        type: u1
-      - id: type
-        type: u1
+        type: str
+        size: 1
       - id: color
-        type: u1
+        type: str
+        size: 1
+      - id: type
+        type: str
+        size: 1
       - id: breakable
-        type: u1
+        type: str
+        size: 1
       - id: flashing
-        type: u1
+        type: str
+        size: 1
       - id: intensity
-        type: u1
+        type: str
+        size: 1
       - id: time_on
-        type: u1
+        type: str
+        size: 1
       - id: time_off
-        type: u1
+        type: str
+        size: 1
   part:
     seq:
       - id: value
