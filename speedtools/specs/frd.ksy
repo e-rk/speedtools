@@ -536,8 +536,9 @@ types:
         type: f4
         repeat: expr
         repeat-expr: 9
-      - id: unknown2
+      - id: dimensions
         type: float3
+        doc: Collider dimensions
       - id: unknown3
         type: u4
       - id: unknown4
