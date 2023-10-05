@@ -530,8 +530,9 @@ types:
     seq:
       - id: location
         type: float3
-      - id: unknown1
-        type: u4
+      - id: mass
+        type: f4
+        doc: Object mass
       - id: transform
         type: f4
         repeat: expr
