@@ -48,10 +48,12 @@ class build_ksy(Command):
                 "speedtools.parsers",
                 str(source),
             ]
-            try:
-                self.spawn(["ksc"] + args)
-            except ExecError:
-                self.spawn(["kaitai-struct-compiler.bat"] + args)
+            executables = ["ksc", "kaitai-struct-compiler", "kaitai-struct-compiler.bat"]
+            for executable in executables:
+                try:
+                    self.spawn([executable] + args)
+                except ExecError:
+                    pass
 
     def get_output_mapping(self):
         mapping = {}
