@@ -45,6 +45,8 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
 
+major_version, _, _ = bpy.app.version
+
 
 bl_info = {
     "name": "Import NFS4 Track",
@@ -136,9 +138,13 @@ class BaseImporter(metaclass=ABCMeta):
         image_texture.image = image  # type: ignore[attr-defined]
         image_texture.extension = "EXTEND"  # type: ignore[attr-defined]
         bsdf = node_tree.nodes["Principled BSDF"]
-        bsdf.inputs["Specular"].default_value = 0  # type: ignore[attr-defined]
+        if major_version == 3:
+            bsdf.inputs["Specular"].default_value = 0  # type: ignore[attr-defined]
+            bsdf.inputs["Sheen Tint"].default_value = 0  # type: ignore[attr-defined]
+        else:
+            # IOR Level
+            bsdf.inputs[12].default_value = 0  # type: ignore[attr-defined]
         bsdf.inputs["Roughness"].default_value = 1  # type: ignore[attr-defined]
-        bsdf.inputs["Sheen Tint"].default_value = 0  # type: ignore[attr-defined]
         self._link_texture_to_shader(node_tree=node_tree, texture=image_texture, shader=bsdf)
         output_socket = self._set_blend_mode(
             node_tree=node_tree,
