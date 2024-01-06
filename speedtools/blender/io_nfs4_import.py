@@ -338,6 +338,7 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
                     bpy_obj = bpy.data.objects.new(name, bpy_mesh)
                     segment_collection.objects.link(bpy_obj)
                     bpy_obj.hide_set(True)
+                    bpy_obj["SPT_surface_type"] = effect.value
         object_collection = bpy.data.collections.new("Objects")
         bpy.context.scene.collection.children.link(object_collection)
         for index, obj in enumerate(track.objects):
