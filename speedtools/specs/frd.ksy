@@ -422,6 +422,10 @@ types:
         value: (texture & 0x0800) != 0
       texture_id:
         value: (texture & 0x07FF)
+      texture_count:
+        value: (animation & 0x7)
+      animation_ticks:
+        value: (animation >> 3)
   object_chunk:
     params:
       - id: num_objects
