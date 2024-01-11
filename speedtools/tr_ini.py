@@ -30,6 +30,13 @@ class SunIni:
     in_front: bool
 
 
+@dataclass(frozen=True)
+class HorizonIni:
+    sky_sun_color: Color
+    sky_middle_color: Color
+    sky_opposite_color: Color
+
+
 class TrackIni:
     def __init__(self, parser: ConfigParser) -> None:
         self.parser = parser
@@ -76,3 +83,6 @@ class TrackIni:
             )
         except KeyError:
             return None
+
+    @property
+    def horizon_color(self) -> 
