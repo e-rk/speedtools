@@ -8,7 +8,14 @@ version = "0.15.0"
 description = "NFS4 HS (PC) resource utilities"
 authors = [{ name = "Rafał Kuźnia" }, { email = "rafal.kuznia@protonmail.com" }]
 readme = { file = 'README.md', content-type = 'text/markdown' }
-dependencies = ["kaitaistruct", "pillow", "click", "more-itertools", "parse"]
+dependencies = [
+    "kaitaistruct",
+    "pillow",
+    "click",
+    "more-itertools",
+    "parse",
+    "lenses"
+]
 license = { text = "GPL-3.0-or-later" }
 classifiers = [
     'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
