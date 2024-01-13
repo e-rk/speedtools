@@ -175,13 +175,16 @@ class FrdData:
     def _make_collision_polygon(
         cls, segment: FrdParser.SegmentData, polygon: FrdParser.DriveablePolygon
     ) -> CollisionPolygon:
-        face = segment.chunks[4].polygons[polygon.polygon].face
-        (face,) = unzip(cls._validate_polygon(face=face))
+        all_edges = (Edge.FRONT, Edge.LEFT, Edge.BACK, Edge.RIGHT)
+        poly_face = segment.chunks[4].polygons[polygon.polygon].face
+        face, allowed_edges = unzip(cls._validate_polygon(poly_face, all_edges))
+        allowed_edges = frozenset(allowed_edges)
         edges: list[Edge] = []
         edges.append(Edge.FRONT) if polygon.front_edge else None
         edges.append(Edge.LEFT) if polygon.left_edge else None
         edges.append(Edge.BACK) if polygon.back_edge else None
         edges.append(Edge.RIGHT) if polygon.right_edge else None
+        edges = list(filter(lambda x: x in allowed_edges, edges))
         return CollisionPolygon(
             face=tuple(face),
             edges=edges,
@@ -217,25 +220,13 @@ class FrdData:
         road_effect: int,
         driveable_polygons: Iterable[FrdParser.DriveablePolygon],
     ) -> CollisionMesh:
-        selectors: Iterable[bool]
-        track_polygons: Iterable[Polygon]
+        polygons = [
+            cls._make_collision_polygon(segment, polygon) for polygon in driveable_polygons
+        ]
         vertex_locations = [Vector3d.from_frd_float3(vertex) for vertex in segment.vertices]
         vertices = [Vertex(location=loc) for loc in vertex_locations]
-        driveable_polygons = list(driveable_polygons)
-        polygon_idx = set(x.polygon for x in driveable_polygons)
-        mapped = starmap(
-            lambda i, poly: (i in polygon_idx, cls._make_polygon(poly)),
-            enumerate(cls._high_poly_track_chunk(segment)),
-        )
-        selectors, track_polygons = unzip(mapped)  # type: ignore[assignment] # pylint: disable=unbalanced-tuple-unpacking
-        track_mesh = BaseMesh(vertices=vertices, polygons=list(track_polygons))
-        polygon_constructors = map(cls._make_collision_poly_constructor, driveable_polygons)
-        mesh_constructor = partial(CollisionMesh, collision_effect=RoadEffect(road_effect))
-        return make_subset_mesh(
-            mesh=track_mesh,
-            mesh_constructor=mesh_constructor,
-            polygon_constructors=polygon_constructors,
-            selectors=selectors,
+        return CollisionMesh(
+            vertices=vertices, polygons=polygons, collision_effect=RoadEffect(road_effect)
         )
 
     @classmethod
