@@ -27,6 +27,7 @@ from speedtools.types import (
     Image,
     Resource,
     Vector3d,
+    Vertex,
 )
 
 logger = logging.getLogger(__name__)
@@ -123,7 +124,7 @@ def remove_unused_vertices(mesh: T) -> T:
 
 def make_subset_mesh(
     mesh: BaseMesh,
-    mesh_constructor: Callable[[Iterable[Vector3d], Sequence[Ty]], T],
+    mesh_constructor: Callable[[Iterable[Vertex], Sequence[Ty]], T],
     polygon_constructors: Iterable[Callable[[Tuple[int, ...]], Ty]],
     selectors: Iterable[bool],
 ) -> T:
