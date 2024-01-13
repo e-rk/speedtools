@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from abc import ABCMeta, abstractmethod
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import total_ordering
 from itertools import chain, groupby
 from math import pi
@@ -88,16 +88,11 @@ class BaseImporter(metaclass=ABCMeta):
 
         def _make_polygon(polygon: Polygon) -> Polygon:
             face = tuple(mapping[f] for f in polygon.face)
-            return Polygon(
-                face=face,
-                uv=polygon.uv,
-                material=polygon.material,
-                backface_culling=polygon.backface_culling,
-            )
+            return replace(polygon, face=face)
 
         polygons = unique_vert_polys + [_make_polygon(polygon) for polygon in duplicate_vert_polys]
         vertices = list(mesh.vertices) + verts_to_duplicate
-        return DrawableMesh(vertices=vertices, polygons=polygons)
+        return replace(mesh, vertices=vertices, polygons=polygons)
 
     def _extender_resource_map(self, polygon: Polygon) -> ExtendedResource:
         resource = self.material_map(polygon)
