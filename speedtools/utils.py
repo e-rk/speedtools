@@ -14,6 +14,7 @@ from itertools import chain, compress, islice
 from operator import getitem
 from pathlib import Path
 from typing import Any, Dict, Tuple, TypeVar
+from dataclasses import replace
 
 from PIL import Image as pil_Image
 
@@ -106,18 +107,18 @@ def _(resource: Resource, directory: Path) -> None:
     image.save(output_file)
 
 
-def remove_unused_vertices(mesh: BaseMesh) -> BaseMesh:
-    used_vertice_idx = chain.from_iterable(polygon.face for polygon in mesh.polygons)
-    used_vertices = list(set(map(partial(getitem, mesh.vertices), used_vertice_idx)))
+def remove_unused_vertices(mesh: T) -> T:
+    used_vertice_idx = chain.from_iterable(polygon.face for polygon in mesh.polygons)  # type: ignore[attr-defined]
+    used_vertices = list(set(map(partial(getitem, mesh.vertices), used_vertice_idx)))  # type: ignore[attr-defined]
     mapping = {v: i for i, v in enumerate(used_vertices)}
 
     def _make_polygon(polygon: BasePolygon) -> BasePolygon:
-        vertices = tuple(mesh.vertices[i] for i in polygon.face)
+        vertices = tuple(mesh.vertices[i] for i in polygon.face)  # type: ignore[attr-defined]
         face = tuple(mapping[v] for v in vertices)
-        return BasePolygon(face=face)
+        return replace(polygon, face=face)
 
-    polygons = [_make_polygon(polygon) for polygon in mesh.polygons]
-    return BaseMesh(vertices=used_vertices, polygons=polygons)
+    polygons = [_make_polygon(polygon) for polygon in mesh.polygons]  # type: ignore[attr-defined]
+    return replace(mesh, vertices=used_vertices, polygons=polygons)  # type: ignore[type-var]
 
 
 def make_subset_mesh(

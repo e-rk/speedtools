@@ -32,7 +32,6 @@ from speedtools.types import (
     Animation,
     AnimationAction,
     BasePolygon,
-    BaseMesh,
     CollisionMesh,
     CollisionPolygon,
     CollisionType,
@@ -50,7 +49,7 @@ from speedtools.types import (
     Vector3d,
     Vertex,
 )
-from speedtools.utils import islicen, make_subset_mesh
+from speedtools.utils import islicen, remove_unused_vertices
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +177,7 @@ class FrdData:
         all_edges = (Edge.FRONT, Edge.LEFT, Edge.BACK, Edge.RIGHT)
         poly_face = segment.chunks[4].polygons[polygon.polygon].face
         face, allowed_edges = unzip(cls._validate_polygon(poly_face, all_edges))
-        allowed_edges = frozenset(allowed_edges)
+        allowed_edges = list(allowed_edges)
         edges: list[Edge] = []
         edges.append(Edge.FRONT) if polygon.front_edge else None
         edges.append(Edge.LEFT) if polygon.left_edge else None
@@ -193,27 +192,6 @@ class FrdData:
         )
 
     @classmethod
-    def _make_collision_poly_constructor(
-        cls,
-        polygon: FrdParser.DriveablePolygon,
-    ) -> Callable[[Tuple[int, ...]], CollisionPolygon]:
-        edges: list[Edge] = []
-        edges.append(Edge.FRONT) if polygon.front_edge else None
-        edges.append(Edge.LEFT) if polygon.left_edge else None
-        edges.append(Edge.BACK) if polygon.back_edge else None
-        edges.append(Edge.RIGHT) if polygon.right_edge else None
-        return partial(
-            CollisionPolygon,
-            edges=edges,
-            has_finite_height=polygon.has_finite_height,
-            has_wall_collision=polygon.has_wall_collision,
-        )
-
-    @classmethod
-    def _high_poly_track_chunk(cls, segment: FrdParser.SegmentData) -> Sequence[FrdParser.Polygon]:
-        return segment.chunks[4].polygons
-
-    @classmethod
     def _make_collision_mesh(
         cls,
         segment: FrdParser.SegmentData,
@@ -225,9 +203,10 @@ class FrdData:
         ]
         vertex_locations = [Vector3d.from_frd_float3(vertex) for vertex in segment.vertices]
         vertices = [Vertex(location=loc) for loc in vertex_locations]
-        return CollisionMesh(
+        mesh = CollisionMesh(
             vertices=vertices, polygons=polygons, collision_effect=RoadEffect(road_effect)
         )
+        return remove_unused_vertices(mesh)
 
     @classmethod
     def _make_collision_meshes(cls, segment: FrdParser.SegmentData) -> Iterator[CollisionMesh]:
