@@ -219,6 +219,7 @@ class CollisionMesh(BaseMesh):
 class TrackSegment:
     mesh: DrawableMesh
     collision_meshes: Sequence[CollisionMesh]
+    waypoints: Sequence[Vector3d]
 
 
 @dataclass(frozen=True)

@@ -193,7 +193,13 @@ class FrdData:
         return filter(lambda x: x.collision_effect is not RoadEffect.not_driveable, meshes)
 
     @classmethod
-    def _make_track_segment(cls, segment: FrdParser.SegmentData) -> TrackSegment:
+    def _make_waypoints(cls, road_block: FrdParser.RoadBlock) -> Vector3d:
+        return Vector3d(x=road_block.location.x, y=road_block.location.y, z=road_block.location.z)
+
+    @classmethod
+    def _make_track_segment(
+        cls, segment: FrdParser.SegmentData, road_blocks: Iterable[FrdParser.RoadBlock]
+    ) -> TrackSegment:
         polygons = chain.from_iterable(chunk.polygons for chunk in cls._high_poly_chunks(segment))
         vertex_locations = [Vector3d.from_frd_float3(vertex) for vertex in segment.vertices]
         track_polygons = [cls._make_polygon(polygon) for polygon in polygons]
@@ -207,7 +213,8 @@ class FrdData:
             for loc, color in zip(vertex_locations, vertex_colors, strict=True)
         ]
         mesh = DrawableMesh(vertices=vertices, polygons=track_polygons)
-        return TrackSegment(mesh=mesh, collision_meshes=collision_meshes)
+        waypoints = [cls._make_waypoints(block) for block in road_blocks]
+        return TrackSegment(mesh=mesh, collision_meshes=collision_meshes, waypoints=waypoints)
 
     @classmethod
     def _texture_flags_to_uv(cls, polygon: FrdParser.Polygon) -> list[UV]:
@@ -261,7 +268,8 @@ class FrdData:
 
     @property
     def track_segments(self) -> Iterator[TrackSegment]:
-        return map(self._make_track_segment, self.frd.segment_data)
+        road_blocks = chunked(self.frd.road_blocks, 8)
+        return map(self._make_track_segment, self.frd.segment_data, road_blocks)
 
     @property
     def light_dummies(self) -> Iterator[LightStub]:
