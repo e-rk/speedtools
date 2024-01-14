@@ -375,6 +375,9 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
             for index, camera in enumerate(track.cameras):
                 bpy_obj = self.make_camera_object(name=f"Camera {index}", camera=camera)
                 camera_collection.objects.link(bpy_obj)
+        waypoints = chain.from_iterable(segment.waypoints for segment in track.track_segments)
+        waypoint_metadata = [(w.x, w.y, w.z) for w in waypoints]
+        bpy.context.scene["SPT_waypoints"] = waypoint_metadata
 
 
 class TrackImportBlender(TrackImportGLTF):
