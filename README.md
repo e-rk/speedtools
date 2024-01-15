@@ -12,8 +12,7 @@ Additionally, Blender addon is provided to directly import track and car data.
 problems during the installation step with `pip`, because the built-in python is unable to import packages from the user site directory.
 Newer Blender versions don't have this problem.
 
-1. Create new empty Blender project and save it
-   > **Warning**: Not saving the project may cause errors during import. The importer saves all texture images to `<project-dir>/images` directory.
+1. Create new empty Blender project
 2. Open the __Scripting__ tab
 3. Copy-paste the following two commands into the Blender console:
    ```

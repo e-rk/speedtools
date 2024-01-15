@@ -39,7 +39,7 @@ from speedtools.types import (
     Vector3d,
     Vertex,
 )
-from speedtools.utils import export_resource
+from speedtools.utils import image_to_png
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -124,14 +124,18 @@ class BaseImporter(metaclass=ABCMeta):
             bpy_material.blend_method = "CLIP"
         return shader_output
 
+    def _image_from_resource(self, resource: Resource) -> bpy.types.Image:
+        image_data = image_to_png(resource.image)
+        bpy_image = bpy.data.images.new(resource.name, 8, 8)
+        bpy_image.pack(data=image_data, data_len=len(image_data))
+        bpy_image.source = "FILE"
+        return bpy_image
+
     def _make_material(self, ext_resource: ExtendedResource) -> bpy.types.Material:
         resource = ext_resource.resource
-        images_dir = Path(bpy.path.abspath("//images"))
-        export_resource(resource, directory=images_dir)
         bpy_material = bpy.data.materials.new(resource.name)
         bpy_material.use_nodes = True
-        image_path = Path(images_dir, f"{resource.name}.png")
-        image = bpy.data.images.load(str(image_path), check_existing=True)
+        image = self._image_from_resource(resource)
         node_tree = bpy_material.node_tree
         material_output = node_tree.nodes.get("Material Output")
         image_texture = node_tree.nodes.new("ShaderNodeTexImage")

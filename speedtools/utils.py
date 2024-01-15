@@ -64,6 +64,13 @@ def _(image: Bitmap) -> Any:
     return pil_Image.frombytes("RGBA", (image.width, image.height), data=image.data)
 
 
+def image_to_png(image: Image):
+    buffer = BytesIO()
+    pil_image = create_pil_image(image)
+    pil_image.save(buffer, "png")
+    return buffer.getvalue()
+
+
 @singledispatch
 def export_resource(resource: Any, directory: Path) -> None:
     raise NotImplementedError("Unsupported resource type")
