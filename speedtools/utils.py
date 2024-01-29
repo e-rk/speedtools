@@ -70,11 +70,15 @@ def _(image: Bitmap) -> Any:
     return pil_Image.frombytes("RGBA", (image.width, image.height), data=image.data)
 
 
-def image_to_png(image: Image) -> bytes:
+def pil_image_to_png(image: Any) -> bytes:
     buffer = BytesIO()
-    pil_image = create_pil_image(image)
-    pil_image.save(buffer, "png")
+    image.save(buffer, "png")
     return buffer.getvalue()
+
+
+def image_to_png(image: Image) -> bytes:
+    pil_image = create_pil_image(image)
+    return pil_image_to_png(pil_image)
 
 
 @singledispatch
@@ -143,3 +147,12 @@ def merge_mesh(a: T, b: T) -> T:
     b_polygons = map(remap_idx, b.polygons)  # type: ignore[attr-defined]
     polygons = list(chain(a.polygons, b_polygons))  # type: ignore[attr-defined]
     return replace(a, vertices=vertices, polygons=polygons)  # type: ignore[type-var]
+
+
+def make_horizon_texture(resources: list[Resource]) -> Any:
+    images = [create_pil_image(x.image) for x in resources]
+    width_hrz = sum(x.width for x in images)
+    horizon_image = pil_Image.new("RGBA", (width_hrz, width_hrz))
+    for idx, image in enumerate(images):
+        horizon_image.paste(image, (image.width * idx, width_hrz // 2 - image.width // 2))
+    return horizon_image

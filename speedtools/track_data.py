@@ -8,6 +8,7 @@ import logging
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import suppress
 from dataclasses import replace
+from fnmatch import fnmatch
 from functools import partial, reduce
 from itertools import accumulate, chain, starmap
 from math import atan2, cos, tau
@@ -350,3 +351,7 @@ class TrackData:
     @property
     def horizon(self) -> Horizon:
         return self.ini.horizon
+
+    @property
+    def sky_images(self) -> Iterable[Resource]:
+        return filter(lambda x: fnmatch(x.name, "HDC?"), self.sky.resources)
