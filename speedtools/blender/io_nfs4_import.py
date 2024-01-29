@@ -385,11 +385,23 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
         waypoint_metadata = [(w.x, w.y, w.z) for w in waypoints]
         bpy.context.scene["SPT_waypoints"] = waypoint_metadata
         if import_ambient:
+
+            def color_to_dict(color: Color) -> dict[str, float]:
+                red, green, blue = color.rgb_float
+                return {"red": red, "green": green, "blue": blue}
+
+            environment = {}
             ambient_color = track.ambient_color
-            #bpy.context.scene.world.use_nodes = False
-            #bpy.context.scene.world.color = ambient_color.rgb_float
-            red, green, blue = ambient_color.rgb_float
-            bpy.context.scene["SPT_ambient"] = {"red": red, "green": green, "blue": blue}
+            # bpy.context.scene.world.use_nodes = False
+            # bpy.context.scene.world.color = ambient_color.rgb_float
+            environment["ambient"] = color_to_dict(ambient_color)
+            horizon = track.horizon
+            environment["horizon"] = {
+                "sun": color_to_dict(horizon.sun_side),
+                "top": color_to_dict(horizon.top_side),
+                "opposite": color_to_dict(horizon.opposite_side),
+            }
+            bpy.context.scene["SPT_environment"] = environment
 
 
 class TrackImportBlender(TrackImportGLTF):
