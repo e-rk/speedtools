@@ -222,3 +222,7 @@ class TrackData:
     @property
     def ambient_color(self) -> Color:
         return self.ini.ambient_color
+
+    @property
+    def horizon(self) -> Color:
+        return self.ini.horizon
