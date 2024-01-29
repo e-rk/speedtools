@@ -24,6 +24,7 @@ classifiers = [
 
 [project.scripts]
 speedtool-unpack = "speedtools.speedtool:unpack"
+speedtool = "speedtools.speedtool:main"
 
 [project.urls]
 homepage = "https://github.com/e-rk/speedtools"
