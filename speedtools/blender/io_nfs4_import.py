@@ -424,15 +424,21 @@ class TrackImportBlender(TrackImportGLTF):
 
 
 class CarImporterSimple(BaseImporter):
-    def import_car(self, parts: Iterable[Part]) -> None:
+    def import_car(self, car: VivData) -> None:
         car_collection = bpy.data.collections.new("Car parts")
         bpy.context.scene.collection.children.link(car_collection)
-        for part in parts:
+        for part in car.parts:
             bpy_obj = self.make_drawable_object(name=part.name, mesh=part.mesh)
             self.set_object_location(obj=bpy_obj, location=part.location)
             car_collection.objects.link(bpy_obj)
             for shape_key in part.mesh.shape_keys:
                 self.make_shape_key(obj=bpy_obj, shape_key=shape_key)
+        dimensions = car.dimensions
+        car_metadata = {
+            "performance": car.performance,
+            "dimensions": (dimensions.x, dimensions.y, dimensions.z),
+        }
+        bpy.context.scene["SPT_car"] = car_metadata
 
 
 class TrackImporter(bpy.types.Operator):
@@ -575,7 +581,7 @@ class CarImporter(bpy.types.Operator):
             resource = one(car.body_materials)
             parts = car.parts
         importer = CarImporterSimple(material_map=lambda _: resource)
-        importer.import_car(parts)
+        importer.import_car(car)
 
         return {"FINISHED"}
 
