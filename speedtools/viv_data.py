@@ -29,6 +29,7 @@ from speedtools.types import (
     Vertex,
 )
 from speedtools.utils import islicen
+from speedtools.carp_data import CarpData
 
 
 class Resolution(Enum):
@@ -237,3 +238,9 @@ class VivData:
     @property
     def interior_materials(self) -> Iterator[Resource]:
         return filter(lambda x: x.name in self.interior_textures, self.materials)
+
+    @property
+    def performance(self) -> dict[str, Any]:
+        carp = one(filter(lambda x: x.name == "carp.txt", self.viv.entries))
+        parser = CarpData()
+        return parser.to_dict(carp.body)
