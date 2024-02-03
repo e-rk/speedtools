@@ -64,7 +64,7 @@ def _(image: Bitmap) -> Any:
     return pil_Image.frombytes("RGBA", (image.width, image.height), data=image.data)
 
 
-def image_to_png(image: Image):
+def image_to_png(image: Image) -> bytes:
     buffer = BytesIO()
     pil_image = create_pil_image(image)
     pil_image.save(buffer, "png")
