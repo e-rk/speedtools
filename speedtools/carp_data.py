@@ -124,7 +124,7 @@ class CarpData:
 
     @classmethod
     def to_dict(cls, value: str) -> dict[str, Any]:
-        values = filter(lambda x: x, value.split("\n"))
+        values = filter(lambda x: x, value.split("\r\n"))
         grouped = grouper(values, 2, incomplete="fill")
         items = map(cls.parse, grouped)
         return reduce(lambda x, y: x | y, items)
