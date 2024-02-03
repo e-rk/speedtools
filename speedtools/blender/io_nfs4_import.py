@@ -330,8 +330,9 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
             name = f"Segment {index}"
             segment_collection = bpy.data.collections.new(name=name)
             track_collection.children.link(segment_collection)
+            mesh = self.duplicate_common_vertices(mesh=segment.mesh)
             bpy_obj = self.make_drawable_object(
-                name=name, mesh=segment.mesh, import_shading=import_shading
+                name=name, mesh=mesh, import_shading=import_shading
             )
             segment_collection.objects.link(bpy_obj)
             if import_collision:
