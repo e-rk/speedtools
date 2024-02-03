@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from itertools import starmap
 from pathlib import Path
 
-from parse import parse, search  # type: ignore[import]
+from parse import parse, search  # type: ignore[import-untyped]
 
 from speedtools.types import Color, LightAttributes
 
