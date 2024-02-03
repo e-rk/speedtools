@@ -45,7 +45,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
 
-major_version, _, _ = bpy.app.version
+major_version, _, _ = bpy.app.version  # type: ignore[misc]
 
 
 bl_info = {
@@ -142,7 +142,7 @@ class BaseImporter(metaclass=ABCMeta):
         image_texture.image = image  # type: ignore[attr-defined]
         image_texture.extension = "EXTEND"  # type: ignore[attr-defined]
         bsdf = node_tree.nodes["Principled BSDF"]
-        if major_version == 3:
+        if major_version == 3:  # type: ignore[has-type]
             bsdf.inputs["Specular"].default_value = 0  # type: ignore[attr-defined]
             bsdf.inputs["Sheen Tint"].default_value = 0  # type: ignore[attr-defined]
         else:
@@ -179,7 +179,7 @@ class BaseImporter(metaclass=ABCMeta):
 
     def set_object_location(self, obj: bpy.types.Object, location: Vector3d) -> None:
         mu_location = mathutils.Vector(location)
-        obj.location = mu_location
+        obj.location = mu_location  # type: ignore[assignment]
 
     def set_object_action(self, obj: bpy.types.Object, action: AnimationAction) -> None:
         animation = action.animation
@@ -197,7 +197,7 @@ class BaseImporter(metaclass=ABCMeta):
             mu_quaternion = mathutils.Quaternion(quaternion)
             mu_quaternion = mu_quaternion.normalized()
             mu_quaternion = mu_quaternion.inverted()
-            obj.delta_location = mu_location
+            obj.delta_location = mu_location  # type: ignore[assignment]
             obj.delta_rotation_quaternion = mu_quaternion  # type: ignore[assignment]
             interval = index * animation.delay
             obj.keyframe_insert(
@@ -266,7 +266,7 @@ class BaseImporter(metaclass=ABCMeta):
 
     def make_light_object(self, name: str, light: Light) -> bpy.types.Object:
         bpy_light = bpy.data.lights.new(name=name, type="POINT")
-        bpy_light.color = light.attributes.color.rgb_float
+        bpy_light.color = light.attributes.color.rgb_float  # type: ignore[assignment]
         bpy_light.use_custom_distance = True
         bpy_light.cutoff_distance = 15.0
         bpy_light.specular_factor = 0.2
