@@ -11,14 +11,18 @@ import re
 
 T = TypeVar("T")
 
+
 def listify(constructor: Callable[[str], T]) -> Callable[[str], list[T]]:
     def body(value: str) -> list[T]:
         items = filter(lambda x: x, value.split(","))
         return [constructor(item) for item in items]
+
     return body
+
 
 def bool_str(value: str) -> bool:
     return value != "0"
+
 
 class CarpItem:
     def __init__(self, name, constructor):
@@ -26,7 +30,8 @@ class CarpItem:
         self.constructor = constructor
 
     def to_dict(self, value):
-        return { self.name: self.constructor(value) }
+        return {self.name: self.constructor(value)}
+
 
 class CarpData:
     CARP_ITEMS = {
@@ -120,7 +125,6 @@ class CarpData:
         match = re.findall(r"\((\d+)\)", name)
         key = int(match[-1])
         return cls.CARP_ITEMS[key].to_dict(value)
-        
 
     @classmethod
     def to_dict(cls, value: str) -> dict[str, Any]:
