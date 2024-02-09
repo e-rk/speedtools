@@ -433,8 +433,10 @@ class CarImporterSimple(BaseImporter):
             car_collection.objects.link(bpy_obj)
             for shape_key in part.mesh.shape_keys:
                 self.make_shape_key(obj=bpy_obj, shape_key=shape_key)
+        dimensions = car.dimensions
         car_metadata = {
             "performance": car.performance,
+            "dimensions": (dimensions.x, dimensions.y, dimensions.z),
         }
         bpy.context.scene["SPT_car"] = car_metadata
 
