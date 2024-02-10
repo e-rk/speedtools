@@ -26,11 +26,11 @@ def bool_str(value: str) -> bool:
 
 
 class CarpItem:
-    def __init__(self, name, constructor):
+    def __init__(self, name: str, constructor: Callable[[str], Any]):
         self.name = name
         self.constructor = constructor
 
-    def to_dict(self, value):
+    def to_dict(self, value: str) -> dict[str, Any]:
         return {self.name: self.constructor(value)}
 
 
@@ -120,8 +120,7 @@ class CarpData:
     }
 
     @classmethod
-    def parse(cls, group: tuple[str, str]):
-        print(group)
+    def parse(cls, group: tuple[str, str]) -> dict[str, Any]:
         name, value = group
         match = re.findall(r"\((\d+)\)", name)
         key = int(match[-1])
@@ -129,7 +128,7 @@ class CarpData:
 
     @classmethod
     def to_dict(cls, value: str) -> dict[str, Any]:
-        values = filter(lambda x: x, value.split("\r\n"))
+        values = filter(lambda x: x, value.splitlines())
         grouped = grouper(values, 2, incomplete="strict")
-        items = map(cls.parse, grouped)
+        items = map(cls.parse, grouped)  # type: ignore[arg-type]
         return reduce(lambda x, y: x | y, items)
