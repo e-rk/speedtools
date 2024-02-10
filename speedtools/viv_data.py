@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable, Iterator
 from enum import Enum
 from functools import partial
@@ -18,6 +19,7 @@ from more_itertools import one
 from speedtools.parsers import FceParser, VivParser
 from speedtools.types import (
     UV,
+    Color,
     DrawableMesh,
     Image,
     Part,
@@ -26,10 +28,14 @@ from speedtools.types import (
     ShapeKey,
     ShapeKeyType,
     Vector3d,
+    VehicleLight,
+    VehicleLightType,
     Vertex,
 )
 from speedtools.utils import islicen
 from speedtools.carp_data import CarpData
+
+logger = logging.getLogger(__name__)
 
 
 class Resolution(Enum):
@@ -114,6 +120,23 @@ class VivData:
         ":Ltail": PartAttributes(resolution=Resolution.LOW, name="tail_rotor"),
     }
 
+    light_types = {
+        "H": VehicleLightType.HEADLIGHT,
+        "T": VehicleLightType.TAILLIGHT,
+        "B": VehicleLightType.BRAKELIGHT,
+        "R": VehicleLightType.REVERSE,
+        "P": VehicleLightType.DIRECTIONAL,
+        "S": VehicleLightType.SIREN,
+    }
+
+    light_colors = {
+        "R": Color(0xFF, 0, 0),
+        "B": Color(0, 0, 0xFF),
+        "W": Color(0xFF, 0xFF, 0xFF),
+        "O": Color(0xE4, 0xA4, 0),
+        "Y": Color(0xFF, 0xFF, 0),
+    }
+
     body_geometry = {"car.fce", "hel.fce"}
     body_textures = {"car00.tga", "hel00.tga"}
     interior_geometry = {"dash.fce"}
@@ -189,9 +212,9 @@ class VivData:
 
     @classmethod
     def _make_geometry(cls, fce: FceParser) -> Iterator[Part]:
-        slice_vert = partial(islicen, fce.vertices)
+        slice_vert = partial(islicen, fce.undamaged_vertices)
         part_vertices_iter = map(slice_vert, fce.part_vertex_index, fce.part_num_vertices)
-        slice_norm = partial(islicen, fce.normals)
+        slice_norm = partial(islicen, fce.undamaged_normals)
         part_normals_iter = map(slice_norm, fce.part_vertex_index, fce.part_num_vertices)
         slice_norm = partial(islicen, fce.polygons)
         part_polygons_iter = map(slice_norm, fce.part_polygon_index, fce.part_num_polygons)
@@ -216,6 +239,14 @@ class VivData:
         selectors = map(cls._match_attributes, attributes)
         filtered_parts = compress(part_data, selectors)
         return starmap(cls._make_part, filtered_parts)
+
+    @classmethod
+    def _make_light(cls, location: FceParser.Float3, dummy: FceParser.Dummy) -> VehicleLight:
+        loc = Vector3d.from_fce_float3(location)
+        color = cls.light_colors[dummy.color]
+        light_type = cls.light_types[dummy.magic]
+        logger.error(f"Color: {color}")
+        return VehicleLight(location=loc, color=color, type=light_type)
 
     @property
     def parts(self) -> Iterator[Part]:
@@ -252,3 +283,9 @@ class VivData:
         fce = one(filter(lambda x: x.name in self.body_geometry, self.viv.entries))
         half_sizes = fce.body.half_sizes
         return Vector3d(x=half_sizes.x * 2, y=half_sizes.y * 2, z=half_sizes.z * 2)
+
+    @property
+    def lights(self) -> Iterator[VehicleLight]:
+        fce = one(filter(lambda x: x.name in self.body_geometry, self.viv.entries))
+        lights = filter(lambda x: x.magic in self.light_types, fce.body.dummies)
+        return map(self._make_light, fce.body.light_sources, lights)
