@@ -65,6 +65,7 @@ bl_info = {
 class ExtendedResource:
     resource: Resource
     backface_culling: bool
+    transmissive: bool
 
     def __lt__(self, other: ExtendedResource) -> bool:
         return hash(self) < hash(other)
@@ -100,7 +101,8 @@ class BaseImporter(metaclass=ABCMeta):
 
     def _extender_resource_map(self, polygon: Polygon) -> ExtendedResource:
         resource = self.material_map(polygon)
-        return ExtendedResource(resource=resource, backface_culling=polygon.backface_culling)
+        return ExtendedResource(resource=resource, backface_culling=polygon.backface_culling,
+                                transmissive=polygon.transmissive)
 
     def _link_texture_to_shader(
         self, node_tree: bpy.types.NodeTree, texture: bpy.types.Node, shader: bpy.types.Node
@@ -149,6 +151,7 @@ class BaseImporter(metaclass=ABCMeta):
             # IOR Level
             bsdf.inputs[12].default_value = 0  # type: ignore[attr-defined]
         bsdf.inputs["Roughness"].default_value = 1  # type: ignore[attr-defined]
+        bsdf.inputs[17].default_value = 1 if ext_resource.transmissive else 0
         self._link_texture_to_shader(node_tree=node_tree, texture=image_texture, shader=bsdf)
         output_socket = self._set_blend_mode(
             node_tree=node_tree,
