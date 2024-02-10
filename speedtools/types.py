@@ -152,6 +152,7 @@ class Polygon(BasePolygon):
     material: int
     backface_culling: bool
     is_lane: bool = False
+    transmissive: bool = False
 
 
 @dataclass(frozen=True)
