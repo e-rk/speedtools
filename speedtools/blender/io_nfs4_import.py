@@ -337,6 +337,7 @@ class TrackImportStrategy(metaclass=ABCMeta):
         import_shading: bool = False,
         import_actions: bool = False,
         import_cameras: bool = False,
+        import_ambient: bool = False,
     ) -> None:
         pass
 
@@ -349,6 +350,7 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
         import_shading: bool = False,
         import_actions: bool = False,
         import_cameras: bool = False,
+        import_ambient: bool = False,
     ) -> None:
         bpy.context.scene.render.fps = track.ANIMATION_FPS
         track_collection = bpy.data.collections.new("Track segments")
@@ -410,6 +412,24 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
         waypoints = chain.from_iterable(segment.waypoints for segment in track.track_segments)
         waypoint_metadata = [(w.x, w.y, w.z) for w in waypoints]
         bpy.context.scene["SPT_waypoints"] = waypoint_metadata
+        if import_ambient:
+
+            def color_to_dict(color: Color) -> dict[str, float]:
+                red, green, blue = color.rgb_float
+                return {"red": red, "green": green, "blue": blue}
+
+            environment = {}
+            ambient_color = track.ambient_color
+            # bpy.context.scene.world.use_nodes = False
+            # bpy.context.scene.world.color = ambient_color.rgb_float
+            environment["ambient"] = color_to_dict(ambient_color)
+            horizon = track.horizon
+            environment["horizon"] = {
+                "sun": color_to_dict(horizon.sun_side),
+                "top": color_to_dict(horizon.top_side),
+                "opposite": color_to_dict(horizon.opposite_side),
+            }
+            bpy.context.scene["SPT_environment"] = environment
 
 
 class TrackImportBlender(TrackImportGLTF):
@@ -571,6 +591,11 @@ class TrackImporter(bpy.types.Operator):
         description="Import track-specific replay cameras",
         default=False,
     )
+    import_ambient: BoolProperty(  # type: ignore[valid-type]
+        name="Import ambient",
+        description="Import ambient light",
+        default=False,
+    )
 
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[int] | set[str]:
         wm = context.window_manager
@@ -603,6 +628,7 @@ class TrackImporter(bpy.types.Operator):
             import_shading=import_shading,
             import_actions=self.import_actions,
             import_cameras=self.import_cameras,
+            import_ambient=self.import_ambient,
         )
         return {"FINISHED"}
 

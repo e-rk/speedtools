@@ -22,6 +22,7 @@ from speedtools.types import (
     AnimationAction,
     Camera,
     CollisionType,
+    Color,
     DirectionalLight,
     LightAttributes,
     LightStub,
@@ -222,3 +223,11 @@ class TrackData:
     @property
     def cameras(self) -> Iterable[Camera]:
         return self.cam.cameras
+
+    @property
+    def ambient_color(self) -> Color:
+        return self.ini.ambient_color
+
+    @property
+    def horizon(self) -> Color:
+        return self.ini.horizon

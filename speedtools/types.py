@@ -287,3 +287,10 @@ class DirectionalLight:
 class Camera:
     location: Vector3d
     transform: Matrix3x3
+
+
+@dataclass(frozen=True)
+class Horizon:
+    sun_side: Color
+    top_side: Color
+    opposite_side: Color
