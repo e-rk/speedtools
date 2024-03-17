@@ -49,31 +49,31 @@ class VivData:
         # High Body
         ":HB": PartAttributes(resolution=Resolution.HIGH, name="body"),
         # High Left Front Wheel
-        ":HLFW": PartAttributes(resolution=Resolution.HIGH, name="front_left_wheel"),
+        ":HLFW": PartAttributes(resolution=Resolution.HIGH, name="front_left_whl"),
         # High Right Front Wheel
-        ":HRFW": PartAttributes(resolution=Resolution.HIGH, name="front_right_wheel"),
+        ":HRFW": PartAttributes(resolution=Resolution.HIGH, name="front_right_whl"),
         # High Left Middle Wheel
-        ":HLMW": PartAttributes(resolution=Resolution.HIGH, name="middle_left_wheel"),
+        ":HLMW": PartAttributes(resolution=Resolution.HIGH, name="middle_left_whl"),
         # High Right Middle Wheel
-        ":HRMW": PartAttributes(resolution=Resolution.HIGH, name="middle_right_wheel"),
+        ":HRMW": PartAttributes(resolution=Resolution.HIGH, name="middle_right_whl"),
         # High Left Rear Wheel
-        ":HLRW": PartAttributes(resolution=Resolution.HIGH, name="rear_left_wheel"),
+        ":HLRW": PartAttributes(resolution=Resolution.HIGH, name="rear_left_whl"),
         # High Right Rear Wheel
-        ":HRRW": PartAttributes(resolution=Resolution.HIGH, name="rear_right_wheel"),
+        ":HRRW": PartAttributes(resolution=Resolution.HIGH, name="rear_right_whl"),
         # Medium Body
         ":MB": PartAttributes(resolution=Resolution.MEDIUM, name="body"),
         # Medium Left Front Wheel
-        ":MLFW": PartAttributes(resolution=Resolution.MEDIUM, name="front_left_wheel"),
+        ":MLFW": PartAttributes(resolution=Resolution.MEDIUM, name="front_left_whl"),
         # Medium Right Front Wheel
-        ":MRFW": PartAttributes(resolution=Resolution.MEDIUM, name="front_right_wheel"),
+        ":MRFW": PartAttributes(resolution=Resolution.MEDIUM, name="front_right_whl"),
         # Medium Left Middle Wheel
-        ":MLMW": PartAttributes(resolution=Resolution.MEDIUM, name="middle_left_wheel"),
+        ":MLMW": PartAttributes(resolution=Resolution.MEDIUM, name="middle_left_whl"),
         # Medium Right Middle Wheel
-        ":MRMW": PartAttributes(resolution=Resolution.MEDIUM, name="middle_right_wheel"),
+        ":MRMW": PartAttributes(resolution=Resolution.MEDIUM, name="middle_right_whl"),
         # Medium Left Rear Wheel
-        ":MLRW": PartAttributes(resolution=Resolution.MEDIUM, name="rear_left_wheel"),
+        ":MLRW": PartAttributes(resolution=Resolution.MEDIUM, name="rear_left_whl"),
         # Medium Right Rear Wheel
-        ":MRRW": PartAttributes(resolution=Resolution.MEDIUM, name="rear_right_wheel"),
+        ":MRRW": PartAttributes(resolution=Resolution.MEDIUM, name="rear_right_whl"),
         # Low Body
         ":LB": PartAttributes(resolution=Resolution.LOW, name="body"),
         # Tiny Body
