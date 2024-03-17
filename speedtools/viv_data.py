@@ -11,10 +11,11 @@ from enum import Enum
 from functools import partial
 from itertools import compress, starmap
 from pathlib import Path
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 from more_itertools import one
 
+from speedtools.carp_data import CarpData
 from speedtools.parsers import FceParser, VivParser
 from speedtools.types import (
     UV,
@@ -29,7 +30,6 @@ from speedtools.types import (
     Vertex,
 )
 from speedtools.utils import islicen
-from speedtools.carp_data import CarpData
 
 
 class Resolution(Enum):
