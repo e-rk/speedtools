@@ -15,7 +15,7 @@ from pathlib import Path
 
 from parse import parse, search  # type: ignore[import-untyped]
 
-from speedtools.types import Color, LightAttributes
+from speedtools.types import Color, LightAttributes, Horizon
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +56,11 @@ class TrackIni:
             flare_size=flare_size,
         )
 
+    @classmethod
+    def _parse_color(cls, value: str) -> Color:
+        red, green, blue = parse("[{:d},{:d},{:d}]", value)
+        return Color(alpha=255, red=red, green=green, blue=blue)
+
     @property
     def glows(self) -> Iterator[LightAttributes]:
         return starmap(self._make_glow, self.parser["track glows"].items())
@@ -87,3 +92,15 @@ class TrackIni:
         green = (green * 255) // 100
         blue = (blue * 255) // 100
         return Color(alpha=255, red=red, green=green, blue=blue)
+
+    @property
+    def horizon(self) -> Horizon:
+        strip = self.parser["strip"]
+        sun_side = self._parse_color(strip["hrzSunColor"])
+        top_side = self._parse_color(strip["hrzSkyTopColor"])
+        opposite_side = self._parse_color(strip["hrzOppositeSunColor"])
+        return Horizon(
+            sun_side=sun_side,
+            top_side=top_side,
+            opposite_side=opposite_side,
+        )
