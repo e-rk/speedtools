@@ -382,9 +382,10 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
             for index, camera in enumerate(track.cameras):
                 bpy_obj = self.make_camera_object(name=f"Camera {index}", camera=camera)
                 camera_collection.objects.link(bpy_obj)
+        spt_track = {}
         waypoints = chain.from_iterable(segment.waypoints for segment in track.track_segments)
         waypoint_metadata = [(w.x, w.y, w.z) for w in waypoints]
-        bpy.context.scene["SPT_waypoints"] = waypoint_metadata
+        spt_track["waypoints"] = waypoint_metadata
         if import_ambient:
 
             def color_to_dict(color: Color) -> dict[str, float]:
@@ -393,8 +394,6 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
 
             environment = {}
             ambient_color = track.ambient_color
-            red, green, blue = ambient_color.rgb_float
-            bpy.context.scene["SPT_ambient"] = {"red": red, "green": green, "blue": blue}
             environment["ambient"] = color_to_dict(ambient_color)
             horizon = track.horizon
             environment["horizon"] = {
@@ -402,8 +401,8 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
                 "top": color_to_dict(horizon.top_side),
                 "opposite": color_to_dict(horizon.opposite_side),
             }
-            bpy.context.scene["SPT_environment"] = environment
-
+            spt_track["environment"] = environment
+        bpy.context.scene["SPT_track"] = spt_track
 
 class TrackImportBlender(TrackImportGLTF):
     def _link_texture_to_shader(
