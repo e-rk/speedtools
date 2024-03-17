@@ -15,7 +15,7 @@ from pathlib import Path
 
 from parse import parse, search  # type: ignore[import-untyped]
 
-from speedtools.types import Color, LightAttributes, Horizon
+from speedtools.types import Color, Horizon, LightAttributes
 
 logger = logging.getLogger(__name__)
 

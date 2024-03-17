@@ -24,6 +24,7 @@ from speedtools.types import (
     CollisionType,
     Color,
     DirectionalLight,
+    Horizon,
     Light,
     LightAttributes,
     LightStub,
@@ -224,5 +225,5 @@ class TrackData:
         return self.ini.ambient_color
 
     @property
-    def horizon(self) -> Color:
+    def horizon(self) -> Horizon:
         return self.ini.horizon

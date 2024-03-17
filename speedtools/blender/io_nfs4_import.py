@@ -28,6 +28,7 @@ from speedtools.types import (
     BaseMesh,
     BlendMode,
     Camera,
+    Color,
     DirectionalLight,
     DrawableMesh,
     Light,
@@ -397,12 +398,13 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
             environment["ambient"] = color_to_dict(ambient_color)
             horizon = track.horizon
             environment["horizon"] = {
-                "sun": color_to_dict(horizon.sun_side),
-                "top": color_to_dict(horizon.top_side),
-                "opposite": color_to_dict(horizon.opposite_side),
+                "sun": color_to_dict(horizon.sun_side),  # type: ignore[dict-item]
+                "top": color_to_dict(horizon.top_side),  # type: ignore[dict-item]
+                "opposite": color_to_dict(horizon.opposite_side),  # type: ignore[dict-item]
             }
-            spt_track["environment"] = environment
+            spt_track["environment"] = environment  # type: ignore[assignment]
         bpy.context.scene["SPT_track"] = spt_track
+
 
 class TrackImportBlender(TrackImportGLTF):
     def _link_texture_to_shader(
