@@ -250,8 +250,6 @@ class FrdData:
         return TrackSegment(
             mesh=mesh,
             collision_meshes=collision_meshes,
-            extra_data_count=header.num_road_blocks,
-            extra_data_start=extra_data_start,
             waypoints=waypoints,
         )
 
