@@ -132,19 +132,17 @@ def make_subset_mesh(
     minimal_mesh = remove_unused_vertices(
         BaseMesh(vertices=mesh.vertices, polygons=selected_polygons)
     )
-    #logger.error(f"Selected: {selected_polygons}")
-    # minimal_mesh = BaseMesh(vertices=mesh.vertices, polygons=mesh.polygons)
-    #logger.error(f"minimal: {minimal_mesh}")
     constructed_polygons = list(
         map(lambda f, x: f(x.face), polygon_constructors, minimal_mesh.polygons)
     )
-    #logger.error(f"poly: {constructed_polygons}")
     constructed_mesh = mesh_constructor(minimal_mesh.vertices, constructed_polygons)
     return constructed_mesh
 
 
 def merge_mesh(a: T, b: T) -> T:
     vertices = list(chain(a.vertices, b.vertices))
-    b_polygons = map(lambda x: replace(x, face=tuple(f + len(a.vertices) for f in x.face)), b.polygons)
+    b_polygons = map(
+        lambda x: replace(x, face=tuple(f + len(a.vertices) for f in x.face)), b.polygons
+    )
     polygons = list(chain(a.polygons, b_polygons))
     return replace(a, vertices=vertices, polygons=polygons)

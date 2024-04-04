@@ -217,13 +217,14 @@ class TrackData:
         return replace(vertex, location=new_location)
 
     @classmethod
-    def _make_polygon_wall(cls, heights: Sequence[tuple[Vector3d, float]], mesh:
-                           CollisionMesh) -> CollisionMesh:
+    def _make_polygon_wall(
+        cls, heights: Sequence[tuple[Vector3d, float]], mesh: CollisionMesh
+    ) -> CollisionMesh:
         polygons = filter(lambda x: x.has_wall_collision and x.edges, mesh.polygons)
         edges = [cls._get_wall_edge_idx(polygon) for polygon in polygons]
         vertices = mesh.vertices
         edge_vertex_idx = list(frozenset(collapse(edges)))
-        vertex_idx_remapping = { idx: (i + len(vertices)) for i, idx in enumerate(edge_vertex_idx) }
+        vertex_idx_remapping = {idx: (i + len(vertices)) for i, idx in enumerate(edge_vertex_idx)}
         edge_vertices = [vertices[idx] for idx in edge_vertex_idx]
         raised_vertices = [cls._raise_vertex(heights, vertex) for vertex in edge_vertices]
 
@@ -237,13 +238,17 @@ class TrackData:
         vertices = vertices + raised_vertices
         polygons = [make_polygon(edge) for edge in collapse(edges, base_type=tuple)]
         if polygons:
-            mesh = CollisionMesh(vertices=vertices, polygons=polygons, collision_effect=RoadEffect.not_driveable)
+            mesh = CollisionMesh(
+                vertices=vertices, polygons=polygons, collision_effect=RoadEffect.not_driveable
+            )
             return remove_unused_vertices(mesh)
         else:
             return None
 
     @classmethod
-    def _make_walls(cls, heights: Sequence[tuple[Vector3d, float]], segment: TrackSegment) -> CollisionMesh:
+    def _make_walls(
+        cls, heights: Sequence[tuple[Vector3d, float]], segment: TrackSegment
+    ) -> CollisionMesh:
         walls = map(lambda x: cls._make_polygon_wall(heights, x), segment.collision_meshes)
         filtered = filter(lambda x: x is not None, walls)
         return reduce(merge_mesh, filtered)
