@@ -13,6 +13,7 @@ from math import atan2, cos, tau
 from operator import add
 from pathlib import Path
 from typing import Tuple, TypeVar
+from dataclasses import replace
 
 from speedtools.cam_data import CamData
 from speedtools.can_data import CanData
@@ -263,6 +264,73 @@ class TrackData:
         )
 
     @classmethod
+    def _select_wall_edge_idx(cls, polygon: CollisionPolygon, edge: Edge) -> tuple[int, int]:
+        face = polygon.face
+        if edge is Edge.FRONT:
+            edge_vertex_idx = (face[1], face[0])
+        if edge is Edge.LEFT:
+            edge_vertex_idx = (face[2], face[1])
+        if edge is Edge.BACK:
+            edge_vertex_idx = (face[-1], face[2])
+        if edge is Edge.RIGHT:
+            edge_vertex_idx = (face[0], face[-1])
+        return edge_vertex_idx
+
+    @classmethod
+    def _get_wall_edge_idx(cls, polygon: CollisionPolygon) -> Iterable[tuple[int, int]]:
+        return [cls._select_wall_edge_idx(polygon, x) for x in polygon.edges]
+
+    @classmethod
+    def _raise_vertex2(cls, heights: Sequence[tuple[Vector3d, float]], vertex: Vertex) -> Vertex:
+        def sort_key(vertex: Vertex, x: tuple[Vector3d, float]) -> float:
+            location, _ = x
+            diff = vertex.location.subtract(location)
+            return diff.magnitude()
+
+        def get_height(x: Tuple[Vector3d, float]) -> float:
+            _, height = x
+            return height
+
+        sorted_heights = sorted(heights, key=partial(sort_key, vertex))
+        closest_heights = take(3, sorted_heights)
+        target_height = min(closest_heights, key=get_height)
+        location = vertex.location
+        y = location.y + get_height(target_height)
+        new_location = location._replace(y=y)
+        return replace(vertex, location=new_location)
+
+    @classmethod
+    def _make_polygon_wall(cls, heights: Sequence[tuple[Vector3d, float]], mesh:
+                           CollisionMesh) -> CollisionMesh:
+        polygons = filter(lambda x: x.has_wall_collision and x.edges, mesh.polygons)
+        edges = [cls._get_wall_edge_idx(polygon) for polygon in polygons]
+        vertices = mesh.vertices
+        edge_vertex_idx = list(frozenset(collapse(edges)))
+        vertex_idx_remapping = { idx: (i + len(vertices)) for i, idx in enumerate(edge_vertex_idx) }
+        edge_vertices = [vertices[idx] for idx in edge_vertex_idx]
+        raised_vertices = [cls._raise_vertex2(heights, vertex) for vertex in edge_vertices]
+
+        def make_polygon(edge: tuple[int, int]) -> CollisionPolygon:
+            a, b = edge
+            c = vertex_idx_remapping[b]
+            d = vertex_idx_remapping[a]
+            face = (a, b, c, d)
+            return CollisionPolygon(face=face)
+
+        vertices = vertices + raised_vertices
+        polygons = [make_polygon(edge) for edge in collapse(edges, base_type=tuple)]
+        if polygons:
+            return CollisionMesh(vertices=vertices, polygons=polygons, collision_effect=RoadEffect.not_driveable)
+        else:
+            return None
+
+    @classmethod
+    def _make_walls(cls, heights: Sequence[tuple[Vector3d, float]], segment: TrackSegment) -> CollisionMesh:
+        walls = map(lambda x: cls._make_polygon_wall(heights, x), segment.collision_meshes)
+        filtered = filter(lambda x: x is not None, walls)
+        return reduce(merge_mesh, filtered)
+
+    @classmethod
     def _finalize_segment(
         cls, heights: Iterable[Tuple[Vector3d, float]], segment: TrackSegment
     ) -> TrackSegment:
@@ -273,7 +341,8 @@ class TrackData:
             cls._make_wall_mesh(floor, ceiling)
             for floor, ceiling in zip(floor, ceiling, strict=True)
         ]
-        collision_meshes = chain(floor, walls)
+        wall = cls._make_walls(heights=heights, segment=segment)
+        collision_meshes = chain(floor, [wall])
         return TrackSegment(
             mesh=segment.mesh, collision_meshes=list(collision_meshes), waypoints=segment.waypoints
         )

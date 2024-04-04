@@ -143,8 +143,8 @@ def make_subset_mesh(
     return constructed_mesh
 
 
-def merge_mesh(a: BaseMesh, b: BaseMesh) -> BaseMesh:
+def merge_mesh(a: T, b: T) -> T:
     vertices = list(chain(a.vertices, b.vertices))
-    b_polygons = map(lambda x: BasePolygon(tuple(f + len(a.vertices) for f in x.face)), b.polygons)
+    b_polygons = map(lambda x: replace(x, face=tuple(f + len(a.vertices) for f in x.face)), b.polygons)
     polygons = list(chain(a.polygons, b_polygons))
-    return BaseMesh(vertices=vertices, polygons=polygons)
+    return replace(a, vertices=vertices, polygons=polygons)
