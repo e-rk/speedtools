@@ -174,13 +174,23 @@ class FrdData:
     ) -> CollisionPolygon:
         all_edges = (Edge.FRONT, Edge.LEFT, Edge.BACK, Edge.RIGHT)
         poly_face = segment.chunks[4].polygons[polygon.polygon].face
-        face, allowed_edges = unzip(cls._validate_polygon(poly_face, all_edges))  # pylint: disable=unbalanced-tuple-unpacking
+        face, allowed_edges = unzip(
+            cls._validate_polygon(poly_face, all_edges)
+        )  # pylint: disable=unbalanced-tuple-unpacking
         allowed_edges = list(allowed_edges)
         edges: list[Edge] = []
-        edges.append(Edge.FRONT) if polygon.front_edge else None  # pylint: disable=expression-not-assigned
-        edges.append(Edge.LEFT) if polygon.left_edge else None  # pylint: disable=expression-not-assigned
-        edges.append(Edge.BACK) if polygon.back_edge else None  # pylint: disable=expression-not-assigned
-        edges.append(Edge.RIGHT) if polygon.right_edge else None  # pylint: disable=expression-not-assigned
+        (
+            edges.append(Edge.FRONT) if polygon.front_edge else None
+        )  # pylint: disable=expression-not-assigned
+        (
+            edges.append(Edge.LEFT) if polygon.left_edge else None
+        )  # pylint: disable=expression-not-assigned
+        (
+            edges.append(Edge.BACK) if polygon.back_edge else None
+        )  # pylint: disable=expression-not-assigned
+        (
+            edges.append(Edge.RIGHT) if polygon.right_edge else None
+        )  # pylint: disable=expression-not-assigned
         edges = list(filter(lambda x: x in allowed_edges, edges))
         return CollisionPolygon(
             face=tuple(face),
