@@ -7,17 +7,16 @@
 import logging
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import suppress
-from functools import lru_cache, partial, partialmethod, reduce
-from itertools import accumulate, chain, cycle, repeat, starmap
+from functools import partial, reduce
+from itertools import accumulate, chain, starmap
 from math import atan2, cos, tau
-from operator import add
 from pathlib import Path
 from typing import TypeVar
 from dataclasses import replace
 
 from speedtools.cam_data import CamData
 from speedtools.can_data import CanData
-from more_itertools import collapse, map_except, take, triplewise
+from more_itertools import collapse, take, triplewise
 from speedtools.frd_data import FrdData
 from speedtools.fsh_data import FshData
 from speedtools.parsers import HeightsParser
@@ -51,6 +50,7 @@ from speedtools.utils import (
     merge_mesh,
     slicen,
     unique_named_resources,
+    remove_unused_vertices,
 )
 
 logger = logging.getLogger(__name__)
@@ -237,7 +237,8 @@ class TrackData:
         vertices = vertices + raised_vertices
         polygons = [make_polygon(edge) for edge in collapse(edges, base_type=tuple)]
         if polygons:
-            return CollisionMesh(vertices=vertices, polygons=polygons, collision_effect=RoadEffect.not_driveable)
+            mesh = CollisionMesh(vertices=vertices, polygons=polygons, collision_effect=RoadEffect.not_driveable)
+            return remove_unused_vertices(mesh)
         else:
             return None
 
