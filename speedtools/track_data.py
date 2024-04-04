@@ -25,7 +25,6 @@ from speedtools.tr_ini import TrackIni
 from speedtools.types import (
     Action,
     AnimationAction,
-    BaseMesh,
     Camera,
     CollisionMesh,
     CollisionPolygon,
@@ -46,8 +45,6 @@ from speedtools.types import (
     Vertex,
 )
 from speedtools.utils import (
-    islicen,
-    make_subset_mesh,
     merge_mesh,
     remove_unused_vertices,
     slicen,
@@ -220,7 +217,7 @@ class TrackData:
     @classmethod
     def _make_polygon_wall(
         cls, heights: Sequence[tuple[Vector3d, float]], mesh: CollisionMesh
-    ) -> CollisionMesh:
+    ) -> CollisionMesh | None:
         polygons = filter(lambda x: x.has_wall_collision and x.edges, mesh.polygons)
         edges = [cls._get_wall_edge_idx(polygon) for polygon in polygons]
         vertices = mesh.vertices
@@ -238,13 +235,10 @@ class TrackData:
 
         vertices = vertices + raised_vertices
         polygons = [make_polygon(edge) for edge in collapse(edges, base_type=tuple)]
-        if polygons:
-            mesh = CollisionMesh(
-                vertices=vertices, polygons=polygons, collision_effect=RoadEffect.not_driveable
-            )
-            return remove_unused_vertices(mesh)
-        else:
+        if not polygons:
             return None
+        mesh = CollisionMesh(vertices=vertices, polygons=polygons)
+        return remove_unused_vertices(mesh)
 
     @classmethod
     def _make_walls(
