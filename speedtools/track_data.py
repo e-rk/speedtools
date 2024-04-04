@@ -38,7 +38,6 @@ from speedtools.types import (
     LightStub,
     Polygon,
     Resource,
-    RoadEffect,
     TrackObject,
     TrackSegment,
     Vector3d,
