@@ -22,11 +22,8 @@ from speedtools.types import (
     BaseMesh,
     BasePolygon,
     Bitmap,
-    CollisionMesh,
-    DrawableMesh,
     Image,
     Resource,
-    Vector3d,
     Vertex,
 )
 

@@ -30,7 +30,6 @@ from speedtools.types import (
     Action,
     Animation,
     AnimationAction,
-    BasePolygon,
     CollisionMesh,
     CollisionPolygon,
     CollisionType,
@@ -221,6 +220,7 @@ class FrdData:
     def _make_waypoints(cls, road_block: FrdParser.RoadBlock) -> Vector3d:
         return Vector3d(x=road_block.location.x, y=road_block.location.y, z=road_block.location.z)
 
+    @classmethod
     def _make_track_segment(
         cls,
         header: FrdParser.SegmentHeader,
