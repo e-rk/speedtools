@@ -7,12 +7,12 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Iterable, Iterator, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from contextlib import suppress
 from functools import partial
 from itertools import chain, compress, groupby, starmap
 from pathlib import Path
-from typing import Any, Optional, Tuple
+from typing import Any, Optional
 
 from more_itertools import (
     chunked,
