@@ -12,7 +12,7 @@ from itertools import accumulate, chain, cycle, repeat, starmap
 from math import atan2, cos, tau
 from operator import add
 from pathlib import Path
-from typing import Tuple, TypeVar
+from typing import TypeVar
 from dataclasses import replace
 
 from speedtools.cam_data import CamData
@@ -180,89 +180,6 @@ class TrackData:
             transform=obj.transform,
         )
 
-    def _raise_vertices(cls, height: float, vertice: Vector3d) -> Vector3d:
-        y = vertice.y + height
-        return Vector3d(x=vertice.x, y=y, z=vertice.z)
-
-    @classmethod
-    def _raise_vertex(cls, height: Tuple[Vector3d, float], vertice: Vertex) -> Vertex:
-        _, h = height
-        y = vertice.location.y + h
-        location = Vector3d(x=vertice.location.x, y=y, z=vertice.location.z)
-        return Vertex(location=location)
-
-    @classmethod
-    def _make_wall_polygon(cls, offset: int, f: tuple[int, ...], edge: Edge) -> CollisionPolygon:
-        face = None
-        if edge is Edge.FRONT:
-            face = (f[1], f[0], offset + f[0], offset + f[1])
-        if edge is Edge.LEFT:
-            face = (f[2], f[1], offset + f[1], offset + f[2])
-        if edge is Edge.BACK:
-            face = (f[3], f[2], offset + f[2], offset + f[3])
-        if edge is Edge.RIGHT:
-            face = (f[0], f[3], offset + f[3], offset + f[0])
-        if not face:
-            raise RuntimeError("Error during wall creation")
-        return CollisionPolygon(face=face)
-
-    @classmethod
-    def _make_wall_from_polygon(
-        cls, offset: int, polygon: CollisionPolygon
-    ) -> Iterable[CollisionPolygon]:
-        return map_except(
-            partial(cls._make_wall_polygon, offset, polygon.face),
-            polygon.edges,
-            RuntimeError,
-            IndexError,
-        )
-
-    @classmethod
-    def _make_wall_mesh(cls, floor: CollisionMesh, ceiling: CollisionMesh) -> CollisionMesh:
-        merged = merge_mesh(floor, ceiling)
-        polys_with_walls = filter(lambda x: x.has_wall_collision, floor.polygons)
-        polygons = collapse(
-            map(
-                lambda x: cls._make_wall_from_polygon(len(floor.vertices), x),
-                polys_with_walls,
-            )
-        )
-        walls = BaseMesh(vertices=merged.vertices, polygons=list(polygons))
-        mesh_constructor = partial(CollisionMesh)
-        return make_subset_mesh(
-            mesh=walls,
-            mesh_constructor=mesh_constructor,
-            polygon_constructors=repeat(CollisionPolygon),
-            selectors=repeat(True),
-        )
-
-    @classmethod
-    def _make_ceiling(
-        cls, heights: Sequence[Tuple[Vector3d, float]], mesh: CollisionMesh
-    ) -> CollisionMesh:
-        @lru_cache
-        def sort_key(vertex: Vertex, x: Tuple[Vector3d, float]) -> float:
-            location, _ = x
-            diff = vertex.location.subtract(location)
-            return diff.magnitude()
-
-        def get_height(x: Tuple[Vector3d, float]) -> float:
-            _, height = x
-            return height
-
-        k = map(lambda x: partial(sort_key, x), mesh.vertices)
-        f = partial(sorted, heights)
-        closest = map(lambda x: f(key=x), k)
-        target_heights = map(partial(take, 3), closest)
-        target_heights = map(partial(min, key=get_height), target_heights)
-        vertices = [
-            cls._raise_vertex(height, vertice)
-            for height, vertice in zip(target_heights, mesh.vertices, strict=True)
-        ]
-        return CollisionMesh(
-            vertices=vertices, polygons=mesh.polygons, collision_effect=RoadEffect.not_driveable
-        )
-
     @classmethod
     def _select_wall_edge_idx(cls, polygon: CollisionPolygon, edge: Edge) -> tuple[int, int]:
         face = polygon.face
@@ -281,13 +198,13 @@ class TrackData:
         return [cls._select_wall_edge_idx(polygon, x) for x in polygon.edges]
 
     @classmethod
-    def _raise_vertex2(cls, heights: Sequence[tuple[Vector3d, float]], vertex: Vertex) -> Vertex:
+    def _raise_vertex(cls, heights: Sequence[tuple[Vector3d, float]], vertex: Vertex) -> Vertex:
         def sort_key(vertex: Vertex, x: tuple[Vector3d, float]) -> float:
             location, _ = x
             diff = vertex.location.subtract(location)
             return diff.magnitude()
 
-        def get_height(x: Tuple[Vector3d, float]) -> float:
+        def get_height(x: tuple[Vector3d, float]) -> float:
             _, height = x
             return height
 
@@ -308,7 +225,7 @@ class TrackData:
         edge_vertex_idx = list(frozenset(collapse(edges)))
         vertex_idx_remapping = { idx: (i + len(vertices)) for i, idx in enumerate(edge_vertex_idx) }
         edge_vertices = [vertices[idx] for idx in edge_vertex_idx]
-        raised_vertices = [cls._raise_vertex2(heights, vertex) for vertex in edge_vertices]
+        raised_vertices = [cls._raise_vertex(heights, vertex) for vertex in edge_vertices]
 
         def make_polygon(edge: tuple[int, int]) -> CollisionPolygon:
             a, b = edge
@@ -332,28 +249,21 @@ class TrackData:
 
     @classmethod
     def _finalize_segment(
-        cls, heights: Iterable[Tuple[Vector3d, float]], segment: TrackSegment
+        cls, heights: Iterable[tuple[Vector3d, float]], segment: TrackSegment
     ) -> TrackSegment:
         heights = list(heights)
         floor = segment.collision_meshes
-        ceiling = [cls._make_ceiling(heights, mesh) for mesh in segment.collision_meshes]
-        walls = [
-            cls._make_wall_mesh(floor, ceiling)
-            for floor, ceiling in zip(floor, ceiling, strict=True)
-        ]
         wall = cls._make_walls(heights=heights, segment=segment)
-        collision_meshes = chain(floor, [wall])
-        return TrackSegment(
-            mesh=segment.mesh, collision_meshes=list(collision_meshes), waypoints=segment.waypoints
-        )
+        collision_meshes = floor + [wall]
+        return replace(segment, collision_meshes=collision_meshes)
 
     @classmethod
     def _make_waypoint_height_pair(
         cls,
-        first: Tuple[Iterable[Vector3d], Iterable[float]],
-        middle: Tuple[Iterable[Vector3d], Iterable[float]],
-        last: Tuple[Iterable[Vector3d], Iterable[float]],
-    ) -> Iterable[Tuple[Vector3d, float]]:
+        first: tuple[Iterable[Vector3d], Iterable[float]],
+        middle: tuple[Iterable[Vector3d], Iterable[float]],
+        last: tuple[Iterable[Vector3d], Iterable[float]],
+    ) -> Iterable[tuple[Vector3d, float]]:
         fw, fh = first
         mw, mh = middle
         lw, lh = last
