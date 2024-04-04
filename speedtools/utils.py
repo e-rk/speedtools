@@ -18,14 +18,7 @@ from typing import Any, Dict, Tuple, TypeVar
 
 from PIL import Image as pil_Image
 
-from speedtools.types import (
-    BaseMesh,
-    BasePolygon,
-    Bitmap,
-    Image,
-    Resource,
-    Vertex,
-)
+from speedtools.types import BaseMesh, BasePolygon, Bitmap, Image, Resource, Vertex
 
 logger = logging.getLogger(__name__)
 
