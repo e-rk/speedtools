@@ -18,7 +18,6 @@ from more_itertools import (
     chunked,
     collapse,
     nth,
-    split_when,
     strictly_n,
     transpose,
     unique_everseen,
@@ -217,11 +216,6 @@ class FrdData:
         driveable_mesh_groups = groupby(driveable_polygons, key=driveable_polygon_key)
         meshes = starmap(partial(cls._make_collision_mesh, segment), driveable_mesh_groups)
         return meshes
-        # return filter(lambda x: x.collision_effect is not RoadEffect.not_driveable, meshes)
-
-    @classmethod
-    def _make_waypoints(cls, road_block: FrdParser.RoadBlock) -> Vector3d:
-        return Vector3d(x=road_block.location.x, y=road_block.location.y, z=road_block.location.z)
 
     @classmethod
     def _make_waypoints(cls, road_block: FrdParser.RoadBlock) -> Vector3d:
