@@ -8,13 +8,13 @@ import logging
 import os
 from collections.abc import Callable, Hashable, Iterable, Iterator, Sequence
 from contextlib import suppress
+from dataclasses import replace
 from functools import partial, singledispatch
 from io import BytesIO
 from itertools import chain, compress, islice
 from operator import getitem
 from pathlib import Path
 from typing import Any, Dict, Tuple, TypeVar
-from dataclasses import replace
 
 from PIL import Image as pil_Image
 

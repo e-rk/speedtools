@@ -7,16 +7,17 @@
 import logging
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import suppress
+from dataclasses import replace
 from functools import partial, reduce
 from itertools import accumulate, chain, starmap
 from math import atan2, cos, tau
 from pathlib import Path
 from typing import TypeVar
-from dataclasses import replace
+
+from more_itertools import collapse, take, triplewise
 
 from speedtools.cam_data import CamData
 from speedtools.can_data import CanData
-from more_itertools import collapse, take, triplewise
 from speedtools.frd_data import FrdData
 from speedtools.fsh_data import FshData
 from speedtools.parsers import HeightsParser
@@ -24,12 +25,12 @@ from speedtools.tr_ini import TrackIni
 from speedtools.types import (
     Action,
     AnimationAction,
-    Camera,
-    CollisionType,
-    CollisionPolygon,
-    Color,
     BaseMesh,
+    Camera,
     CollisionMesh,
+    CollisionPolygon,
+    CollisionType,
+    Color,
     DirectionalLight,
     Edge,
     Horizon,
@@ -48,9 +49,9 @@ from speedtools.utils import (
     islicen,
     make_subset_mesh,
     merge_mesh,
+    remove_unused_vertices,
     slicen,
     unique_named_resources,
-    remove_unused_vertices,
 )
 
 logger = logging.getLogger(__name__)
