@@ -99,10 +99,10 @@ def _(resource: Resource, directory: Path) -> None:
 
 
 def remove_unused_vertices(mesh: T) -> T:
-    used_vertice_idx = chain.from_iterable(
+    used_vertice_idx = chain.from_iterable(  # type: ignore[attr-defined]
         polygon.face for polygon in mesh.polygons
-    )  # type: ignore[attr-defined]
-    used_vertices = list(
+    )
+    used_vertices = list(  # type: ignore[attr-defined]
         set(map(partial(getitem, mesh.vertices), used_vertice_idx))
     )  # type: ignore[attr-defined]
     mapping = {v: i for i, v in enumerate(used_vertices)}
@@ -134,9 +134,10 @@ def make_subset_mesh(
 
 
 def merge_mesh(a: T, b: T) -> T:
-    vertices = list(chain(a.vertices, b.vertices))
+    vertices = list(chain(a.vertices, b.vertices))  # type: ignore[attr-defined]
     b_polygons = map(
-        lambda x: replace(x, face=tuple(f + len(a.vertices) for f in x.face)), b.polygons
+        lambda x: replace(x, face=tuple(f + len(a.vertices) for f in x.face)),  # type: ignore[attr-defined]
+        b.polygons,
     )
-    polygons = list(chain(a.polygons, b_polygons))
-    return replace(a, vertices=vertices, polygons=polygons)
+    polygons = list(chain(a.polygons, b_polygons))  # type: ignore[attr-defined]
+    return replace(a, vertices=vertices, polygons=polygons)  # type: ignore[type-var]

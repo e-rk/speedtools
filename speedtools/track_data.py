@@ -232,7 +232,7 @@ class TrackData:
             face = (a, b, c, d)
             return CollisionPolygon(face=face)
 
-        vertices = vertices + raised_vertices
+        vertices = vertices + raised_vertices  # type: ignore[operator]
         wall_polygons = [make_polygon(edge) for edge in collapse(edges, base_type=tuple)]
         if not wall_polygons:
             return None
@@ -245,7 +245,7 @@ class TrackData:
     ) -> CollisionMesh:
         walls = map(lambda x: cls._make_polygon_wall(heights, x), segment.collision_meshes)
         filtered = filter(lambda x: x is not None, walls)
-        return reduce(merge_mesh, filtered)
+        return reduce(merge_mesh, filtered)  # type: ignore[return-value]
 
     @classmethod
     def _finalize_segment(
