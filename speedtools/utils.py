@@ -140,6 +140,6 @@ def merge_mesh(a: T, b: T) -> T:
         face = tuple(f + len(a.vertices) for f in polygon.face)  # type: ignore[attr-defined]
         return replace(polygon, face=face)  # type: ignore[type-var]
 
-    b_polygons = map(remap_idx, b.polygons)
+    b_polygons = map(remap_idx, b.polygons)  # type: ignore[attr-defined]
     polygons = list(chain(a.polygons, b_polygons))  # type: ignore[attr-defined]
     return replace(a, vertices=vertices, polygons=polygons)  # type: ignore[type-var]
