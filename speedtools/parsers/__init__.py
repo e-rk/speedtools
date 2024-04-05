@@ -10,6 +10,7 @@ from .fce import Fce as FceParser
 from .frd import Frd as FrdParser
 from .fsh import Fsh as FshParser
 from .qfs import Qfs as QfsParser
+from .sim import Sim as HeightsParser
 from .viv import Viv as VivParser
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "FceParser",
     "CanParser",
     "CamParser",
+    "HeightsParser",
 ]
