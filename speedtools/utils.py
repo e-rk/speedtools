@@ -99,11 +99,12 @@ def _(resource: Resource, directory: Path) -> None:
 
 
 def remove_unused_vertices(mesh: T) -> T:
-    used_vertice_idx = chain.from_iterable(  # type: ignore[attr-defined]
-        polygon.face for polygon in mesh.polygons
+    used_vertice_idx = chain.from_iterable(
+        polygon.face for polygon in mesh.polygons  # type: ignore[attr-defined]
     )
-    used_vertices = list(  # type: ignore[attr-defined]
-        set(map(partial(getitem, mesh.vertices), used_vertice_idx))
+    used_vertices = list(
+        set(map(partial(getitem, mesh.vertices), used_vertice_idx))  # type: ignore[attr-defined]
+
     )  # type: ignore[attr-defined]
     mapping = {v: i for i, v in enumerate(used_vertices)}
 

@@ -254,7 +254,7 @@ class TrackData:
         heights = list(heights)
         floor = segment.collision_meshes
         wall = cls._make_walls(heights=heights, segment=segment)
-        collision_meshes = floor + [wall]
+        collision_meshes = floor + [wall]  # type: ignore[operator]
         return replace(segment, collision_meshes=collision_meshes)
 
     @classmethod
