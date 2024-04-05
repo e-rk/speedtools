@@ -233,10 +233,10 @@ class TrackData:
             return CollisionPolygon(face=face)
 
         vertices = vertices + raised_vertices
-        polygons = [make_polygon(edge) for edge in collapse(edges, base_type=tuple)]
-        if not polygons:
+        wall_polygons = [make_polygon(edge) for edge in collapse(edges, base_type=tuple)]
+        if not wall_polygons:
             return None
-        mesh = CollisionMesh(vertices=vertices, polygons=polygons)
+        mesh = CollisionMesh(vertices=vertices, polygons=wall_polygons)
         return remove_unused_vertices(mesh)
 
     @classmethod

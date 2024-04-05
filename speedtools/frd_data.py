@@ -174,10 +174,10 @@ class FrdData:
     ) -> CollisionPolygon:
         all_edges = (Edge.FRONT, Edge.LEFT, Edge.BACK, Edge.RIGHT)
         poly_face = segment.chunks[4].polygons[polygon.polygon].face
-        face, allowed_edges = unzip(  # pylint: disable=unbalanced-tuple-unpacking
+        face, validated_edges = unzip(  # pylint: disable=unbalanced-tuple-unpacking
             cls._validate_polygon(poly_face, all_edges)
         )
-        allowed_edges = list(allowed_edges)
+        allowed_edges = list(validated_edges)
         edges: list[Edge] = []
         if polygon.front_edge:
             edges.append(Edge.FRONT)
