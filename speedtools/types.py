@@ -35,6 +35,13 @@ class ShapeKeyType(Enum):
     DAMAGE = 1
 
 
+class Edge(Enum):
+    FRONT = 0
+    LEFT = 1
+    BACK = 2
+    RIGHT = 3
+
+
 class Vector3d(NamedTuple):
     x: float
     z: float
@@ -211,8 +218,16 @@ class TrackObject:
 
 
 @dataclass(frozen=True)
+class CollisionPolygon(BasePolygon):
+    edges: Sequence[Edge] = field(default_factory=list)
+    has_finite_height: bool = False
+    has_wall_collision: bool = False
+
+
+@dataclass(frozen=True)
 class CollisionMesh(BaseMesh):
-    collision_effect: RoadEffect
+    polygons: Sequence[CollisionPolygon]
+    collision_effect: RoadEffect = RoadEffect.not_driveable
 
 
 @dataclass(frozen=True)

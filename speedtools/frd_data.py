@@ -30,11 +30,12 @@ from speedtools.types import (
     Action,
     Animation,
     AnimationAction,
-    BasePolygon,
     CollisionMesh,
+    CollisionPolygon,
     CollisionType,
     Color,
     DrawableMesh,
+    Edge,
     LightStub,
     Matrix3x3,
     ObjectType,
@@ -46,6 +47,7 @@ from speedtools.types import (
     Vector3d,
     Vertex,
 )
+from speedtools.utils import islicen, remove_unused_vertices
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +66,7 @@ class FrdData:
         True,  # High-resolution misc geometry
         True,  # High-resolution misc geometry
     ]
+    ROAD_BLOCKS_PER_SEGMENT = 8
 
     def __init__(self, parser: FrdParser) -> None:
         self.frd = parser
@@ -166,21 +169,48 @@ class FrdData:
         )
 
     @classmethod
+    def _make_collision_polygon(
+        cls, segment: FrdParser.SegmentData, polygon: FrdParser.DriveablePolygon
+    ) -> CollisionPolygon:
+        all_edges = (Edge.FRONT, Edge.LEFT, Edge.BACK, Edge.RIGHT)
+        poly_face = segment.chunks[4].polygons[polygon.polygon].face
+        face, validated_edges = unzip(  # pylint: disable=unbalanced-tuple-unpacking
+            cls._validate_polygon(poly_face, all_edges)
+        )
+        allowed_edges = list(validated_edges)
+        edges: list[Edge] = []
+        if polygon.front_edge:
+            edges.append(Edge.FRONT)
+        if polygon.left_edge:
+            edges.append(Edge.LEFT)
+        if polygon.back_edge:
+            edges.append(Edge.BACK)
+        if polygon.right_edge:
+            edges.append(Edge.RIGHT)
+        edges = list(filter(lambda x: x in allowed_edges, edges))
+        return CollisionPolygon(
+            face=tuple(face),
+            edges=edges,
+            has_finite_height=polygon.has_finite_height,
+            has_wall_collision=polygon.has_wall_collision,
+        )
+
+    @classmethod
     def _make_collision_mesh(
         cls,
         segment: FrdParser.SegmentData,
         road_effect: int,
-        driveable_polygons: FrdParser.DriveablePolygon,
+        driveable_polygons: Iterable[FrdParser.DriveablePolygon],
     ) -> CollisionMesh:
         polygons = [
-            BasePolygon(face=segment.chunks[4].polygons[polygon.polygon].face)
-            for polygon in driveable_polygons
+            cls._make_collision_polygon(segment, polygon) for polygon in driveable_polygons
         ]
         vertex_locations = [Vector3d.from_frd_float3(vertex) for vertex in segment.vertices]
         vertices = [Vertex(location=loc) for loc in vertex_locations]
-        return CollisionMesh(
+        mesh = CollisionMesh(
             vertices=vertices, polygons=polygons, collision_effect=RoadEffect(road_effect)
         )
+        return remove_unused_vertices(mesh)
 
     @classmethod
     def _make_collision_meshes(cls, segment: FrdParser.SegmentData) -> Iterator[CollisionMesh]:
@@ -190,7 +220,7 @@ class FrdData:
         driveable_polygons = sorted(segment.driveable_polygons, key=driveable_polygon_key)
         driveable_mesh_groups = groupby(driveable_polygons, key=driveable_polygon_key)
         meshes = starmap(partial(cls._make_collision_mesh, segment), driveable_mesh_groups)
-        return filter(lambda x: x.collision_effect is not RoadEffect.not_driveable, meshes)
+        return meshes
 
     @classmethod
     def _make_waypoints(cls, road_block: FrdParser.RoadBlock) -> Vector3d:
@@ -198,7 +228,10 @@ class FrdData:
 
     @classmethod
     def _make_track_segment(
-        cls, segment: FrdParser.SegmentData, road_blocks: Iterable[FrdParser.RoadBlock]
+        cls,
+        header: FrdParser.SegmentHeader,
+        segment: FrdParser.SegmentData,
+        road_blocks: Iterable[FrdParser.RoadBlock],
     ) -> TrackSegment:
         polygons = chain.from_iterable(chunk.polygons for chunk in cls._high_poly_chunks(segment))
         vertex_locations = [Vector3d.from_frd_float3(vertex) for vertex in segment.vertices]
@@ -214,7 +247,11 @@ class FrdData:
         ]
         mesh = DrawableMesh(vertices=vertices, polygons=track_polygons)
         waypoints = [cls._make_waypoints(block) for block in road_blocks]
-        return TrackSegment(mesh=mesh, collision_meshes=collision_meshes, waypoints=waypoints)
+        return TrackSegment(
+            mesh=mesh,
+            collision_meshes=collision_meshes,
+            waypoints=waypoints,
+        )
 
     @classmethod
     def _texture_flags_to_uv(cls, polygon: FrdParser.Polygon) -> list[UV]:
@@ -268,8 +305,15 @@ class FrdData:
 
     @property
     def track_segments(self) -> Iterator[TrackSegment]:
-        road_blocks = chunked(self.frd.road_blocks, 8)
-        return map(self._make_track_segment, self.frd.segment_data, road_blocks)
+        road_blocks = starmap(
+            lambda i, x: islicen(
+                self.frd.road_blocks, i * self.ROAD_BLOCKS_PER_SEGMENT, x.num_road_blocks
+            ),
+            enumerate(self.frd.segment_headers),
+        )
+        return map(
+            self._make_track_segment, self.frd.segment_headers, self.frd.segment_data, road_blocks
+        )
 
     @property
     def light_dummies(self) -> Iterator[LightStub]:
