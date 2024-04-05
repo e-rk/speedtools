@@ -295,6 +295,12 @@ types:
       road_effect:
         value: collision_flags & 0x0f
         enum: road_effect
+      has_finite_height:
+        value: collision_flags & 0x20 != 0
+      has_object_collision:
+        value: collision_flags & 0x40 != 0
+      has_wall_collision:
+        value: collision_flags & 0x80 != 0
     enums:
       road_effect:
         0: not_driveable
