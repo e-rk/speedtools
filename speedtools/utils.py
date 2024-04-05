@@ -6,17 +6,19 @@
 
 import logging
 import os
-from collections.abc import Callable, Hashable, Iterable, Iterator
+from collections.abc import Callable, Hashable, Iterable, Iterator, Sequence
 from contextlib import suppress
-from functools import singledispatch
+from dataclasses import replace
+from functools import partial, singledispatch
 from io import BytesIO
-from itertools import islice
+from itertools import chain, compress, islice
+from operator import getitem
 from pathlib import Path
 from typing import Any, Dict, TypeVar
 
 from PIL import Image as pil_Image
 
-from speedtools.types import Bitmap, Image, Resource
+from speedtools.types import BaseMesh, BasePolygon, Bitmap, Image, Resource, Vertex
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +28,10 @@ Ty = TypeVar("Ty")
 
 def islicen(iterable: Iterable[T], start: int, num: int) -> Iterable[T]:
     return islice(iterable, start, start + num)
+
+
+def slicen(iterable: Sequence[T], start: int, num: int) -> Sequence[T]:
+    return iterable[start : start + num]
 
 
 def count_repeats_and_map(
@@ -90,3 +96,50 @@ def _(resource: Resource, directory: Path) -> None:
     image = create_pil_image(resource.image)
     logger.info(f"Writing image: {output_file}")
     image.save(output_file)
+
+
+def remove_unused_vertices(mesh: T) -> T:
+    used_vertice_idx = chain.from_iterable(
+        polygon.face for polygon in mesh.polygons  # type: ignore[attr-defined]
+    )
+    used_vertices = list(
+        set(map(partial(getitem, mesh.vertices), used_vertice_idx))  # type: ignore[attr-defined]
+    )
+    mapping = {v: i for i, v in enumerate(used_vertices)}
+
+    def _make_polygon(polygon: BasePolygon) -> BasePolygon:
+        vertices = tuple(mesh.vertices[i] for i in polygon.face)  # type: ignore[attr-defined]
+        face = tuple(mapping[v] for v in vertices)
+        return replace(polygon, face=face)
+
+    polygons = [_make_polygon(polygon) for polygon in mesh.polygons]  # type: ignore[attr-defined]
+    return replace(mesh, vertices=used_vertices, polygons=polygons)  # type: ignore[type-var]
+
+
+def make_subset_mesh(
+    mesh: BaseMesh,
+    mesh_constructor: Callable[[Iterable[Vertex], Sequence[Ty]], T],
+    polygon_constructors: Iterable[Callable[[tuple[int, ...]], Ty]],
+    selectors: Iterable[bool],
+) -> T:
+    selected_polygons = list(compress(mesh.polygons, selectors))
+    minimal_mesh = remove_unused_vertices(
+        BaseMesh(vertices=mesh.vertices, polygons=selected_polygons)
+    )
+    constructed_polygons = list(
+        map(lambda f, x: f(x.face), polygon_constructors, minimal_mesh.polygons)
+    )
+    constructed_mesh = mesh_constructor(minimal_mesh.vertices, constructed_polygons)
+    return constructed_mesh
+
+
+def merge_mesh(a: T, b: T) -> T:
+    vertices = list(chain(a.vertices, b.vertices))  # type: ignore[attr-defined]
+
+    def remap_idx(polygon: Ty) -> Ty:
+        face = tuple(f + len(a.vertices) for f in polygon.face)  # type: ignore[attr-defined]
+        return replace(polygon, face=face)  # type: ignore[type-var]
+
+    b_polygons = map(remap_idx, b.polygons)  # type: ignore[attr-defined]
+    polygons = list(chain(a.polygons, b_polygons))  # type: ignore[attr-defined]
+    return replace(a, vertices=vertices, polygons=polygons)  # type: ignore[type-var]
