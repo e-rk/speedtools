@@ -44,10 +44,11 @@ To develop the project the following dependencies must be installed on your syst
 
 Make sure the binary directories are in your `PATH`.
 
-# Known issues and limitations
+# Re-make project
 
-* Tested only with PC tracks
+This tool is a part of the re-make project. The project source code is available [here][4].
 
 [1]: https://pypi.org/project/speedtools/
 [2]: https://github.com/e-rk/speedtools/blob/master/speedtools/blender/io_nfs4_import.py
 [3]: https://kaitai.io/
+[4]: https://github.com/e-rk/velocity
