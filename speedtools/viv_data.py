@@ -18,7 +18,9 @@ from more_itertools import one
 
 from speedtools.carp_data import CarpData
 from speedtools.parsers import FceParser, VivParser, CtbParser
+from speedtools.bnk_data import BnkData
 from speedtools.types import (
+    AudioStream,
     UV,
     Color,
     DrawableMesh,
@@ -313,3 +315,9 @@ class VivData:
         load_tables = list(self._make_sound_table(ltb))
         cruise_tables = list(self._make_sound_table(ctb))
         return SoundTables(load=load_tables, cruise=cruise_tables)
+
+    @property
+    def engine_audio(self) -> Iterable[AudioStream]:
+        bnk = one(filter(lambda x: x.name == "careng.bnk", self.viv.entries))
+        data = BnkData(bnk.body)
+        return data.sound_streams
