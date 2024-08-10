@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import click
+import ffmpeg
 
 from speedtools.fsh_data import FshData
 from speedtools.utils import (
@@ -18,6 +19,7 @@ from speedtools.utils import (
     make_horizon_texture,
     unique_named_resources,
 )
+from speedtools.viv_data import VivData
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -66,3 +68,29 @@ def cubemap(ctx: Any, output: Path | None) -> None:
     resources = list(filter(lambda x: fnmatch(x.name, "HDC?"), data.resources))
     image = make_horizon_texture(resources)
     image.save("horizon.png", "png")
+
+
+@click.group()
+def viv() -> None:
+    pass
+
+
+@viv.command()
+@click.argument("path", type=click.Path(path_type=Path))
+def unpack(path: Path):
+    viv = VivData.from_file(path)
+    audio_streams = viv.engine_audio
+    table = viv.engine_tables
+    with open("careng.ctb", "wb") as f:
+        f.write(table)
+    for index, sound in enumerate(audio_streams):
+        stream = ffmpeg.input(
+            "pipe:", format="s16le", ar=sound.sample_rate, ac=sound.num_channels
+        ).output(f"out_{index}.wav")
+        logger.debug(stream.get_args())
+        process = stream.overwrite_output().run_async(pipe_stdin=True)
+        process.stdin.write(sound.audio_samples)
+        process.stdin.close()
+        process.wait()
+        # print(sound)
+        # break
