@@ -336,3 +336,5 @@ class AudioStream:
     num_channels: int
     sample_rate: int
     audio_samples: bytes
+    loop_start: int
+    loop_length: int
