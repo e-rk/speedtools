@@ -44,6 +44,7 @@ class build_ksy(Command):
                 str(target_path),
                 "-t",
                 "python",
+                "--opaque-types=true",
                 "--python-package",
                 "speedtools.parsers",
                 str(source),
