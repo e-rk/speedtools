@@ -46,8 +46,6 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
 
-major_version, _, _ = bpy.app.version  # type: ignore[misc]
-
 
 bl_info = {
     "name": "Import NFS4 Track",
@@ -112,7 +110,7 @@ class BaseImporter(metaclass=ABCMeta):
             color_attributes = node_tree.nodes.new("ShaderNodeAttribute")
             color_attributes.attribute_name = "Shading"  # type: ignore[attr-defined]
             mixer = node_tree.nodes.new("ShaderNodeMix")
-            mixer.data_type = "RGBA"
+            mixer.data_type = "RGBA"  # type: ignore[attr-defined]
             mixer.blend_type = "MULTIPLY"  # type: ignore[attr-defined]
             mixer.inputs[0].default_value = 1.0  # type: ignore[attr-defined]
             node_tree.links.new(texture.outputs["Color"], mixer.inputs["A"])
@@ -122,7 +120,7 @@ class BaseImporter(metaclass=ABCMeta):
             node_tree.links.new(texture.outputs["Color"], shader.inputs["Base Color"])
         if resource.blend_mode is None:
             math_node = node_tree.nodes.new("ShaderNodeMath")
-            math_node.operation = "ROUND"
+            math_node.operation = "ROUND"  # type: ignore[attr-defined]
             node_tree.links.new(texture.outputs["Alpha"], math_node.inputs["Value"])
             node_tree.links.new(math_node.outputs["Value"], shader.inputs["Alpha"])
         else:
@@ -163,12 +161,8 @@ class BaseImporter(metaclass=ABCMeta):
         image_texture.image = image  # type: ignore[attr-defined]
         image_texture.extension = "EXTEND"  # type: ignore[attr-defined]
         bsdf = node_tree.nodes["Principled BSDF"]
-        if major_version == 3:  # type: ignore[has-type]
-            bsdf.inputs["Specular"].default_value = 0  # type: ignore[attr-defined]
-            bsdf.inputs["Sheen Tint"].default_value = 0  # type: ignore[attr-defined]
-        else:
-            # IOR Level
-            bsdf.inputs[12].default_value = 0  # type: ignore[attr-defined]
+        # IOR Level
+        bsdf.inputs[12].default_value = 0  # type: ignore[attr-defined]
         bsdf.inputs["Roughness"].default_value = 1  # type: ignore[attr-defined]
         self._link_texture_to_shader(
             node_tree=node_tree, texture=image_texture, shader=bsdf, resource=resource
@@ -287,7 +281,7 @@ class BaseImporter(metaclass=ABCMeta):
 
     def make_light_object(self, name: str, light: Light) -> bpy.types.Object:
         bpy_light = bpy.data.lights.new(name=name, type="POINT")
-        bpy_light.color = light.attributes.color.rgb_float  # type: ignore[assignment]
+        bpy_light.color = light.attributes.color.rgb_float
         bpy_light.use_custom_distance = True
         bpy_light.cutoff_distance = 15.0
         bpy_light.specular_factor = 0.2
