@@ -8,9 +8,7 @@ Additionally, Blender addon is provided to directly import track and car data.
 
 # Setup (Blender addon version)
 
-> **Warning**: It is recommended to use this addon with Blender 3.5 or newer. Using older Blender versions may cause difficult to troubleshoot
-problems during the installation step with `pip`, because the built-in python is unable to import packages from the user site directory.
-Newer Blender versions don't have this problem.
+> **Warning**: The addon requires Blender 4.2 or newer. Use v0.16.0 release of the plugin if you have to use older Blender releases.
 
 1. Create new empty Blender project
 2. Open the __Scripting__ tab
