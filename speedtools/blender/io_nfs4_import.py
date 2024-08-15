@@ -72,9 +72,12 @@ class ExtendedResource:
 
 
 class BaseImporter(metaclass=ABCMeta):
-    def __init__(self, material_map: Callable[[Polygon], Resource]) -> None:
+    def __init__(
+        self, material_map: Callable[[Polygon], Resource], import_shading: bool = False
+    ) -> None:
         self.materials: dict[ExtendedResource, bpy.types.Material] = {}
         self.material_map = material_map
+        self.import_shading = import_shading
 
     @classmethod
     def duplicate_common_vertices(cls, mesh: DrawableMesh) -> DrawableMesh:
@@ -99,10 +102,31 @@ class BaseImporter(metaclass=ABCMeta):
         return ExtendedResource(resource=resource, backface_culling=polygon.backface_culling)
 
     def _link_texture_to_shader(
-        self, node_tree: bpy.types.NodeTree, texture: bpy.types.Node, shader: bpy.types.Node
+        self,
+        node_tree: bpy.types.NodeTree,
+        texture: bpy.types.Node,
+        shader: bpy.types.Node,
+        resource: Resource,
     ) -> None:
-        node_tree.links.new(texture.outputs["Color"], shader.inputs["Base Color"])
-        node_tree.links.new(texture.outputs["Alpha"], shader.inputs["Alpha"])
+        if self.import_shading:
+            color_attributes = node_tree.nodes.new("ShaderNodeAttribute")
+            color_attributes.attribute_name = "Shading"  # type: ignore[attr-defined]
+            mixer = node_tree.nodes.new("ShaderNodeMix")
+            mixer.data_type = "RGBA"
+            mixer.blend_type = "MULTIPLY"  # type: ignore[attr-defined]
+            mixer.inputs[0].default_value = 1.0  # type: ignore[attr-defined]
+            node_tree.links.new(texture.outputs["Color"], mixer.inputs["A"])
+            node_tree.links.new(color_attributes.outputs["Color"], mixer.inputs["B"])
+            node_tree.links.new(mixer.outputs["Result"], shader.inputs["Base Color"])
+        else:
+            node_tree.links.new(texture.outputs["Color"], shader.inputs["Base Color"])
+        if resource.blend_mode is None:
+            math_node = node_tree.nodes.new("ShaderNodeMath")
+            math_node.operation = "ROUND"
+            node_tree.links.new(texture.outputs["Alpha"], math_node.inputs["Value"])
+            node_tree.links.new(math_node.outputs["Value"], shader.inputs["Alpha"])
+        else:
+            node_tree.links.new(texture.outputs["Alpha"], shader.inputs["Alpha"])
 
     def _set_blend_mode(
         self,
@@ -111,14 +135,15 @@ class BaseImporter(metaclass=ABCMeta):
         bpy_material: bpy.types.Material,
         resource: Resource,
     ) -> bpy.types.NodeSocket:
-        if resource.blend_mode is BlendMode.ALPHA:
-            bpy_material.blend_method = "BLEND"
-        elif resource.blend_mode is BlendMode.ADDITIVE:
+        output_socket = shader_output
+        if resource.blend_mode is BlendMode.ADDITIVE:
             bpy_material["SPT_additive"] = True
-        else:
-            bpy_material.alpha_threshold = 0.001
-            bpy_material.blend_method = "CLIP"
-        return shader_output
+            transparent_bsdf = node_tree.nodes.new("ShaderNodeBsdfTransparent")
+            add_shader = node_tree.nodes.new("ShaderNodeAddShader")
+            node_tree.links.new(shader_output, add_shader.inputs[0])
+            node_tree.links.new(transparent_bsdf.outputs["BSDF"], add_shader.inputs[1])
+            output_socket = add_shader.outputs["Shader"]
+        return output_socket
 
     def _image_from_resource(self, resource: Resource) -> bpy.types.Image:
         image_data = image_to_png(resource.image)
@@ -145,7 +170,9 @@ class BaseImporter(metaclass=ABCMeta):
             # IOR Level
             bsdf.inputs[12].default_value = 0  # type: ignore[attr-defined]
         bsdf.inputs["Roughness"].default_value = 1  # type: ignore[attr-defined]
-        self._link_texture_to_shader(node_tree=node_tree, texture=image_texture, shader=bsdf)
+        self._link_texture_to_shader(
+            node_tree=node_tree, texture=image_texture, shader=bsdf, resource=resource
+        )
         output_socket = self._set_blend_mode(
             node_tree=node_tree,
             shader_output=bsdf.outputs["BSDF"],
@@ -226,9 +253,7 @@ class BaseImporter(metaclass=ABCMeta):
         obj.rotation_mode = "XYZ"
         obj.rotation_euler = mu_euler  # type: ignore[assignment]
 
-    def make_drawable_object(
-        self, name: str, mesh: DrawableMesh, import_shading: bool = False
-    ) -> bpy.types.Object:
+    def make_drawable_object(self, name: str, mesh: DrawableMesh) -> bpy.types.Object:
         bpy_mesh = self.make_base_mesh(name=name, mesh=mesh)
         uv_layer = bpy_mesh.uv_layers.new()
         uvs = collapse(polygon.uv for polygon in mesh.polygons)
@@ -237,7 +262,7 @@ class BaseImporter(metaclass=ABCMeta):
             normals = tuple(mesh.vertex_normals)
             # I have no idea if setting the normals even works
             bpy_mesh.normals_split_custom_set_from_vertices(normals)  # type: ignore[arg-type]
-        if mesh.vertex_colors and import_shading:
+        if mesh.vertex_colors and self.import_shading:
             colors = collapse(color.rgba_float for color in mesh.vertex_colors)
             bpy_colors = bpy_mesh.color_attributes.new(
                 name="Shading", type="FLOAT_COLOR", domain="POINT"
@@ -303,7 +328,6 @@ class TrackImportStrategy(metaclass=ABCMeta):
         self,
         track: TrackData,
         import_collision: bool = False,
-        import_shading: bool = False,
         import_actions: bool = False,
         import_cameras: bool = False,
         import_ambient: bool = False,
@@ -316,7 +340,6 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
         self,
         track: TrackData,
         import_collision: bool = False,
-        import_shading: bool = False,
         import_actions: bool = False,
         import_cameras: bool = False,
         import_ambient: bool = False,
@@ -329,9 +352,7 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
             segment_collection = bpy.data.collections.new(name=name)
             track_collection.children.link(segment_collection)
             mesh = self.duplicate_common_vertices(mesh=segment.mesh)
-            bpy_obj = self.make_drawable_object(
-                name=name, mesh=mesh, import_shading=import_shading
-            )
+            bpy_obj = self.make_drawable_object(name=name, mesh=mesh)
             segment_collection.objects.link(bpy_obj)
             if import_collision:
                 for collision_index, collision_mesh in enumerate(segment.collision_meshes):
@@ -347,9 +368,7 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
         for index, obj in enumerate(track.objects):
             name = f"Object {index}"
             mesh = self.duplicate_common_vertices(mesh=obj.mesh)
-            bpy_obj = self.make_drawable_object(
-                name=name, mesh=mesh, import_shading=import_shading
-            )
+            bpy_obj = self.make_drawable_object(name=name, mesh=mesh)
             actions = (
                 obj.actions
                 if import_actions
@@ -401,44 +420,6 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
         bpy.context.scene["SPT_track"] = spt_track
 
 
-class TrackImportBlender(TrackImportGLTF):
-    def _link_texture_to_shader(
-        self, node_tree: bpy.types.NodeTree, texture: bpy.types.Node, shader: bpy.types.Node
-    ) -> None:
-        color_attributes = node_tree.nodes.new("ShaderNodeAttribute")
-        color_attributes.attribute_name = "Shading"  # type: ignore[attr-defined]
-        mixer = node_tree.nodes.new("ShaderNodeMixRGB")
-        mixer.blend_type = "MULTIPLY"  # type: ignore[attr-defined]
-        mixer.inputs["Fac"].default_value = 1.0  # type: ignore[attr-defined]
-        node_tree.links.new(texture.outputs["Color"], mixer.inputs["Color1"])
-        node_tree.links.new(color_attributes.outputs["Color"], mixer.inputs["Color2"])
-        node_tree.links.new(mixer.outputs["Color"], shader.inputs["Base Color"])
-        node_tree.links.new(texture.outputs["Alpha"], shader.inputs["Alpha"])
-
-    def _set_blend_mode(
-        self,
-        node_tree: bpy.types.NodeTree,
-        shader_output: bpy.types.NodeSocket,
-        bpy_material: bpy.types.Material,
-        resource: Resource,
-    ) -> bpy.types.NodeSocket:
-        shader_output = super()._set_blend_mode(
-            node_tree=node_tree,
-            shader_output=shader_output,
-            bpy_material=bpy_material,
-            resource=resource,
-        )
-        output_socket = shader_output
-        if resource.blend_mode is BlendMode.ADDITIVE:
-            bpy_material.blend_method = "BLEND"
-            transparent_bsdf = node_tree.nodes.new("ShaderNodeBsdfTransparent")
-            add_shader = node_tree.nodes.new("ShaderNodeAddShader")
-            node_tree.links.new(shader_output, add_shader.inputs[0])
-            node_tree.links.new(transparent_bsdf.outputs["BSDF"], add_shader.inputs[1])
-            output_socket = add_shader.outputs["Shader"]
-        return output_socket
-
-
 class CarImporterSimple(BaseImporter):
     def import_car(self, car: VivData) -> None:
         car_collection = bpy.data.collections.new("Car parts")
@@ -472,29 +453,6 @@ class TrackImporter(bpy.types.Operator):
         description="Directory containing the track files",
         maxlen=1024,
         default="",
-    )
-    mode: EnumProperty(  # type: ignore[valid-type]
-        name="Mode",
-        items=(
-            (
-                "GLTF",
-                "GLTF target",
-                "Parametrized import of visible track geometry, lights, animations, "
-                "collision geometry and more. Stores data that can't be represented in "
-                "GLTF 'extras' fields.",
-            ),
-            (
-                "BLENDER",
-                "Blender target",
-                "This option should be used when accurate look in Blender is desired. "
-                "Some data, such as vertex shading, can't be viewed in Blender without specific "
-                "shader node connections. Such connections are on the other hand poorly understood "
-                "by exporters, such as the GLTF exporter. Therefore this mode must never be "
-                "used if you intent to export the track to GLTF. Vertex shading is always enabled "
-                "in this mode.",
-            ),
-        ),
-        description="Select importer mode",
     )
     night: BoolProperty(  # type: ignore[valid-type]
         name="Night on", description="Import night track variant", default=False
@@ -547,19 +505,13 @@ class TrackImporter(bpy.types.Operator):
             night=self.night,
             weather=self.weather,
         )
-        import_shading = self.import_shading
         import_strategy: TrackImportStrategy
-        if self.mode == "GLTF":
-            import_strategy = TrackImportGLTF(material_map=track.get_polygon_material)
-        elif self.mode == "BLENDER":
-            import_strategy = TrackImportBlender(material_map=track.get_polygon_material)
-            import_shading = True
-        else:
-            return {"CANCELLED"}
+        import_strategy = TrackImportGLTF(
+            material_map=track.get_polygon_material, import_shading=self.import_shading
+        )
         import_strategy.import_track(
             track=track,
             import_collision=self.import_collision,
-            import_shading=import_shading,
             import_actions=self.import_actions,
             import_cameras=self.import_cameras,
             import_ambient=self.import_ambient,
