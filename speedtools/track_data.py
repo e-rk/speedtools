@@ -188,7 +188,7 @@ class TrackData:
             edge_vertex_idx = (face[-1], face[2])
         if edge is Edge.RIGHT:
             edge_vertex_idx = (face[0], face[-1])
-        return edge_vertex_idx
+        return edge_vertex_idx  # pylint: disable=possibly-used-before-assignment
 
     @classmethod
     def _get_wall_edge_idx(cls, polygon: CollisionPolygon) -> Iterable[tuple[int, int]]:
