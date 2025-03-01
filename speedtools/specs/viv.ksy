@@ -4,6 +4,7 @@ meta:
   license: CC0-1.0
   imports:
     - fce
+    - ctb
   endian: be
   encoding: ASCII
 seq:
@@ -44,4 +45,6 @@ types:
             '"car.fce"': fce
             '"dash.fce"': fce
             '"hel.fce"': fce
+            '"careng.ctb"': ctb
+            '"careng.ctb"': ltb
         size: length
