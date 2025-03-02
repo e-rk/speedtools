@@ -16,7 +16,7 @@ from typing import Any, NamedTuple
 from more_itertools import one
 
 from speedtools.carp_data import CarpData
-from speedtools.parsers import FceParser, VivParser
+from speedtools.parsers import FceParser, VivParser, CtbParser
 from speedtools.types import (
     UV,
     DrawableMesh,
@@ -26,6 +26,8 @@ from speedtools.types import (
     Resource,
     ShapeKey,
     ShapeKeyType,
+    SoundTable,
+    SoundTables,
     Vector3d,
     Vertex,
 )
@@ -118,6 +120,8 @@ class VivData:
     body_textures = {"car00.tga", "hel00.tga"}
     interior_geometry = {"dash.fce"}
     interior_textures = {"dash00.tga"}
+    ltb = "careng.ltb"
+    ctb = "careng.ctb"
 
     def __init__(self, parser: VivParser) -> None:
         self.viv = parser
@@ -215,6 +219,12 @@ class VivData:
         filtered_parts = compress(part_data, selectors)
         return starmap(cls._make_part, filtered_parts)
 
+    @classmethod
+    def _make_sound_table(cls, entry: VivParser.DirectoryEntry) -> Iterable[SoundTable]:
+        volume = entry.body.volume
+        pitch = entry.body.pitch
+        return map(lambda v, p: SoundTable(volume=v.value, pitch=p.value), volume, pitch)
+
     @property
     def parts(self) -> Iterator[Part]:
         fce = one(filter(lambda x: x.name in self.body_geometry, self.viv.entries))
@@ -250,3 +260,11 @@ class VivData:
         fce = one(filter(lambda x: x.name in self.body_geometry, self.viv.entries))
         half_sizes = fce.body.half_sizes
         return Vector3d(x=half_sizes.x * 2, y=half_sizes.y * 2, z=half_sizes.z * 2)
+
+    @property
+    def sound_tables(self) -> SoundTables:
+        ctb = one(filter(lambda x: x.name == self.ctb, self.viv.entries))
+        ltb = one(filter(lambda x: x.name == self.ltb, self.viv.entries))
+        load_tables = list(self._make_sound_table(ltb))
+        cruise_tables = list(self._make_sound_table(ctb))
+        return SoundTables(load=load_tables, cruise=cruise_tables)

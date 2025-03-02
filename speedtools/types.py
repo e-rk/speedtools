@@ -297,3 +297,24 @@ class Horizon:
     sun_side: Color
     top_side: Color
     opposite_side: Color
+
+
+@dataclass(frozen=True)
+class SoundTable:
+    volume: list[int]
+    pitch: list[int]
+
+    def to_dict(self) -> dict[str, list[int]]:
+        return {"volume": self.volume, "pitch": self.pitch}
+
+
+@dataclass(frozen=True)
+class SoundTables:
+    load: list[SoundTable]
+    cruise: list[SoundTable]
+
+    def to_dict(self) -> dict[str, list[dict[str, list[int]]]]:
+        return {
+            "load": [x.to_dict() for x in self.load],
+            "cruise": [x.to_dict() for x in self.cruise],
+        }
