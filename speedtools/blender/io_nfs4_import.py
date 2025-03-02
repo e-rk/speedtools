@@ -425,9 +425,11 @@ class CarImporterSimple(BaseImporter):
             for shape_key in part.mesh.shape_keys:
                 self.make_shape_key(obj=bpy_obj, shape_key=shape_key)
         dimensions = car.dimensions
+        sound_tables = car.sound_tables
         car_metadata = {
             "performance": car.performance,
             "dimensions": (dimensions.x, dimensions.y, dimensions.z),
+            "sound_tables": sound_tables.to_dict(),
         }
         bpy.context.scene["SPT_car"] = car_metadata
 
