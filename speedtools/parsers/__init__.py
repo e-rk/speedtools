@@ -12,6 +12,7 @@ from .fsh import Fsh as FshParser
 from .qfs import Qfs as QfsParser
 from .sim import Sim as HeightsParser
 from .viv import Viv as VivParser
+from .ctb import Ctb as CtbParser
 
 __all__ = [
     "FrdParser",

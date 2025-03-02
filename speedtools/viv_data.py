@@ -17,7 +17,7 @@ from typing import Any, NamedTuple
 from more_itertools import one
 
 from speedtools.carp_data import CarpData
-from speedtools.parsers import FceParser, VivParser
+from speedtools.parsers import FceParser, VivParser, CtbParser
 from speedtools.types import (
     UV,
     Color,
@@ -28,6 +28,8 @@ from speedtools.types import (
     Resource,
     ShapeKey,
     ShapeKeyType,
+    SoundTable,
+    SoundTables,
     Vector3d,
     VehicleLight,
     VehicleLightType,
@@ -141,6 +143,8 @@ class VivData:
     body_textures = {"car00.tga", "hel00.tga"}
     interior_geometry = {"dash.fce"}
     interior_textures = {"dash00.tga"}
+    ltb = "careng.ltb"
+    ctb = "careng.ctb"
 
     def __init__(self, parser: VivParser) -> None:
         self.viv = parser
@@ -254,6 +258,12 @@ class VivData:
         logger.debug(f"Color: {color}")
         return VehicleLight(location=loc, color=color, type=light_type)
 
+    @classmethod
+    def _make_sound_table(cls, entry: VivParser.DirectoryEntry) -> Iterable[SoundTable]:
+        volume = entry.body.volume
+        pitch = entry.body.pitch
+        return map(lambda v, p: SoundTable(volume=v.value, pitch=p.value), volume, pitch)
+
     @property
     def parts(self) -> Iterator[Part]:
         fce = one(filter(lambda x: x.name in self.body_geometry, self.viv.entries))
@@ -295,3 +305,11 @@ class VivData:
         fce = one(filter(lambda x: x.name in self.body_geometry, self.viv.entries))
         lights = filter(lambda x: x.magic in self.light_types, fce.body.dummies)
         return map(self._make_light, fce.body.light_sources, lights)
+
+    @property
+    def sound_tables(self) -> SoundTables:
+        ctb = one(filter(lambda x: x.name == self.ctb, self.viv.entries))
+        ltb = one(filter(lambda x: x.name == self.ltb, self.viv.entries))
+        load_tables = list(self._make_sound_table(ltb))
+        cruise_tables = list(self._make_sound_table(ctb))
+        return SoundTables(load=load_tables, cruise=cruise_tables)
