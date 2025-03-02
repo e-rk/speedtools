@@ -46,5 +46,5 @@ types:
             '"dash.fce"': fce
             '"hel.fce"': fce
             '"careng.ctb"': ctb
-            '"careng.ctb"': ltb
+            '"careng.ltb"': ctb
         size: length

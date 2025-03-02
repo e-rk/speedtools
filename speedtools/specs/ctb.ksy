@@ -39,19 +39,19 @@ seq:
     type: audioeng_event
     repeat: expr
     repeat-expr: 16
-  - id: maybeptr1
+  - id: unused1
     type: u4
     repeat: expr
     repeat-expr: 8
-  - id: maybeptr2
+  - id: unused2
     type: u4
     repeat: expr
     repeat-expr: 8
-  - id: table1
+  - id: volume
     type: table
     repeat: expr
     repeat-expr: 8
-  - id: table2
+  - id: pitch
     type: table
     repeat: expr
     repeat-expr: 8
@@ -77,4 +77,6 @@ types:
   table:
     seq:
       - id: value
-        size: 512
+        type: u1
+        repeat: expr
+        repeat-expr: 512
