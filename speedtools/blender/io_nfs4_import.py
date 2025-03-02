@@ -570,9 +570,11 @@ class CarImporterSimple(BaseImporter):
                 self.set_object_rotation(obj=bpy_obj, transform=attributes[3])
                 light_collection.objects.link(bpy_obj)
         dimensions = car.dimensions
+        sound_tables = car.sound_tables
         car_metadata = {
             "performance": car.performance,
             "dimensions": (dimensions.x, dimensions.y, dimensions.z),
+            "sound_tables": sound_tables.to_dict(),
         }
         bpy.context.scene["SPT_car"] = car_metadata
 
