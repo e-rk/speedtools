@@ -32,7 +32,7 @@ seq:
   - id: highrandomattackrange
     type: s4
   - id: patchnum
-    type: u1
+    type: s1
     repeat: expr
     repeat-expr: 8
   - id: event
@@ -48,11 +48,11 @@ seq:
     repeat: expr
     repeat-expr: 8
   - id: volume
-    type: table
+    type: table(patchnum[_index] == -1)
     repeat: expr
     repeat-expr: 8
   - id: pitch
-    type: table
+    type: table(patchnum[_index] == -1)
     repeat: expr
     repeat-expr: 8
 types:
@@ -75,8 +75,12 @@ types:
       - id: decaydelta
         type: s4
   table:
+    params:
+      - id: empty
+        type: bool
     seq:
       - id: value
         type: u1
         repeat: expr
         repeat-expr: 512
+        if: empty == false
