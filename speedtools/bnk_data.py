@@ -8,9 +8,7 @@ import logging
 from collections import namedtuple
 from collections.abc import Iterable
 from enum import Enum
-
-import ffmpeg
-
+from more_itertools.more import filter_map
 from speedtools.parsers import BnkParser
 from speedtools.parsers.bnk_audio_stream import BnkAudioStream, bnk_find_tlv
 from speedtools.types import AudioStream, BnkTlvType
@@ -39,7 +37,6 @@ class BnkData:
         loop_start = loop_start.value if loop_start else 0
         loop_length = bnk_find_tlv(header=sound_entry.body.header, tlv_type=BnkTlvType.loop_length)
         loop_length = loop_length.value if loop_length else 0
-        print(loop_start)
         sound_data = data_tlv.body
         return AudioStream(
             num_channels=sound_data.num_channels,
@@ -50,6 +47,8 @@ class BnkData:
         )
 
     @property
-    def sound_streams(self) -> Iterable[AudioStream]:
-        valid_data = filter(lambda x: x.offset > 0, self.parser.sounds)
-        return map(self._make_sound_stream, valid_data)
+    def sound_streams(self) -> Iterable[tuple[int, AudioStream]]:
+        return filter_map(
+            lambda x: (x[0], self._make_sound_stream(x[1])) if x[1].offset > 0 else None,
+            enumerate(self.parser.sounds),
+        )
