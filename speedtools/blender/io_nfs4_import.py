@@ -15,6 +15,7 @@ from itertools import chain, groupby
 from math import pi, radians
 from pathlib import Path
 from typing import Any, Literal
+from base64 import b64encode
 
 import bpy
 import mathutils
@@ -31,6 +32,7 @@ from speedtools.types import (
     Color,
     DirectionalLight,
     DrawableMesh,
+    EngineAudio,
     Light,
     Matrix3x3,
     Part,
@@ -41,7 +43,13 @@ from speedtools.types import (
     VehicleLightType,
     Vertex,
 )
-from speedtools.utils import image_to_png, make_horizon_texture, pil_image_to_png
+from speedtools.utils import (
+    image_to_png,
+    make_horizon_texture,
+    pil_image_to_png,
+    raw_stream_to_wav,
+    raw_stream_to_wav_b64,
+)
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -570,11 +578,20 @@ class CarImporterSimple(BaseImporter):
                 self.set_object_rotation(obj=bpy_obj, transform=attributes[3])
                 light_collection.objects.link(bpy_obj)
         dimensions = car.dimensions
-        sound_tables = car.sound_tables
+        audio = car.engine_audio
+
+        def mkaudioattr(eng: EngineAudio) -> dict[str, Any]:
+
+            return {
+                "sample": raw_stream_to_wav_b64(eng.stream),
+                "tables": [x.to_dict() for x in eng.tables],
+                "is_rear": eng.is_rear,
+            }
+
         car_metadata = {
             "performance": car.performance,
             "dimensions": (dimensions.x, dimensions.y, dimensions.z),
-            "sound_tables": sound_tables.to_dict(),
+            "engine_samples": [mkaudioattr(x) for x in audio],
         }
         bpy.context.scene["SPT_car"] = car_metadata
 
