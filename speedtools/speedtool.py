@@ -18,6 +18,8 @@ from speedtools.utils import (
     export_resource,
     make_horizon_texture,
     unique_named_resources,
+    raw_stream_to_wav,
+    raw_stream_to_wav_b64,
 )
 from speedtools.viv_data import VivData
 
@@ -80,17 +82,14 @@ def viv() -> None:
 def unpack(path: Path):
     viv = VivData.from_file(path)
     audio_streams = viv.engine_audio
-    table = viv.engine_tables
+    table = viv.engine_tables("careng.ctb")
     with open("careng.ctb", "wb") as f:
         f.write(table)
+    table = viv.engine_tables("careng.ltb")
+    with open("careng.ltb", "wb") as f:
+        f.write(table)
     for index, sound in enumerate(audio_streams):
-        stream = ffmpeg.input(
-            "pipe:", format="s16le", ar=sound.sample_rate, ac=sound.num_channels
-        ).output(f"out_{index}.wav")
-        logger.debug(stream.get_args())
-        process = stream.overwrite_output().run_async(pipe_stdin=True)
-        process.stdin.write(sound.audio_samples)
-        process.stdin.close()
-        process.wait()
-        # print(sound)
-        # break
+        with open(f"out_{index}.wav", "wb") as f:
+            f.write(raw_stream_to_wav(sound.stream))
+    # print(sound)
+    # break
