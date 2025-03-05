@@ -13,6 +13,7 @@ from functools import partial
 from itertools import compress, starmap
 from pathlib import Path
 from typing import Any, NamedTuple
+from more_itertools.more import groupby_transform
 
 from more_itertools import one
 
@@ -24,6 +25,8 @@ from speedtools.types import (
     UV,
     Color,
     DrawableMesh,
+    EngineAudio,
+    EngineAudioType,
     Image,
     Part,
     Polygon,
@@ -31,7 +34,6 @@ from speedtools.types import (
     ShapeKey,
     ShapeKeyType,
     SoundTable,
-    SoundTables,
     Vector3d,
     VehicleLight,
     VehicleLightType,
@@ -147,6 +149,7 @@ class VivData:
     interior_textures = {"dash00.tga"}
     ltb = "careng.ltb"
     ctb = "careng.ctb"
+    bnk = "careng.bnk"
 
     def __init__(self, parser: VivParser) -> None:
         self.viv = parser
@@ -260,11 +263,48 @@ class VivData:
         logger.debug(f"Color: {color}")
         return VehicleLight(location=loc, color=color, type=light_type)
 
-    @classmethod
-    def _make_sound_table(cls, entry: VivParser.DirectoryEntry) -> Iterable[SoundTable]:
-        volume = entry.body.volume
-        pitch = entry.body.pitch
-        return map(lambda v, p: SoundTable(volume=v.value, pitch=p.value), volume, pitch)
+    def _make_sound_table(
+        cls, table_type: EngineAudioType, entry: VivParser.DirectoryEntry
+    ) -> Iterable[tuple[int, SoundTable]]:
+        table_data = filter(
+            lambda x: x[0] != -1, zip(entry.body.patchnum, entry.body.volume, entry.body.pitch)
+        )
+        return starmap(
+            lambda s, v, p: (s, SoundTable(volume=v.value, pitch=p.value, table_type=table_type)),
+            table_data,
+        )
+
+    # @classmethod
+    # def _make_engine_audio(cls, samples: dict[int, AudioStream], patchnum: int, table: SoundTable) -> EngineAudio
+    #     attrib = {EngineAudioDirection.FRONT} if patchnum < 0x40 else {EngineAudioDirection.REAR}
+    #     return EngineAudio(stream=samples[patchnum], tables=[(attrib, table)])
+
+    @staticmethod
+    def merge_tables(
+        samples: dict[int, AudioStream],
+        load: list[tuple[int, SoundTable]],
+        coast: list[tuple[int, SoundTable]],
+    ) -> Iterable[EngineAudio]:
+        # def mkattr(data: tuple[int, SoundTable]) -> tuple[EngineAudioDirection, SoundTable]:
+        #     patchnum, sample = data
+        #     direction = EngineAudioDirection.FRONT if patchnum < 0x40 else EngineAudioDirection.REAR
+        #     return (patchnum, direction, sample)
+        # load_tables = [mkattr(x) for x in load]
+        # coast_tables = [mkattr(x) for x in coast]
+        load_tables = dict(load)
+        coast_tables = dict(coast)
+        for identifier, sample in samples.items():
+            l = load_tables.get(identifier, None)
+            c = coast_tables.get(identifier, None)
+            is_rear = identifier > 0x40
+            tbl = []
+            if l:
+                tbl.append(l)
+            if c:
+                tbl.append(c)
+            if not tbl:
+                continue
+            yield EngineAudio(stream=sample, tables=tbl, is_rear=is_rear)
 
     @property
     def parts(self) -> Iterator[Part]:
@@ -309,15 +349,18 @@ class VivData:
         return map(self._make_light, fce.body.light_sources, lights)
 
     @property
-    def sound_tables(self) -> SoundTables:
+    def engine_audio(self) -> Iterable[EngineAudio]:
         ctb = one(filter(lambda x: x.name == self.ctb, self.viv.entries))
         ltb = one(filter(lambda x: x.name == self.ltb, self.viv.entries))
-        load_tables = list(self._make_sound_table(ltb))
-        cruise_tables = list(self._make_sound_table(ctb))
-        return SoundTables(load=load_tables, cruise=cruise_tables)
-
-    @property
-    def engine_audio(self) -> Iterable[AudioStream]:
-        bnk = one(filter(lambda x: x.name == "careng.bnk", self.viv.entries))
+        bnk = one(filter(lambda x: x.name == self.bnk, self.viv.entries))
         data = BnkData(bnk.body)
-        return data.sound_streams
+        samples = dict(data.sound_streams)
+        ctb_engine_sounds = list(self._make_sound_table(EngineAudioType.COAST, ctb))
+        ltb_engine_sounds = list(self._make_sound_table(EngineAudioType.LOAD, ltb))
+
+        return self.merge_tables(samples=samples, load=ltb_engine_sounds, coast=ctb_engine_sounds)
+
+    def engine_tables(self, name) -> bytes:
+        ctb = one(filter(lambda x: x.name == name, self.viv.entries))
+        _ = ctb.body
+        return ctb._raw__m_body

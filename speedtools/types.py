@@ -56,6 +56,11 @@ class AudioEncoding(Enum):
     PCM_S16LE = 1
 
 
+class EngineAudioType(Enum):
+    COAST = 0
+    LOAD = 1
+
+
 class Vector3d(NamedTuple):
     x: float
     z: float
@@ -334,21 +339,26 @@ class Horizon:
 class SoundTable:
     volume: list[int]
     pitch: list[int]
+    table_type: EngineAudioType
 
-    def to_dict(self) -> dict[str, list[int]]:
-        return {"volume": self.volume, "pitch": self.pitch}
-
-
-@dataclass(frozen=True)
-class SoundTables:
-    load: list[SoundTable]
-    cruise: list[SoundTable]
-
-    def to_dict(self) -> dict[str, list[dict[str, list[int]]]]:
+    def to_dict(self) -> dict[str, list[int] | str]:
         return {
-            "load": [x.to_dict() for x in self.load],
-            "cruise": [x.to_dict() for x in self.cruise],
+            "type": "load" if self.table_type is EngineAudioType.LOAD else "coast",
+            "volume": self.volume,
+            "pitch": self.pitch,
         }
+
+
+# @dataclass(frozen=True)
+# class SoundTables:
+#     load: list[SoundTable]
+#     cruise: list[SoundTable]
+
+#     def to_dict(self) -> dict[str, list[dict[str, list[int]]]]:
+#         return {
+#             "load": [x.to_dict() for x in self.load],
+#             "cruise": [x.to_dict() for x in self.cruise],
+#         }
 
 
 @dataclass(frozen=True)
@@ -358,3 +368,10 @@ class AudioStream:
     audio_samples: bytes
     loop_start: int
     loop_length: int
+
+
+@dataclass(frozen=True)
+class EngineAudio:
+    stream: AudioStream
+    tables: list[SoundTable]
+    is_rear: bool
