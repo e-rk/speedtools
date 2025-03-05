@@ -39,20 +39,12 @@ seq:
     type: audioeng_event
     repeat: expr
     repeat-expr: 16
-  - id: unused1
-    type: u4
-    repeat: expr
-    repeat-expr: 8
-  - id: unused2
-    type: u4
-    repeat: expr
-    repeat-expr: 8
   - id: volume
-    type: table(patchnum[_index] == -1)
+    type: table(0x128)
     repeat: expr
     repeat-expr: 8
   - id: pitch
-    type: table(patchnum[_index] == -1)
+    type: table(0x148)
     repeat: expr
     repeat-expr: 8
 types:
@@ -76,11 +68,15 @@ types:
         type: s4
   table:
     params:
-      - id: empty
-        type: bool
+      - id: offset_start
+        type: u4
     seq:
-      - id: value
-        type: u1
+      - id: offset
+        type: u4
+    instances:
+      value:
+        type: s1
         repeat: expr
         repeat-expr: 512
-        if: empty == false
+        pos: offset_start + offset
+        if: offset > 0
