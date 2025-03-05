@@ -15,10 +15,13 @@ from itertools import chain, compress, islice
 from operator import getitem
 from pathlib import Path
 from typing import Any, Dict, TypeVar
+from base64 import b64encode
+from gzip import compress
 
 from PIL import Image as pil_Image
+from click.termui import raw_terminal
 
-from speedtools.types import BaseMesh, BasePolygon, Bitmap, Image, Resource, Vertex
+from speedtools.types import AudioStream, BaseMesh, BasePolygon, Bitmap, Image, Resource, Vertex
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -160,3 +163,22 @@ def make_horizon_texture(resources: list[Resource]) -> Any:
     for idx, image in enumerate(images):
         horizon_image.paste(image, (image.width * idx, width_hrz // 2 - image.width // 2))
     return horizon_image
+
+
+def raw_stream_to_wav(audio_stream: AudioStream) -> bytes:
+    import ffmpeg
+
+    stream = ffmpeg.input(
+        "pipe:", format="s16le", ar=audio_stream.sample_rate, ac=audio_stream.num_channels
+    ).output("pipe:", format="wav")
+    logger.debug(stream.get_args())
+    process = stream.run_async(pipe_stdin=True, pipe_stdout=True)
+    process.stdin.write(audio_stream.audio_samples)
+    process.stdin.close()
+    data = process.stdout.read()  # process.stdout
+    process.wait()
+    return data
+
+
+def raw_stream_to_wav_b64(audio_stream: AudioStream) -> str:
+    return b64encode((raw_stream_to_wav(audio_stream))).decode("ascii")
