@@ -304,7 +304,7 @@ class VivData:
                 tbl.append(c)
             if not tbl:
                 continue
-            yield EngineAudio(stream=sample, tables=tbl, is_rear=is_rear)
+            yield EngineAudio(stream=sample, tables=tbl, is_rear=is_rear, patchnum=identifier)
 
     @property
     def parts(self) -> Iterator[Part]:

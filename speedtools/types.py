@@ -375,3 +375,4 @@ class EngineAudio:
     stream: AudioStream
     tables: list[SoundTable]
     is_rear: bool
+    patchnum: int
