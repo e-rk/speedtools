@@ -106,4 +106,5 @@ disable = [
     "logging-fstring-interpolation",
     "missing-function-docstring",
     "unused-argument",
+    "too-many-positional-arguments",
 ]
