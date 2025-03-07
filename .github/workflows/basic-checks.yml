@@ -1,80 +1,80 @@
 name: Basic checks
 
 on:
-  push:
-    branches: []
-  pull_request:
-    branches: [ "master" ]
+    push:
+        branches: []
+    pull_request:
+        branches: ["master"]
 
 jobs:
-  lint:
-    name: Pylint
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.10", "3.11"]
-    steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        curl -LO https://github.com/kaitai-io/kaitai_struct_compiler/releases/download/0.10/kaitai-struct-compiler_0.10_all.deb
-        sudo apt-get install ./kaitai-struct-compiler_0.10_all.deb
-        python -m pip install --upgrade pip
-        python -m pip install fake-bpy-module-3.4 pylint
-        pip install .
-    - name: Run lint
-      run: |
-        pylint speedtools
+    lint:
+        name: Pylint
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                python-version: ["3.12", "3.13"]
+        steps:
+            - uses: actions/checkout@v3
+            - name: Set up Python ${{ matrix.python-version }}
+              uses: actions/setup-python@v3
+              with:
+                  python-version: ${{ matrix.python-version }}
+            - name: Install dependencies
+              run: |
+                  curl -LO https://github.com/kaitai-io/kaitai_struct_compiler/releases/download/0.10/kaitai-struct-compiler_0.10_all.deb
+                  sudo apt-get install ./kaitai-struct-compiler_0.10_all.deb
+                  python -m pip install --upgrade pip
+                  python -m pip install fake-bpy-module-4.3 pylint
+                  pip install .
+            - name: Run lint
+              run: |
+                  pylint speedtools
 
-  format:
-    name: Format
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.10", "3.11"]
-    steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        curl -LO https://github.com/kaitai-io/kaitai_struct_compiler/releases/download/0.10/kaitai-struct-compiler_0.10_all.deb
-        sudo apt-get install ./kaitai-struct-compiler_0.10_all.deb
-        python -m pip install --upgrade pip
-        python -m pip install fake-bpy-module-3.4
-        pip install .
-    - uses: psf/black@stable
-      with:
-        options: "--check --diff --verbose"
-        src: "."
-    - name: python-isort
-      uses: isort/isort-action@v1.1.0
+    format:
+        name: Format
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                python-version: ["3.12", "3.13"]
+        steps:
+            - uses: actions/checkout@v3
+            - name: Set up Python ${{ matrix.python-version }}
+              uses: actions/setup-python@v3
+              with:
+                  python-version: ${{ matrix.python-version }}
+            - name: Install dependencies
+              run: |
+                  curl -LO https://github.com/kaitai-io/kaitai_struct_compiler/releases/download/0.10/kaitai-struct-compiler_0.10_all.deb
+                  sudo apt-get install ./kaitai-struct-compiler_0.10_all.deb
+                  python -m pip install --upgrade pip
+                  python -m pip install fake-bpy-module-4.3
+                  pip install .
+            - uses: psf/black@stable
+              with:
+                  options: "--check --diff --verbose"
+                  src: "."
+            - name: python-isort
+              uses: isort/isort-action@v1.1.0
 
-  mypy:
-    name: Mypy
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.10", "3.11"]
-    steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        curl -LO https://github.com/kaitai-io/kaitai_struct_compiler/releases/download/0.10/kaitai-struct-compiler_0.10_all.deb
-        sudo apt-get install ./kaitai-struct-compiler_0.10_all.deb
-        python -m pip install --upgrade pip
-        python -m pip install fake-bpy-module-3.4 mypy
-        pip install .
-    - name: Correctness check
-      run: |
-        mypy -p speedtools --install-types --non-interactive
+    mypy:
+        name: Mypy
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                python-version: ["3.12", "3.13"]
+        steps:
+            - uses: actions/checkout@v3
+            - name: Set up Python ${{ matrix.python-version }}
+              uses: actions/setup-python@v3
+              with:
+                  python-version: ${{ matrix.python-version }}
+            - name: Install dependencies
+              run: |
+                  curl -LO https://github.com/kaitai-io/kaitai_struct_compiler/releases/download/0.10/kaitai-struct-compiler_0.10_all.deb
+                  sudo apt-get install ./kaitai-struct-compiler_0.10_all.deb
+                  python -m pip install --upgrade pip
+                  python -m pip install fake-bpy-module-4.3 mypy
+                  pip install .
+            - name: Correctness check
+              run: |
+                  mypy -p speedtools --install-types --non-interactive
