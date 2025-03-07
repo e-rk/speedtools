@@ -40,11 +40,11 @@ seq:
     repeat: expr
     repeat-expr: 16
   - id: volume
-    type: table(0x128)
+    type: table(0x128, _index)
     repeat: expr
     repeat-expr: 8
   - id: pitch
-    type: table(0x148)
+    type: table(0x148, _index)
     repeat: expr
     repeat-expr: 8
 types:
@@ -70,6 +70,8 @@ types:
     params:
       - id: offset_start
         type: u4
+      - id: index
+        type: u4
     seq:
       - id: offset
         type: u4
@@ -78,5 +80,5 @@ types:
         type: s1
         repeat: expr
         repeat-expr: 512
-        pos: offset_start + offset
+        pos: offset_start + offset + index * 4
         if: offset > 0
