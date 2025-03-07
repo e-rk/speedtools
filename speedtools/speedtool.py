@@ -79,7 +79,7 @@ def viv() -> None:
 
 @viv.command()
 @click.argument("path", type=click.Path(path_type=Path))
-def unpack(path: Path):
+def viv_unpack(path: Path):
     viv = VivData.from_file(path)
     audio_streams = viv.engine_audio
     table = viv.engine_tables("careng.ctb")
@@ -89,7 +89,11 @@ def unpack(path: Path):
     with open("careng.ltb", "wb") as f:
         f.write(table)
     for index, sound in enumerate(audio_streams):
-        with open(f"out_{index}.wav", "wb") as f:
+        prefix = "rear_" if sound.is_rear else "front_"
+        with open(f"{prefix}out_{hex(sound.patchnum)}.wav", "wb") as f, open(
+            f"{hex(sound.patchnum)}.tbl", "w"
+        ) as t:
             f.write(raw_stream_to_wav(sound.stream))
+            t.write(str(sound.tables))
     # print(sound)
     # break
