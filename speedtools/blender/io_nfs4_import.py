@@ -40,7 +40,7 @@ from speedtools.types import (
     Vector3d,
     Vertex,
 )
-from speedtools.utils import image_to_png
+from speedtools.utils import image_to_png, make_horizon_texture, pil_image_to_png
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -142,6 +142,13 @@ class BaseImporter(metaclass=ABCMeta):
             node_tree.links.new(transparent_bsdf.outputs["BSDF"], add_shader.inputs[1])
             output_socket = add_shader.outputs["Shader"]
         return output_socket
+
+    def _image_to_bpy_image(self, name: str, image: Any) -> bpy.types.Image:
+        image_data = pil_image_to_png(image)
+        bpy_image = bpy.data.images.new(name, 8, 8)
+        bpy_image.pack(data=image_data, data_len=len(image_data))
+        bpy_image.source = "FILE"
+        return bpy_image
 
     def _image_from_resource(self, resource: Resource) -> bpy.types.Image:
         image_data = image_to_png(resource.image)
@@ -412,6 +419,10 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
             }
             spt_track["environment"] = environment  # type: ignore[assignment]
         bpy.context.scene["SPT_track"] = spt_track
+        sky_images = list(track.sky_images)
+        if sky_images:
+            horizon_image = make_horizon_texture(sky_images)
+            bpy_image = self._image_to_bpy_image("horizon", horizon_image)
 
 
 class CarImporterSimple(BaseImporter):
