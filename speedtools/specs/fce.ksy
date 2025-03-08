@@ -235,9 +235,9 @@ types:
         size: 2
         repeat: expr
         repeat-expr: 6
-      - id: smoothing
+      - id: flags
         type: u4
-        doc: Smoothing flags
+        doc: Polygon flags
       - id: u
         type: f4
         repeat: expr
@@ -248,6 +248,15 @@ types:
         repeat: expr
         repeat-expr: 3
         doc: V texture coordinate
+    instances:
+        non_reflective:
+            value: (flags & 0x0001) != 0
+        highly_reflective:
+            value: (flags & 0x0002) != 0
+        backface_culling:
+            value: (flags & 0x0004) == 0
+        transparent:
+            value: (flags & 0x0008) != 0
   dummy:
     seq:
       - id: magic

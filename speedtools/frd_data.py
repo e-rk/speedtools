@@ -95,6 +95,7 @@ class FrdData:
             material=material,
             backface_culling=backface_culling,
             is_lane=polygon.lane,
+            non_reflective=True,
         )
 
     @classmethod

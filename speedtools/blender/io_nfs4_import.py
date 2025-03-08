@@ -64,6 +64,9 @@ bl_info = {
 class ExtendedResource:
     resource: Resource
     backface_culling: bool
+    transparent: bool
+    highly_reflective: bool
+    non_reflective: bool
 
     def __lt__(self, other: ExtendedResource) -> bool:
         return hash(self) < hash(other)
@@ -97,7 +100,13 @@ class BaseImporter(metaclass=ABCMeta):
 
     def _extender_resource_map(self, polygon: Polygon) -> ExtendedResource:
         resource = self.material_map(polygon)
-        return ExtendedResource(resource=resource, backface_culling=polygon.backface_culling)
+        return ExtendedResource(
+            resource=resource,
+            backface_culling=polygon.backface_culling,
+            transparent=polygon.transparent,
+            highly_reflective=polygon.highly_reflective,
+            non_reflective=polygon.non_reflective,
+        )
 
     def _link_texture_to_shader(
         self,
@@ -161,26 +170,38 @@ class BaseImporter(metaclass=ABCMeta):
         resource = ext_resource.resource
         bpy_material = bpy.data.materials.new(resource.name)
         bpy_material.use_nodes = True
-        image = self._image_from_resource(resource)
         node_tree = bpy_material.node_tree
-        material_output = node_tree.nodes.get("Material Output")
-        image_texture = node_tree.nodes.new("ShaderNodeTexImage")
-        image_texture.image = image  # type: ignore[attr-defined]
-        image_texture.extension = "EXTEND"  # type: ignore[attr-defined]
         bsdf = node_tree.nodes["Principled BSDF"]
-        # IOR Level
-        bsdf.inputs[12].default_value = 0  # type: ignore[attr-defined]
-        bsdf.inputs["Roughness"].default_value = 1  # type: ignore[attr-defined]
-        self._link_texture_to_shader(
-            node_tree=node_tree, texture=image_texture, shader=bsdf, resource=resource
-        )
-        output_socket = self._set_blend_mode(
-            node_tree=node_tree,
-            shader_output=bsdf.outputs["BSDF"],
-            bpy_material=bpy_material,
-            resource=resource,
-        )
-        node_tree.links.new(output_socket, material_output.inputs["Surface"])
+        bsdf.inputs["Specular IOR Level"].default_value = 0.25  # type: ignore[attr-defined]
+        bsdf.inputs["Roughness"].default_value = 0.05  # type: ignore[attr-defined]
+        bsdf.inputs["Metallic"].default_value = 0.0  # type: ignore[attr-defined]
+        if ext_resource.transparent:
+            bsdf.inputs["Alpha"].default_value = 0.04
+            bsdf.inputs["Roughness"].default_value = 0.0  # type: ignore[attr-defined]
+            bsdf.inputs["Specular IOR Level"].default_value = 0.5  # type: ignore[attr-defined]
+            bpy_material["SPT_transparent"] = True
+        else:
+            material_output = node_tree.nodes.get("Material Output")
+            image = self._image_from_resource(resource)
+            image_texture = node_tree.nodes.new("ShaderNodeTexImage")
+            image_texture.image = image  # type: ignore[attr-defined]
+            image_texture.extension = "EXTEND"  # type: ignore[attr-defined]
+            self._link_texture_to_shader(
+                node_tree=node_tree, texture=image_texture, shader=bsdf, resource=resource
+            )
+            output_socket = self._set_blend_mode(
+                node_tree=node_tree,
+                shader_output=bsdf.outputs["BSDF"],
+                bpy_material=bpy_material,
+                resource=resource,
+            )
+            node_tree.links.new(output_socket, material_output.inputs["Surface"])
+        if ext_resource.highly_reflective:
+            # bsdf.inputs["Base Color"].default_value = (1.0, 1.0, 1.0, 1.0)  # type: ignore[attr-defined]
+            bsdf.inputs["Specular IOR Level"].default_value = 0.50  # type: ignore[attr-defined]
+        if ext_resource.non_reflective:
+            bsdf.inputs["Roughness"].default_value = 1.0  # type: ignore[attr-defined]
+            bsdf.inputs["Specular IOR Level"].default_value = 0.0  # type: ignore[attr-defined]
         bpy_material.use_backface_culling = ext_resource.backface_culling
         return bpy_material
 
@@ -261,7 +282,6 @@ class BaseImporter(metaclass=ABCMeta):
         uv_layer.data.foreach_set("uv", list(uvs))
         if mesh.vertex_normals:
             normals = tuple(mesh.vertex_normals)
-            # I have no idea if setting the normals even works
             bpy_mesh.normals_split_custom_set_from_vertices(normals)  # type: ignore[arg-type]
         if mesh.vertex_colors and self.import_shading:
             colors = collapse(color.rgba_float for color in mesh.vertex_colors)
@@ -278,7 +298,8 @@ class BaseImporter(metaclass=ABCMeta):
             material = self._map_material(key)
             bpy_mesh.materials.append(material)
             for _, bpy_polygon in group:
-                bpy_polygon.use_smooth = True
+                if not mesh.vertex_normals:
+                    bpy_polygon.use_smooth = True
                 bpy_polygon.material_index = index
         bpy_mesh.validate()
         bpy_obj = bpy.data.objects.new(name, bpy_mesh)

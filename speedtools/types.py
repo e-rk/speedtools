@@ -168,6 +168,9 @@ class Polygon(BasePolygon):
     material: int
     backface_culling: bool
     is_lane: bool = False
+    transparent: bool = False
+    highly_reflective: bool = False
+    non_reflective: bool = False
 
 
 @dataclass(frozen=True)

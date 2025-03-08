@@ -131,7 +131,15 @@ class VivData:
     def _make_polygon(cls, polygon: FceParser.Polygon) -> Polygon:
         face = tuple(vertex for vertex in polygon.face)
         uv = tuple(UV(u, 1 - v) for u, v in zip(polygon.u, polygon.v))
-        return Polygon(face=face, uv=uv, material=polygon.texture, backface_culling=True)
+        return Polygon(
+            face=face,
+            uv=uv,
+            material=polygon.texture,
+            backface_culling=polygon.backface_culling,
+            transparent=polygon.transparent,
+            highly_reflective=polygon.highly_reflective,
+            non_reflective=polygon.non_reflective,
+        )
 
     @classmethod
     def _match_attributes(cls, attribute: PartAttributes) -> bool:
