@@ -447,10 +447,11 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
 
 
 class CarImporterSimple(BaseImporter):
-    def import_car(self, car: VivData) -> None:
+    def import_car(self, car: VivData, import_interior: bool) -> None:
         car_collection = bpy.data.collections.new("Car parts")
         bpy.context.scene.collection.children.link(car_collection)
-        for part in car.parts:
+        parts = car.interior if import_interior else car.parts
+        for part in parts:
             bpy_obj = self.make_drawable_object(name=part.name, mesh=part.mesh)
             self.set_object_location(obj=bpy_obj, location=part.location)
             car_collection.objects.link(bpy_obj)
@@ -576,12 +577,10 @@ class CarImporter(bpy.types.Operator):
 
         if self.import_interior:
             resource = one(car.interior_materials)
-            parts = car.interior
         else:
             resource = one(car.body_materials)
-            parts = car.parts
         importer = CarImporterSimple(material_map=lambda _: resource)
-        importer.import_car(car)
+        importer.import_car(car, import_interior=self.import_interior)
 
         return {"FINISHED"}
 
