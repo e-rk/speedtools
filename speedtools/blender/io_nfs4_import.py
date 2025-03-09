@@ -79,6 +79,9 @@ class BaseImporter(metaclass=ABCMeta):
         self.materials: dict[ExtendedResource, bpy.types.Material] = {}
         self.material_map = material_map
         self.import_shading = import_shading
+        self.rot_mat = mathutils.Euler(
+            (0.0, 0.0, pi)
+        ).to_matrix()  # Transformation from game space to Blender space
 
     @classmethod
     def duplicate_common_vertices(cls, mesh: DrawableMesh) -> DrawableMesh:
@@ -214,9 +217,10 @@ class BaseImporter(metaclass=ABCMeta):
         return self.materials[ext_resource]
 
     def make_base_mesh(self, name: str, mesh: BaseMesh) -> bpy.types.Mesh:
+        vertices_rot = [mathutils.Vector(vert) @ self.rot_mat for vert in mesh.vertex_locations]
         bpy_mesh = bpy.data.meshes.new(name)
         bpy_mesh.from_pydata(
-            vertices=list(mesh.vertex_locations),
+            vertices=vertices_rot,
             edges=[],
             faces=[polygon.face for polygon in mesh.polygons],
         )
@@ -224,7 +228,7 @@ class BaseImporter(metaclass=ABCMeta):
 
     def set_object_location(self, obj: bpy.types.Object, location: Vector3d) -> None:
         mu_location = mathutils.Vector(location)
-        obj.location = mu_location  # type: ignore[assignment]
+        obj.location = self.rot_mat @ mu_location  # type: ignore[assignment]
 
     def set_object_action(self, obj: bpy.types.Object, action: AnimationAction) -> None:
         animation = action.animation
@@ -238,10 +242,12 @@ class BaseImporter(metaclass=ABCMeta):
         for index, (location, quaternion) in enumerate(
             zip(animation.locations, animation.quaternions)
         ):
-            mu_location = mathutils.Vector(location)
+            rot_quat = mathutils.Euler((0.0, 0.0, pi)).to_quaternion()
+            mu_location = rot_quat @ mathutils.Vector(location)
             mu_quaternion = mathutils.Quaternion(quaternion)
             mu_quaternion = mu_quaternion.normalized()
-            mu_quaternion = mu_quaternion.inverted()
+            mu_quaternion = rot_quat @ mu_quaternion.inverted()
+            obj.rotation_quaternion = rot_quat
             obj.delta_location = mu_location  # type: ignore[assignment]
             obj.delta_rotation_quaternion = mu_quaternion  # type: ignore[assignment]
             interval = index * animation.delay
@@ -281,7 +287,7 @@ class BaseImporter(metaclass=ABCMeta):
         uvs = collapse(polygon.uv for polygon in mesh.polygons)
         uv_layer.data.foreach_set("uv", list(uvs))
         if mesh.vertex_normals:
-            normals = tuple(mesh.vertex_normals)
+            normals = [mathutils.Vector(normal) @ self.rot_mat for normal in mesh.vertex_normals]
             bpy_mesh.normals_split_custom_set_from_vertices(normals)  # type: ignore[arg-type]
         if mesh.vertex_colors and self.import_shading:
             colors = collapse(color.rgba_float for color in mesh.vertex_colors)
@@ -341,7 +347,8 @@ class BaseImporter(metaclass=ABCMeta):
         bpy_shape_key = obj.shape_key_add(name=shape_key.type.name)
         bpy_shape_key.interpolation = "KEY_LINEAR"
         for data, vertex in zip(bpy_shape_key.data, shape_key.vertices, strict=True):
-            data.co = vertex.location  # type: ignore[attr-defined]
+            mu_vector = self.rot_mat @ mathutils.Vector(vertex.location)
+            data.co = mu_vector  # type: ignore[attr-defined]
 
 
 class TrackImportStrategy(metaclass=ABCMeta):
@@ -420,9 +427,10 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
                 bpy_obj = self.make_camera_object(name=f"Camera {index}", camera=camera)
                 camera_collection.objects.link(bpy_obj)
         spt_track = {}
+        gltf_transform = mathutils.Euler((-pi / 2.0, 0.0, 0.0)).to_matrix() @ self.rot_mat
         waypoints = chain.from_iterable(segment.waypoints for segment in track.track_segments)
-        waypoint_metadata = [(w.x, w.y, w.z) for w in waypoints]
-        spt_track["waypoints"] = waypoint_metadata
+        waypoint_metadata = [gltf_transform @ mathutils.Vector(w) for w in waypoints]
+        spt_track["waypoints"] = [(w.x, w.y, w.z) for w in waypoint_metadata]
         if import_ambient:
 
             def color_to_dict(color: Color) -> dict[str, float]:
