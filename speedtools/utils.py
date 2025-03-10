@@ -17,6 +17,8 @@ from pathlib import Path
 from typing import Any, Dict, TypeVar
 from base64 import b64encode
 from gzip import compress
+import struct
+import tempfile
 
 from PIL import Image as pil_Image
 from click.termui import raw_terminal
@@ -168,17 +170,24 @@ def make_horizon_texture(resources: list[Resource]) -> Any:
 def raw_stream_to_wav(audio_stream: AudioStream) -> bytes:
     import ffmpeg
 
-    stream = ffmpeg.input(
-        "pipe:", format="s16le", ar=audio_stream.sample_rate, ac=audio_stream.num_channels
-    ).output("pipe:", format="wav")
-    logger.debug(stream.get_args())
-    process = stream.run_async(pipe_stdin=True, pipe_stdout=True)
-    process.stdin.write(audio_stream.audio_samples)
-    process.stdin.close()
-    data = process.stdout.read()  # process.stdout
-    process.wait()
+    with tempfile.NamedTemporaryFile() as fp:
+        stream = ffmpeg.input(
+            "pipe:", format="s16le", ar=audio_stream.sample_rate, ac=audio_stream.num_channels
+        ).output(f"{fp.name}.wav")
+        logger.debug(stream.get_args())
+        process = stream.run_async(pipe_stdin=True)
+        process.stdin.write(audio_stream.audio_samples)
+        process.stdin.close()
+        process.wait()
+        data = fp.read()
+    loop_end = audio_stream.loop_start + audio_stream.loop_length
+    smpl = struct.pack("<32xl8xlll8x", 1, 0, audio_stream.loop_start, loop_end)
+    chunk = struct.pack("<4sl", "smpl".encode("ASCII"), len(smpl))
+    # smpl = struct.pack("<4s32xl8xlll8x", "smpl".encode("ASCII"), 1, 0, 2, 3)
+    print(data)
+    print(audio_stream.num_channels)
     return data
 
 
-def raw_stream_to_wav_b64(audio_stream: AudioStream) -> str:
-    return b64encode((raw_stream_to_wav(audio_stream))).decode("ascii")
+def raw_stream_to_wav_b64(audio_stream: AudioStream) -> bytes:
+    return b64encode((raw_stream_to_wav(audio_stream)))
