@@ -94,6 +94,6 @@ def viv_unpack(path: Path):
             f"{hex(sound.patchnum)}.tbl", "w"
         ) as t:
             f.write(raw_stream_to_wav(sound.stream))
-            t.write(str(sound.tables))
+            # t.write(str(sound.tables))
     # print(sound)
     # break
