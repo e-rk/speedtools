@@ -171,23 +171,25 @@ def raw_stream_to_wav(audio_stream: AudioStream) -> bytes:
     import ffmpeg
 
     with tempfile.NamedTemporaryFile() as fp:
-        stream = ffmpeg.input(
-            "pipe:", format="s16le", ar=audio_stream.sample_rate, ac=audio_stream.num_channels
-        ).output(f"{fp.name}.wav")
+        stream = (
+            ffmpeg.input(
+                "pipe:", format="s16le", ar=audio_stream.sample_rate, ac=audio_stream.num_channels
+            )
+            .output(fp.name, format="wav")
+            .overwrite_output()
+        )
         logger.debug(stream.get_args())
         process = stream.run_async(pipe_stdin=True)
         process.stdin.write(audio_stream.audio_samples)
         process.stdin.close()
         process.wait()
         data = fp.read()
-    loop_end = audio_stream.loop_start + audio_stream.loop_length
-    smpl = struct.pack("<32xl8xlll8x", 1, 0, audio_stream.loop_start, loop_end)
+    loop_end = audio_stream.loop_length
+    smpl = struct.pack("<4x4x4x4x4x4x4xl4xllll4x4x", 1, 0, 0, audio_stream.loop_start, loop_end)
     chunk = struct.pack("<4sl", "smpl".encode("ASCII"), len(smpl))
     # smpl = struct.pack("<4s32xl8xlll8x", "smpl".encode("ASCII"), 1, 0, 2, 3)
-    print(data)
-    print(audio_stream.num_channels)
-    return data
+    return data + chunk + smpl
 
 
-def raw_stream_to_wav_b64(audio_stream: AudioStream) -> bytes:
-    return b64encode((raw_stream_to_wav(audio_stream)))
+def raw_stream_to_wav_b64(audio_stream: AudioStream) -> str:
+    return b64encode(compress(raw_stream_to_wav(audio_stream))).decode("ascii")
