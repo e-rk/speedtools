@@ -171,6 +171,8 @@ class Polygon(BasePolygon):
     transparent: bool = False
     highly_reflective: bool = False
     non_reflective: bool = False
+    animation_ticks: int = 0
+    animation_count: int = 0
 
 
 @dataclass(frozen=True)

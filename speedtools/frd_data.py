@@ -96,6 +96,8 @@ class FrdData:
             backface_culling=backface_culling,
             is_lane=polygon.lane,
             non_reflective=True,
+            animation_ticks=polygon.animation_ticks,
+            animation_count=polygon.texture_count if not polygon.animate_uv else 0,
         )
 
     @classmethod
