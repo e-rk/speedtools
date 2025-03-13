@@ -77,6 +77,7 @@ class BaseImporter(metaclass=ABCMeta):
         self, material_map: Callable[[Polygon], Resource], import_shading: bool = False
     ) -> None:
         self.materials: dict[ExtendedResource, bpy.types.Material] = {}
+        self.images: dict[Resource, bpy.types.Image] = {}
         self.material_map = material_map
         self.import_shading = import_shading
         self.rot_mat = mathutils.Euler(
@@ -169,6 +170,14 @@ class BaseImporter(metaclass=ABCMeta):
         bpy_image.source = "FILE"
         return bpy_image
 
+    def _image_from_resource_cached(self, resource: Resource) -> bpy.types.Image:
+        try:
+            return self.images[resource]
+        except KeyError:
+            img = self._image_from_resource(resource)
+            self.images[resource] = img
+        return self.images[resource]
+
     def _make_material(self, ext_resource: ExtendedResource) -> bpy.types.Material:
         resource = ext_resource.resource
         bpy_material = bpy.data.materials.new(resource.name)
@@ -185,7 +194,7 @@ class BaseImporter(metaclass=ABCMeta):
             bpy_material["SPT_transparent"] = True
         else:
             material_output = node_tree.nodes.get("Material Output")
-            image = self._image_from_resource(resource)
+            image = self._image_from_resource_cached(resource)
             image_texture = node_tree.nodes.new("ShaderNodeTexImage")
             image_texture.image = image  # type: ignore[attr-defined]
             image_texture.extension = "EXTEND"  # type: ignore[attr-defined]
