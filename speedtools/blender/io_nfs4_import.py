@@ -67,6 +67,8 @@ class ExtendedResource:
     transparent: bool
     highly_reflective: bool
     non_reflective: bool
+    animation_ticks: int
+    animation_resources: tuple[Resource]
 
     def __lt__(self, other: ExtendedResource) -> bool:
         return hash(self) < hash(other)
@@ -104,12 +106,18 @@ class BaseImporter(metaclass=ABCMeta):
 
     def _extender_resource_map(self, polygon: Polygon) -> ExtendedResource:
         resource = self.material_map(polygon)
+        animation_resources = []
+        for i in range(polygon.animation_count):
+            next_poly = replace(polygon, material=(polygon.material + i))
+            animation_resources.append(self.material_map(next_poly))
         return ExtendedResource(
             resource=resource,
             backface_culling=polygon.backface_culling,
             transparent=polygon.transparent,
             highly_reflective=polygon.highly_reflective,
             non_reflective=polygon.non_reflective,
+            animation_ticks=polygon.animation_ticks,
+            animation_resources=tuple(animation_resources),
         )
 
     def _link_texture_to_shader(
@@ -215,6 +223,13 @@ class BaseImporter(metaclass=ABCMeta):
             bsdf.inputs["Roughness"].default_value = 1.0  # type: ignore[attr-defined]
             bsdf.inputs["Specular IOR Level"].default_value = 0.0  # type: ignore[attr-defined]
         bpy_material.use_backface_culling = ext_resource.backface_culling
+        if ext_resource.animation_resources:
+            bpy_material["SPT_animation_images"] = [
+                img.name for img in ext_resource.animation_resources
+            ]
+            bpy_material["SPT_animation_ticks"] = ext_resource.animation_ticks
+        for resource in ext_resource.animation_resources:
+            self._image_from_resource(resource)
         return bpy_material
 
     def _map_material(self, ext_resource: ExtendedResource) -> bpy.types.Material:
