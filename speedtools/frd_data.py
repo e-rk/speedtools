@@ -84,7 +84,7 @@ class FrdData:
         return unique_everseen(polygon_data_zipped, key=lambda x: nth(x, 0))
 
     @classmethod
-    def _make_polygon(cls, polygon: FrdParser.Polygon) -> Polygon:
+    def _make_polygon(cls, polygon: FrdParser.Polygon, billboard=False) -> Polygon:
         material = polygon.texture_id
         backface_culling = polygon.backface_culling
         quads_or_triangles = cls._validate_polygon(polygon.face, cls._texture_flags_to_uv(polygon))
@@ -98,6 +98,7 @@ class FrdData:
             non_reflective=True,
             animation_ticks=polygon.animation_ticks,
             animation_count=polygon.texture_count if not polygon.animate_uv else 0,
+            billboard=billboard,
         )
 
     @classmethod
@@ -106,7 +107,7 @@ class FrdData:
     ) -> CollisionType:
         logger.debug(f"Object: {vars(obj)}")
         if (
-            obj.type is not ObjectType.normal1 and obj.type is not ObjectType.normal2
+            obj.type is not ObjectType.normal and obj.type is not ObjectType.billboard
         ) or segment is None:
             return CollisionType.none
         collision_type = CollisionType.none
@@ -131,7 +132,7 @@ class FrdData:
         location = None
         actions = []
         transform = None
-        if obj.type in (ObjectType.normal1, ObjectType.normal2):
+        if obj.type in (ObjectType.normal, ObjectType.billboard):
             location = Vector3d(x=obj.location.x, y=obj.location.y, z=obj.location.z)
         if obj.type == ObjectType.special:
             location = Vector3d(x=obj.location.x, y=obj.location.y, z=obj.location.z)
@@ -152,7 +153,10 @@ class FrdData:
             )
             actions = [AnimationAction(action=Action.DEFAULT_LOOP, animation=animation)]
         vertex_locations = [Vector3d.from_frd_float3(vertex) for vertex in extra.vertices]
-        polygons = [cls._make_polygon(polygon) for polygon in extra.polygons]
+        polygons = [
+            cls._make_polygon(polygon=polygon, billboard=(obj.type == ObjectType.billboard))
+            for polygon in extra.polygons
+        ]
         vertex_colors = [
             Color(alpha=shading.alpha, red=shading.red, green=shading.green, blue=shading.blue)
             for shading in extra.vertex_shadings

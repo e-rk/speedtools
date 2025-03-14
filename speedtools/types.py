@@ -173,6 +173,7 @@ class Polygon(BasePolygon):
     non_reflective: bool = False
     animation_ticks: int = 0
     animation_count: int = 0
+    billboard: bool = False
 
 
 @dataclass(frozen=True)

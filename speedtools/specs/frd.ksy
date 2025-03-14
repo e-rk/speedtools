@@ -485,9 +485,9 @@ types:
         size: 4
     enums:
       object_type:
-        0x02: normal1
+        0x02: billboard
         0x03: animated
-        0x04: normal2
+        0x04: normal
         0x06: special
   object_data:
     seq:
