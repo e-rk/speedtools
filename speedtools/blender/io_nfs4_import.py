@@ -69,6 +69,7 @@ class ExtendedResource:
     non_reflective: bool
     animation_ticks: int
     animation_resources: tuple[Resource]
+    billboard: bool
 
     def __lt__(self, other: ExtendedResource) -> bool:
         return hash(self) < hash(other)
@@ -118,6 +119,7 @@ class BaseImporter(metaclass=ABCMeta):
             non_reflective=polygon.non_reflective,
             animation_ticks=polygon.animation_ticks,
             animation_resources=tuple(animation_resources),
+            billboard=polygon.billboard,
         )
 
     def _link_texture_to_shader(
@@ -230,6 +232,7 @@ class BaseImporter(metaclass=ABCMeta):
             bpy_material["SPT_animation_ticks"] = ext_resource.animation_ticks
         for resource in ext_resource.animation_resources:
             self._image_from_resource(resource)
+        bpy_material["SPT_billboard"] = ext_resource.billboard
         return bpy_material
 
     def _map_material(self, ext_resource: ExtendedResource) -> bpy.types.Material:
