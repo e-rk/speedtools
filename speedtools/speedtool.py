@@ -8,6 +8,7 @@ import logging
 from collections.abc import Sequence
 from fnmatch import fnmatch
 from pathlib import Path
+from typing import Any
 
 import click
 
@@ -25,7 +26,7 @@ logger.addHandler(sh)
 
 
 @click.group()
-def main():
+def main() -> None:
     pass
 
 
@@ -44,21 +45,21 @@ def unpack(output: Path | None, files: Sequence[Path]) -> None:
 @main.group()
 @click.argument("path", type=click.Path(path_type=Path))
 @click.pass_context
-def track(ctx, path: Path):
+def track(ctx: Any, path: Path) -> None:
     ctx.ensure_object(dict)
     ctx.obj["path"] = path
 
 
 @track.group()
 @click.pass_context
-def sky(ctx):
+def sky(ctx: Any) -> None:
     pass
 
 
 @sky.command()
 @click.pass_context
 @click.option("--output", help="Output file", type=click.Path(path_type=Path))
-def cubemap(ctx, output: Path | None):
+def cubemap(ctx: Any, output: Path | None) -> None:
     sky_path = Path(ctx.obj["path"], "SKY.QFS")
     logger.info(f"Sky resource file: {sky_path}")
     data = FshData.from_file(sky_path)

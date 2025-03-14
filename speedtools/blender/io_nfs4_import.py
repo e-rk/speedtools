@@ -14,7 +14,7 @@ from functools import total_ordering
 from itertools import chain, groupby
 from math import pi
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import bpy
 import mathutils
@@ -68,7 +68,7 @@ class ExtendedResource:
     highly_reflective: bool
     non_reflective: bool
     animation_ticks: int
-    animation_resources: tuple[Resource]
+    animation_resources: tuple[Resource, ...]
     billboard: bool
 
     def __lt__(self, other: ExtendedResource) -> bool:
@@ -169,14 +169,14 @@ class BaseImporter(metaclass=ABCMeta):
     def _image_to_bpy_image(self, name: str, image: Any) -> bpy.types.Image:
         image_data = pil_image_to_png(image)
         bpy_image = bpy.data.images.new(name, 8, 8)
-        bpy_image.pack(data=image_data, data_len=len(image_data))
+        bpy_image.pack(data=image_data, data_len=len(image_data))  # type: ignore[arg-type]
         bpy_image.source = "FILE"
         return bpy_image
 
     def _image_from_resource(self, resource: Resource) -> bpy.types.Image:
         image_data = image_to_png(resource.image)
         bpy_image = bpy.data.images.new(resource.name, 8, 8)
-        bpy_image.pack(data=image_data, data_len=len(image_data))
+        bpy_image.pack(data=image_data, data_len=len(image_data))  # type: ignore[arg-type]
         bpy_image.source = "FILE"
         return bpy_image
 
@@ -193,37 +193,40 @@ class BaseImporter(metaclass=ABCMeta):
         bpy_material = bpy.data.materials.new(resource.name)
         bpy_material.use_nodes = True
         node_tree = bpy_material.node_tree
-        bsdf = node_tree.nodes["Principled BSDF"]
-        bsdf.inputs["Specular IOR Level"].default_value = 0.25  # type: ignore[attr-defined]
-        bsdf.inputs["Roughness"].default_value = 0.05  # type: ignore[attr-defined]
-        bsdf.inputs["Metallic"].default_value = 0.0  # type: ignore[attr-defined]
+        bsdf = node_tree.nodes["Principled BSDF"]  # type: ignore[union-attr]
+        bsdf.inputs["Specular IOR Level"].default_value = 0.25  # type: ignore[union-attr]
+        bsdf.inputs["Roughness"].default_value = 0.05  # type: ignore[union-attr]
+        bsdf.inputs["Metallic"].default_value = 0.0  # type: ignore[union-attr]
         if ext_resource.transparent:
-            bsdf.inputs["Alpha"].default_value = 0.04
-            bsdf.inputs["Roughness"].default_value = 0.0  # type: ignore[attr-defined]
-            bsdf.inputs["Specular IOR Level"].default_value = 0.5  # type: ignore[attr-defined]
+            bsdf.inputs["Alpha"].default_value = 0.04  # type: ignore[union-attr]
+            bsdf.inputs["Roughness"].default_value = 0.0  # type: ignore[union-attr]
+            bsdf.inputs["Specular IOR Level"].default_value = 0.5  # type: ignore[union-attr]
             bpy_material["SPT_transparent"] = True
         else:
-            material_output = node_tree.nodes.get("Material Output")
+            material_output = node_tree.nodes.get("Material Output")  # type: ignore[union-attr]
             image = self._image_from_resource_cached(resource)
-            image_texture = node_tree.nodes.new("ShaderNodeTexImage")
-            image_texture.image = image  # type: ignore[attr-defined]
-            image_texture.extension = "EXTEND"  # type: ignore[attr-defined]
+            image_texture = node_tree.nodes.new("ShaderNodeTexImage")  # type: ignore[union-attr]
+            image_texture.image = image  # type: ignore[union-attr]
+            image_texture.extension = "EXTEND"  # type: ignore[union-attr]
             self._link_texture_to_shader(
-                node_tree=node_tree, texture=image_texture, shader=bsdf, resource=resource
+                node_tree=node_tree,  # type: ignore[arg-type]
+                texture=image_texture,
+                shader=bsdf,
+                resource=resource,
             )
             output_socket = self._set_blend_mode(
-                node_tree=node_tree,
+                node_tree=node_tree,  # type: ignore[arg-type]
                 shader_output=bsdf.outputs["BSDF"],
                 bpy_material=bpy_material,
                 resource=resource,
             )
-            node_tree.links.new(output_socket, material_output.inputs["Surface"])
+            node_tree.links.new(output_socket, material_output.inputs["Surface"])  # type: ignore[union-attr]
         if ext_resource.highly_reflective:
-            # bsdf.inputs["Base Color"].default_value = (1.0, 1.0, 1.0, 1.0)  # type: ignore[attr-defined]
-            bsdf.inputs["Specular IOR Level"].default_value = 0.50  # type: ignore[attr-defined]
+            # bsdf.inputs["Base Color"].default_value = (1.0, 1.0, 1.0, 1.0)  # type: ignore[union-attr]
+            bsdf.inputs["Specular IOR Level"].default_value = 0.50  # type: ignore[union-attr]
         if ext_resource.non_reflective:
-            bsdf.inputs["Roughness"].default_value = 1.0  # type: ignore[attr-defined]
-            bsdf.inputs["Specular IOR Level"].default_value = 0.0  # type: ignore[attr-defined]
+            bsdf.inputs["Roughness"].default_value = 1.0  # type: ignore[union-attr]
+            bsdf.inputs["Specular IOR Level"].default_value = 0.0  # type: ignore[union-attr]
         bpy_material.use_backface_culling = ext_resource.backface_culling
         if ext_resource.animation_resources:
             bpy_material["SPT_animation_images"] = [
@@ -255,7 +258,7 @@ class BaseImporter(metaclass=ABCMeta):
 
     def set_object_location(self, obj: bpy.types.Object, location: Vector3d) -> None:
         mu_location = mathutils.Vector(location)
-        obj.location = self.rot_mat @ mu_location  # type: ignore[assignment]
+        obj.location = self.rot_mat @ mu_location
 
     def set_object_action(self, obj: bpy.types.Object, action: AnimationAction) -> None:
         animation = action.animation
@@ -275,8 +278,8 @@ class BaseImporter(metaclass=ABCMeta):
             mu_quaternion = mu_quaternion.normalized()
             mu_quaternion = rot_quat @ mu_quaternion.inverted()
             obj.rotation_quaternion = rot_quat
-            obj.delta_location = mu_location  # type: ignore[assignment]
-            obj.delta_rotation_quaternion = mu_quaternion  # type: ignore[assignment]
+            obj.delta_location = mu_location
+            obj.delta_rotation_quaternion = mu_quaternion
             interval = index * animation.delay
             obj.keyframe_insert(
                 data_path="delta_location", frame=interval, options={"INSERTKEY_CYCLE_AWARE"}
@@ -302,11 +305,11 @@ class BaseImporter(metaclass=ABCMeta):
         mu_matrix = mathutils.Matrix(transform)
         if offset:
             mu_euler = offset
-            mu_euler.rotate(mu_matrix.to_euler("XYZ"))  # type: ignore # pylint: disable=all
+            mu_euler.rotate(mu_matrix.to_euler("XYZ"))  # pylint: disable=all
         else:
-            mu_euler = mu_matrix.to_euler("XYZ")  # type: ignore # pylint: disable=all
+            mu_euler = mu_matrix.to_euler("XYZ")  # pylint: disable=all
         obj.rotation_mode = "XYZ"
-        obj.rotation_euler = mu_euler  # type: ignore[assignment]
+        obj.rotation_euler = mu_euler
 
     def make_drawable_object(self, name: str, mesh: DrawableMesh) -> bpy.types.Object:
         bpy_mesh = self.make_base_mesh(name=name, mesh=mesh)
@@ -347,7 +350,7 @@ class BaseImporter(metaclass=ABCMeta):
         bpy_light.cutoff_distance = 15.0
         bpy_light.specular_factor = 0.2
         bpy_light.energy = 500  # type: ignore[attr-defined]
-        bpy_light.use_shadow = False  # type: ignore[attr-defined]
+        bpy_light.use_shadow = False
         bpy_obj = bpy.data.objects.new(name=name, object_data=bpy_light)
         self.set_object_location(obj=bpy_obj, location=light.location)
         return bpy_obj
@@ -359,7 +362,7 @@ class BaseImporter(metaclass=ABCMeta):
         bpy_obj = bpy.data.objects.new(name=name, object_data=bpy_sun)
         mu_euler = mathutils.Euler(light.euler_xyz)
         bpy_obj.rotation_mode = "XYZ"
-        bpy_obj.rotation_euler = mu_euler  # type: ignore[assignment]
+        bpy_obj.rotation_euler = mu_euler
         return bpy_obj
 
     def make_camera_object(self, name: str, camera: Camera) -> bpy.types.Object:
@@ -551,12 +554,16 @@ class TrackImporter(bpy.types.Operator):
         default=False,
     )
 
-    def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[int] | set[str]:
+    def invoke(
+        self, context: bpy.types.Context, event: bpy.types.Event
+    ) -> set[Literal["RUNNING_MODAL", "CANCELLED", "FINISHED", "PASS_THROUGH", "INTERFACE"]]:
         wm = context.window_manager
         wm.fileselect_add(self)
         return {"RUNNING_MODAL"}
 
-    def execute(self, context: bpy.types.Context) -> set[int] | set[str]:
+    def execute(
+        self, context: bpy.types.Context
+    ) -> set[Literal["RUNNING_MODAL", "CANCELLED", "FINISHED", "PASS_THROUGH", "INTERFACE"]]:
         directory = Path(self.directory)
         # This should get us from track directory to game root directory
         game_root = directory.parent.parent.parent
@@ -601,12 +608,16 @@ class CarImporter(bpy.types.Operator):
         name="Import interior", description="Import car interior geometry", default=False
     )
 
-    def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[int] | set[str]:
+    def invoke(
+        self, context: bpy.types.Context, event: bpy.types.Event
+    ) -> set[Literal["RUNNING_MODAL", "CANCELLED", "FINISHED", "PASS_THROUGH", "INTERFACE"]]:
         wm = context.window_manager
         wm.fileselect_add(self)
         return {"RUNNING_MODAL"}
 
-    def execute(self, context: bpy.types.Context) -> set[int] | set[str]:
+    def execute(
+        self, context: bpy.types.Context
+    ) -> set[Literal["RUNNING_MODAL", "CANCELLED", "FINISHED", "PASS_THROUGH", "INTERFACE"]]:
         car = VivData.from_file(Path(self.directory, "CAR.VIV"))
         logger.debug(car)
 

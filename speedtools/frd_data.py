@@ -84,7 +84,7 @@ class FrdData:
         return unique_everseen(polygon_data_zipped, key=lambda x: nth(x, 0))
 
     @classmethod
-    def _make_polygon(cls, polygon: FrdParser.Polygon, billboard=False) -> Polygon:
+    def _make_polygon(cls, polygon: FrdParser.Polygon, billboard: bool = False) -> Polygon:
         material = polygon.texture_id
         backface_culling = polygon.backface_culling
         quads_or_triangles = cls._validate_polygon(polygon.face, cls._texture_flags_to_uv(polygon))
@@ -154,7 +154,7 @@ class FrdData:
             actions = [AnimationAction(action=Action.DEFAULT_LOOP, animation=animation)]
         vertex_locations = [Vector3d.from_frd_float3(vertex) for vertex in extra.vertices]
         polygons = [
-            cls._make_polygon(polygon=polygon, billboard=(obj.type == ObjectType.billboard))
+            cls._make_polygon(polygon=polygon, billboard=obj.type == ObjectType.billboard)
             for polygon in extra.polygons
         ]
         vertex_colors = [
