@@ -586,6 +586,9 @@ class CarImporterSimple(BaseImporter):
                 "sample": raw_stream_to_wav_b64(eng.stream),
                 "tables": [x.to_dict() for x in eng.tables],
                 "is_rear": eng.is_rear,
+                "pitch_unknown0": eng.stream.pitch_unknown0,
+                "pitch_unknown1": eng.stream.pitch_unknown1,
+                "pitch_unknown2": eng.stream.pitch_unknown2,
             }
 
         car_metadata = {

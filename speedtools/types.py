@@ -368,6 +368,9 @@ class AudioStream:
     audio_samples: bytes
     loop_start: int
     loop_length: int
+    pitch_unknown0: int
+    pitch_unknown1: int
+    pitch_unknown2: int
 
 
 @dataclass(frozen=True)
