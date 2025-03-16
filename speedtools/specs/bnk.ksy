@@ -133,3 +133,6 @@ enums:
     0xa0: revision2
     0xfd: subheader
     0xff: terminator
+    0x07: pitch_unknown0
+    0x0a: pitch_unknown1
+    0x10: pitch_unknown2
