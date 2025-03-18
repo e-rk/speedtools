@@ -13,6 +13,7 @@ from typing import Any
 import click
 import ffmpeg
 
+from speedtools.bnk_data import BnkData
 from speedtools.fsh_data import FshData
 from speedtools.utils import (
     export_resource,
@@ -97,3 +98,20 @@ def viv_unpack(path: Path):
             # t.write(str(sound.tables))
     # print(sound)
     # break
+
+
+@main.group()
+def bnk() -> None:
+    pass
+
+
+@bnk.command()
+@click.argument("path", type=click.Path(path_type=Path))
+def bnk_unpack(path: Path):
+    bnk = BnkData.from_file(path)
+    audio_streams = bnk.sound_streams
+    for index, sound in audio_streams:
+        with open(f"out_{hex(index)}.wav", "wb") as f:
+            print(f"******{index}")
+            f.write(raw_stream_to_wav(sound))
+            print("done***************")
