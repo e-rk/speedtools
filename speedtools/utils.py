@@ -23,7 +23,16 @@ import tempfile
 from PIL import Image as pil_Image
 from click.termui import raw_terminal
 
-from speedtools.types import AudioStream, BaseMesh, BasePolygon, Bitmap, Image, Resource, Vertex
+from speedtools.types import (
+    AudioStream,
+    BaseMesh,
+    BasePolygon,
+    Bitmap,
+    Image,
+    Resource,
+    Vertex,
+    Compression,
+)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -170,20 +179,37 @@ def make_horizon_texture(resources: list[Resource]) -> Any:
 def raw_stream_to_wav(audio_stream: AudioStream) -> bytes:
     import ffmpeg
 
+    match audio_stream.compression:
+        case Compression.ADPCM:
+            codec = "adpcm_ea"
+        case _:
+            codec = "pcm_s16le"
+
     with tempfile.NamedTemporaryFile() as fp:
         stream = (
             ffmpeg.input(
-                "pipe:", format="s16le", ar=audio_stream.sample_rate, ac=audio_stream.num_channels
+                "pipe:",
+                format="s16le",
+                ar=audio_stream.sample_rate,
+                ac=audio_stream.num_channels,
+                acodec=codec,
             )
             .output(fp.name, format="wav")
             .overwrite_output()
+            .global_args("-hide_banner")
         )
         logger.debug(stream.get_args())
         process = stream.run_async(pipe_stdin=True)
-        process.stdin.write(audio_stream.audio_samples)
+        process.stdin.write(
+            struct.pack("<Lhhhh", len(audio_stream.audio_samples), 0, 0, 0, 0)
+            + audio_stream.audio_samples
+        )
         process.stdin.close()
         process.wait()
         data = fp.read()
+
+        # with open(f"raw_{len(audio_stream.audio_samples)}", "wb") as f:
+        #     f.write(struct.pack("<Lhhhh", 100000, 0, 0, 0, 0) + audio_stream.audio_samples)
     loop_end = audio_stream.loop_length
     smpl = struct.pack("<4x4x4x4x4x4x4xl4xllll4x4x", 1, 0, 0, audio_stream.loop_start, loop_end)
     chunk = struct.pack("<4sl", "smpl".encode("ASCII"), len(smpl))
