@@ -61,6 +61,7 @@ types:
         type: u1
         enum: tv_type
       - id: value
+        if: type != tv_type::padding and type != tv_type::separator
         type:
           switch-on: type
           cases:
@@ -79,7 +80,7 @@ types:
         type: u1
       - id: value
         size: size
-        if: size > 0 and size < 5
+        if: size > 0 and size < 5 and size != 0xff
         type:
           switch-on: size
           cases:
@@ -87,6 +88,7 @@ types:
             2: b16
             3: b24
             4: b32
+            0xff: b32
             _: b8
   empty_value:
     seq:
@@ -109,7 +111,7 @@ types:
     instances:
       body:
         pos: value
-        type: bnk_audio_stream(_parent._parent._parent._parent) # Get the main header
+        type: bnk_audio_stream(_parent._parent) # Get the main header
         # size: 100 # FIXME: Correct size needed here
   # bnk_audio_stream:
   #   seq:
@@ -137,3 +139,5 @@ enums:
     0x07: pitch_unknown0
     0x0a: pitch_unknown1
     0x10: pitch_unknown2
+    0xfc: padding
+    0xfe: separator
