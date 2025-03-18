@@ -79,6 +79,7 @@ types:
         type: u1
       - id: value
         size: size
+        if: size > 0 and size < 5
         type:
           switch-on: size
           cases:
