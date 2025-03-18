@@ -19,6 +19,7 @@ from speedtools.parsers.bnk_audio_stream import (
     bnk_find_tlv,
     bnk_find_tlv2,
     bnk_find_tlv_one,
+    bnk_find_tlv_only,
 )
 from speedtools.types import AudioStream, BnkTlvType, Compression
 
@@ -65,14 +66,14 @@ class BnkData:
             )
             print(data_tlv)
 
-            pitch_unknown0 = bnk_get_value_or_default(
-                entry=sound_entry, tlv_type=BnkTlvType.pitch_unknown0, default=60
+            pitch_unknown0 = bnk_find_tlv_only(
+                tlvs=chunk, tlv_type=BnkTlvType.pitch_unknown0, default=60
             )
-            pitch_unknown1 = bnk_get_value_or_default(
-                entry=sound_entry, tlv_type=BnkTlvType.pitch_unknown1, default=0
+            pitch_unknown1 = bnk_find_tlv_only(
+                tlvs=chunk, tlv_type=BnkTlvType.pitch_unknown1, default=0
             )
-            pitch_unknown2 = bnk_get_value_or_default(
-                entry=sound_entry, tlv_type=BnkTlvType.pitch_unknown2, default=0
+            pitch_unknown2 = bnk_find_tlv_only(
+                tlvs=chunk, tlv_type=BnkTlvType.pitch_unknown2, default=0
             )
 
             sound_data = data_tlv.value.body
