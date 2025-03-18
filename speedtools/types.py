@@ -361,6 +361,11 @@ class SoundTable:
 #         }
 
 
+class Compression(Enum):
+    PCM = 1
+    ADPCM = 2
+
+
 @dataclass(frozen=True)
 class AudioStream:
     num_channels: int
@@ -371,6 +376,7 @@ class AudioStream:
     pitch_unknown0: int
     pitch_unknown1: int
     pitch_unknown2: int
+    compression: Compression
 
 
 @dataclass(frozen=True)
