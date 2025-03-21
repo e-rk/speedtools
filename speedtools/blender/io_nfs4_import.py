@@ -515,6 +515,13 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
                 "opposite": color_to_dict(horizon.opposite_side),  # type: ignore[dict-item]
             }
             spt_track["environment"] = environment  # type: ignore[assignment]
+        spt_track["audio_sources"] = [
+            {
+                "location": (gltf_transform @ mathutils.Vector(source.location)).to_tuple(),
+                "samples": raw_stream_to_wav_b64(source.stream),
+            }
+            for source in track.audio_sources
+        ]
         bpy.context.scene["SPT_track"] = spt_track
         sky_images = list(track.sky_images)
         if sky_images:
