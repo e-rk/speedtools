@@ -42,6 +42,7 @@ from speedtools.types import (
     Polygon,
     Quaternion,
     RoadEffect,
+    SoundStub,
     TrackObject,
     TrackSegment,
     Vector3d,
@@ -301,6 +302,12 @@ class FrdData:
         identifier = dummy.type & 0x1F
         return LightStub(location=location, glow_id=identifier)
 
+    @classmethod
+    def _make_sound_dummy(cls, dummy: FrdParser.SourceType) -> SoundStub:
+        location = Vector3d.from_frd_int3(dummy.location)
+        patch = dummy.type & 0x1F
+        return SoundStub(location=location, patch=patch)
+
     @property
     def objects(self) -> Iterator[TrackObject]:
         segment_objects = collapse(
@@ -326,3 +333,8 @@ class FrdData:
     def light_dummies(self) -> Iterator[LightStub]:
         lights = chain.from_iterable(segment.light_sources for segment in self.frd.segment_data)
         return map(self._make_dummy, lights)
+
+    @property
+    def sound_dummies(self) -> Iterator[SoundStub]:
+        sounds = chain.from_iterable(segment.sound_sources for segment in self.frd.segment_data)
+        return map(self._make_sound_dummy, sounds)
