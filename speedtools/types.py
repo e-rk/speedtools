@@ -310,6 +310,12 @@ class LightStub:
 
 
 @dataclass(frozen=True)
+class SoundStub:
+    location: Vector3d
+    patch: int
+
+
+@dataclass(frozen=True)
 class DirectionalLight:
     rho: float
     theta: float
@@ -385,3 +391,9 @@ class EngineAudio:
     tables: list[SoundTable]
     is_rear: bool
     patchnum: int
+
+
+@dataclass(frozen=True)
+class AudioSource:
+    stream: AudioStream
+    location: Vector3d

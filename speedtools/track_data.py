@@ -15,8 +15,9 @@ from math import atan2, cos, tau
 from pathlib import Path
 from typing import TypeVar
 
-from more_itertools import collapse, take, triplewise
+from more_itertools import collapse, filter_except, filter_map, take, triplewise
 
+from speedtools.bnk_data import BnkData
 from speedtools.cam_data import CamData
 from speedtools.can_data import CanData
 from speedtools.frd_data import FrdData
@@ -26,6 +27,7 @@ from speedtools.tr_ini import TrackIni
 from speedtools.types import (
     Action,
     AnimationAction,
+    AudioSource,
     Camera,
     CollisionMesh,
     CollisionPolygon,
@@ -39,6 +41,7 @@ from speedtools.types import (
     Polygon,
     Resource,
     TrackLight,
+    SoundStub,
     TrackObject,
     TrackSegment,
     Vector3d,
@@ -63,6 +66,7 @@ class TrackData:
     SUN_DISTANCE = 3000
     ANIMATION_FPS = 64
     SFX_RESOURCE_FILE = Path("Data", "GAMEART", "SFX.FSH")
+    AUDIO_DATA_PATH = Path("Data", "AUDIO", "SFX")
 
     def __init__(
         self,
@@ -114,6 +118,15 @@ class TrackData:
             directory=directory,
             prefix="TR",
             postfix=".CAM",
+            mirrored=mirrored,
+            night=night,
+            weather=weather,
+        )
+        self.audio: BnkData = self.tr_open(
+            constructor=BnkData.from_file,
+            directory=Path(game_root, self.AUDIO_DATA_PATH),
+            prefix="TRAM00",
+            postfix=".BNK",
             mirrored=mirrored,
             night=night,
             weather=weather,
@@ -362,3 +375,16 @@ class TrackData:
         weather = "W" if self.weather else "C"
         night = "N" if self.night else "D"
         return filter(lambda x: fnmatch(x.name, f"H{night}{weather}?"), self.sky.resources)
+
+    @classmethod
+    def _make_audio_source(cls, bnk: BnkData, dummy: SoundStub) -> AudioSource | None:
+        try:
+            patch_map = dict(bnk.sound_streams)
+            stream = patch_map[dummy.patch]
+            return AudioSource(stream=stream, location=dummy.location)
+        except:
+            return None
+
+    @property
+    def audio_sources(self) -> Iterable[AudioSource]:
+        return filter_map(partial(self._make_audio_source, self.audio), self.frd.sound_dummies)
