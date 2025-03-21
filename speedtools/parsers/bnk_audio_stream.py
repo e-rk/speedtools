@@ -72,10 +72,18 @@ class BnkAudioStream:
         self.loop_length = bnk_find_tlv_only(
             tlvs=header.tlvs, tlv_type=TlvType.loop_length, default=0
         )
-        logger.error(
-            f"Samples: {self.num_samples}, Channels: {self.num_channels}, Bytes: {self.bytes_per_sample}, Compression: {self.compression}"
-        )
-        data = self.num_samples * self.num_channels * self.bytes_per_sample
-        data = data // 4 if self.compression == 0x07 else data
-        # logger.error(f"**************{data}")
-        self.samples = stream.read_bytes(data)
+        # logger.error(
+        #     f"Samples: {self.num_samples}, Channels: {self.num_channels}, Bytes: {self.bytes_per_sample}, Compression: {self.compression}"
+        # )
+
+        match self.compression:
+            case 0x00:
+                data_size = self.num_samples * self.num_channels * self.bytes_per_sample
+            case 0x07:
+                mul = 15 if self.num_channels == 1 else 30
+                data_size = (self.num_samples * mul) // 28
+
+        # data = ((data // self.bytes_per_sample) * 15) // 28 if self.compression == 0x07 else data
+        # data -= (data % 28) + 12 if self.compression == 0x07 else data
+        # print(data_size)
+        self.samples = stream.read_bytes(data_size)

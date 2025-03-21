@@ -10,7 +10,7 @@ from collections import namedtuple
 from collections.abc import Iterable
 from enum import Enum
 from typing import Self
-from click.types import Path
+from pathlib import Path
 from more_itertools import one, split_at
 from more_itertools.more import filter_map
 from speedtools.parsers import BnkParser
@@ -59,12 +59,12 @@ class BnkData:
         ret = []
 
         for chunk in separated:
-            print(chunk)
+            # print(chunk)
             subheader = one(bnk_find_tlv2(tlvs=chunk, tlv_type=BnkTlvType.subheader))
             data_tlv = one(
                 bnk_find_tlv2(tlvs=subheader.value.tlvs, tlv_type=BnkTlvType.data_start)
             )
-            print(data_tlv)
+            # print(data_tlv)
 
             pitch_unknown0 = bnk_find_tlv_only(
                 tlvs=chunk, tlv_type=BnkTlvType.pitch_unknown0, default=60
@@ -82,7 +82,7 @@ class BnkData:
                     compression = Compression.ADPCM
                 case _:
                     compression = Compression.PCM
-            print(f"***************************{sound_data.compression}****************")
+            # print(f"***************************{sound_data.compression}****************")
             # print(bytearray(b16encode(sound_data.samples)[0:30]))
             s = AudioStream(
                 num_channels=sound_data.num_channels,
