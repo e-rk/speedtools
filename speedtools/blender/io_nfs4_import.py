@@ -303,7 +303,7 @@ class BaseImporter(metaclass=ABCMeta):
         transform: Matrix3x3 | mathutils.Matrix,
         offset: mathutils.Euler | None = None,
     ) -> None:
-        mu_matrix = mathutils.Matrix(transform)
+        mu_matrix = self.rot_mat @ mathutils.Matrix(transform)
         if offset:
             mu_euler = offset
             mu_euler.rotate(mu_matrix.to_euler("XYZ"))  # pylint: disable=all
