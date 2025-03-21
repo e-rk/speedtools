@@ -23,6 +23,7 @@ import tempfile
 from PIL import Image as pil_Image
 from click.termui import raw_terminal
 
+from speedtools.decoders import adpcm_to_s16le
 from speedtools.types import (
     AudioStream,
     BaseMesh,
@@ -181,9 +182,19 @@ def raw_stream_to_wav(audio_stream: AudioStream) -> bytes:
 
     match audio_stream.compression:
         case Compression.ADPCM:
-            codec = "adpcm_ea"
+            # num_samples = len(audio_stream.audio_samples)
+            # print(num_samples)
+            # num_samples = (num_samples // 15) * 28
+            # header = struct.pack("<Lhhhh", num_samples, 0, 0, 0, 0)
+            # codec = "adpcm_ea"
+            # data = header + audio_stream.audio_samples
+            codec = "pcm_s16le"
+            data = adpcm_to_s16le(
+                stream=audio_stream.audio_samples, num_channels=audio_stream.num_channels
+            )
         case _:
             codec = "pcm_s16le"
+            data = audio_stream.audio_samples
 
     with tempfile.NamedTemporaryFile() as fp:
         stream = (
@@ -192,7 +203,7 @@ def raw_stream_to_wav(audio_stream: AudioStream) -> bytes:
                 format="s16le",
                 ar=audio_stream.sample_rate,
                 ac=audio_stream.num_channels,
-                acodec=codec,
+                # acodec=codec,
             )
             .output(fp.name, format="wav")
             .overwrite_output()
@@ -200,10 +211,7 @@ def raw_stream_to_wav(audio_stream: AudioStream) -> bytes:
         )
         logger.debug(stream.get_args())
         process = stream.run_async(pipe_stdin=True)
-        process.stdin.write(
-            struct.pack("<Lhhhh", len(audio_stream.audio_samples), 0, 0, 0, 0)
-            + audio_stream.audio_samples
-        )
+        process.stdin.write(data)
         process.stdin.close()
         process.wait()
         data = fp.read()
