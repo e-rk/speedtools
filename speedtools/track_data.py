@@ -67,6 +67,27 @@ class TrackData:
     ANIMATION_FPS = 64
     SFX_RESOURCE_FILE = Path("Data", "GAMEART", "SFX.FSH")
     AUDIO_DATA_PATH = Path("Data", "AUDIO", "SFX")
+    AUDIO_MAPPING = {
+        "HILLS": 12,
+        "GERMANY": 15,
+        "COASTAL": 10,
+        "PARK": 13,
+        "FRANCE": 16,
+        "UK": 14,
+        "SNOWY": 11,
+        "GT1": 17,
+        "GT2": 17,
+        "GT3": 17,
+        "HOMETOWN": 0,
+        "REDROCK": 1,
+        "ATLANTIC": 2,
+        "ROCKYPAS": 3,
+        "COUNTRY": 4,
+        "LOSTCANY": 5,
+        "AQUATICA": 6,
+        "SUMMIT": 7,
+        "EMPIRE": 8,
+    }
 
     def __init__(
         self,
@@ -77,6 +98,8 @@ class TrackData:
         weather: bool = False,
     ) -> None:
         logger.debug(f"Opening directory {directory}")
+        track_name = directory.name
+        audio_id = self.AUDIO_MAPPING[track_name]
         self.frd: FrdData = self.tr_open(
             constructor=FrdData.from_file,
             directory=directory,
@@ -125,7 +148,7 @@ class TrackData:
         self.audio: BnkData = self.tr_open(
             constructor=BnkData.from_file,
             directory=Path(game_root, self.AUDIO_DATA_PATH),
-            prefix="TRAM00",
+            prefix=f"TRAM{audio_id:02}",
             postfix=".BNK",
             mirrored=mirrored,
             night=night,
