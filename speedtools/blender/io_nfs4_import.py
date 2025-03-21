@@ -302,7 +302,7 @@ class BaseImporter(metaclass=ABCMeta):
         transform: Matrix3x3,
         offset: mathutils.Euler | None = None,
     ) -> None:
-        mu_matrix = mathutils.Matrix(transform)
+        mu_matrix = self.rot_mat @ mathutils.Matrix(transform)
         if offset:
             mu_euler = offset
             mu_euler.rotate(mu_matrix.to_euler("XYZ"))  # pylint: disable=all
@@ -360,9 +360,9 @@ class BaseImporter(metaclass=ABCMeta):
     ) -> bpy.types.Object:
         bpy_sun = bpy.data.lights.new(name=name, type="SUN")
         bpy_obj = bpy.data.objects.new(name=name, object_data=bpy_sun)
-        mu_euler = mathutils.Euler(light.euler_xyz)
+        mu_rot = self.rot_mat @ mathutils.Euler(light.euler_xyz).to_matrix()
         bpy_obj.rotation_mode = "XYZ"
-        bpy_obj.rotation_euler = mu_euler
+        bpy_obj.rotation_euler = mu_rot.to_euler()
         return bpy_obj
 
     def make_camera_object(self, name: str, camera: Camera) -> bpy.types.Object:
