@@ -303,7 +303,7 @@ class BaseImporter(metaclass=ABCMeta):
         transform: Matrix3x3 | mathutils.Matrix,
         offset: mathutils.Euler | None = None,
     ) -> None:
-        mu_matrix = self.rot_mat @ mathutils.Matrix(transform)
+        mu_matrix = self.rot_mat @ mathutils.Matrix(transform)  # type: ignore[arg-type]
         if offset:
             mu_euler = offset
             mu_euler.rotate(mu_matrix.to_euler("XYZ"))  # pylint: disable=all
@@ -348,7 +348,7 @@ class BaseImporter(metaclass=ABCMeta):
         self,
         name: str,
         light: Light,
-        light_type: str = "POINT",
+        light_type: Literal["POINT", "SUN", "SPOT", "AREA"] | None = "POINT",
         energy: int = 500,
         cutoff_distance: float = 15.0,
     ) -> bpy.types.Light:
@@ -497,8 +497,6 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
 
             environment = {}
             ambient_color = track.ambient_color
-            bpy.context.scene.world.use_nodes = False
-            bpy.context.scene.world.color = ambient_color.rgb_float
             environment["ambient"] = color_to_dict(ambient_color)
             horizon = track.horizon
             environment["horizon"] = {
