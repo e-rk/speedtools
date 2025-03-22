@@ -34,7 +34,6 @@ from speedtools.types import (
     DirectionalLight,
     Edge,
     Horizon,
-    Light,
     LightAttributes,
     LightStub,
     Polygon,
