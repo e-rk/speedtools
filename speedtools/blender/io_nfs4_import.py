@@ -357,7 +357,7 @@ class BaseImporter(metaclass=ABCMeta):
         bpy_light.use_custom_distance = True
         bpy_light.cutoff_distance = cutoff_distance
         bpy_light.specular_factor = 0.2
-        bpy_light.energy = energy
+        bpy_light.energy = energy  # type: ignore[attr-defined]
         bpy_light.use_shadow = False  # type: ignore[attr-defined]
         return bpy_light
 
@@ -378,6 +378,7 @@ class BaseImporter(metaclass=ABCMeta):
             cutoff_distance=cutoff_distance,
         )
         bpy_light.spot_size = angle  # type: ignore[attr-defined]
+        bpy_light.spot_blend = 0.5  # type: ignore[attr-defined]
         bpy_obj = bpy.data.objects.new(name=name, object_data=bpy_light)
         self.set_object_location(obj=bpy_obj, location=light.location)
         return bpy_obj
