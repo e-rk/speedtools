@@ -358,7 +358,7 @@ class BaseImporter(metaclass=ABCMeta):
         bpy_light.cutoff_distance = cutoff_distance
         bpy_light.specular_factor = 0.2
         bpy_light.energy = energy  # type: ignore[attr-defined]
-        bpy_light.use_shadow = False  # type: ignore[attr-defined]
+        bpy_light.use_shadow = False
         return bpy_light
 
     def make_point_light_object(self, name: str, light: Light) -> bpy.types.Object:
