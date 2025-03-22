@@ -359,4 +359,6 @@ class TrackData:
 
     @property
     def sky_images(self) -> Iterable[Resource]:
-        return filter(lambda x: fnmatch(x.name, "HDC?"), self.sky.resources)
+        weather = "W" if self.weather else "C"
+        night = "N" if self.night else "D"
+        return filter(lambda x: fnmatch(x.name, f"H{night}{weather}?"), self.sky.resources)
