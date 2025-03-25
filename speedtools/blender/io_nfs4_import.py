@@ -48,18 +48,6 @@ logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
 
 
-bl_info = {
-    "name": "Import NFS4 Track",
-    "author": "Rafał Kuźnia",
-    "version": (1, 0, 0),
-    "blender": (3, 4, 1),
-    "location": "File > Import > Track resource",
-    "description": "Imports a NFS4 track files (meshes, textures and objects)."
-    "Scripts/Import-Export/Track_Resource",
-    "category": "Import-Export",
-}
-
-
 @total_ordering
 @dataclass(frozen=True)
 class ExtendedResource:

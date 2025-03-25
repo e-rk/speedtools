@@ -1,0 +1,21 @@
+schema_version = "1.0.0"
+id = "speedtools"
+version = "0.22.0"
+name = "NFS4 resource importer"
+tagline = "Import NFS4 cars and tracks into Blender"
+maintainer = "Rafał Kuźnia <rafal.kuznia@protonmail.com>"
+type = "add-on"
+website = "https://github.com/e-rk/speedtools"
+tags = ["Import-Export"]
+blender_version_min = "4.4.0"
+license = ["SPDX:GPL-3.0-or-later"]
+copyright = ["2023-2025 Rafał Kuźnia"]
+wheels = [
+    "./wheels/kaitaistruct-0.10-py2.py3-none-any.whl",
+    "./wheels/more_itertools-10.6.0-py3-none-any.whl",
+    "./wheels/parse-1.20.2-py2.py3-none-any.whl",
+    "./wheels/speedtools-0.21.0-py3-none-any.whl",
+]
+
+[permissions]
+files = "Import resources from disk"
