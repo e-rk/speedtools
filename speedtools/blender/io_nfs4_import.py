@@ -485,8 +485,6 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
 
             environment = {}
             ambient_color = track.ambient_color
-            bpy.context.scene.world.use_nodes = False
-            bpy.context.scene.world.color = ambient_color.rgb_float
             environment["ambient"] = color_to_dict(ambient_color)
             horizon = track.horizon
             environment["horizon"] = {
