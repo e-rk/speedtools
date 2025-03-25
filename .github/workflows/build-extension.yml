@@ -1,0 +1,56 @@
+name: Extension
+
+on:
+    push:
+        branches: []
+    pull_request:
+        branches: ["master"]
+
+jobs:
+    extension:
+        name: Build extension
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Set up Python ${{ matrix.python-version }}
+              uses: actions/setup-python@v3
+              with:
+                  python-version: ${{ matrix.python-version }}
+            - name: Install dependencies
+              run: |
+                  curl -LO https://github.com/kaitai-io/kaitai_struct_compiler/releases/download/0.10/kaitai-struct-compiler_0.10_all.deb
+                  sudo apt-get install ./kaitai-struct-compiler_0.10_all.deb
+                  sudo snap install blender --classic
+            - name: Build
+              run: |
+                  cd speedtools/blender
+                  pip wheel ../.. -w wheels
+                  pip download pillow --dest ./wheels --only-binary=:all: --python-version=3.11 --platform=manylinux_2_28_x86_64
+                  pip download pillow --dest ./wheels --only-binary=:all: --python-version=3.11 --platform=macosx_11_0_arm64
+                  pip download pillow --dest ./wheels --only-binary=:all: --python-version=3.11 --platform=win_amd64
+                  ls wheels
+                  blender --command extension build
+            - name: Upload extension
+              uses: actions/upload-artifact@v4
+              with:
+                  name: speedtools
+                  path: speedtools/blender/speedtools-*.zip
+
+    install:
+        needs: extension
+        name: Basic extension test
+        strategy:
+            matrix:
+                os: [windows-latest, ubuntu-latest]
+        runs-on: ${{ matrix.os }}
+        steps:
+            - uses: actions/download-artifact@v4
+              with:
+                  name: speedtools
+            - if: ${{ matrix.os == 'ubuntu-latest' }}
+              run: sudo snap install blender --classic
+            - if: ${{ matrix.os == 'windows-latest' }}
+              run: |
+                  choco install blender
+                  echo 'C:\Program Files\Blender Foundation\Blender 4.4\' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            - run: blender --command extension install-file -e -r user_default speedtools-*.zip
