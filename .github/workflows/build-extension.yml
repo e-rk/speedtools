@@ -1,0 +1,33 @@
+name: Extension
+
+on:
+    push:
+        branches: []
+    pull_request:
+        branches: ["master"]
+
+jobs:
+    extension:
+        name: Build extension
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Set up Python ${{ matrix.python-version }}
+              uses: actions/setup-python@v3
+              with:
+                  python-version: ${{ matrix.python-version }}
+            - name: Install dependencies
+              run: |
+                  curl -LO https://github.com/kaitai-io/kaitai_struct_compiler/releases/download/0.10/kaitai-struct-compiler_0.10_all.deb
+                  sudo apt-get install ./kaitai-struct-compiler_0.10_all.deb
+                  sudo snap install blender --classic
+            - name: Build
+              run: |
+                  cd speedtools/blender
+                  pip wheel ../.. -w wheels
+                  blender --command extension build
+            - name: Upload extension
+              uses: actions/upload-artifact@v4
+              with:
+                  name: speedtools
+                  path: speedtools/blender/speedtools-*.zip
