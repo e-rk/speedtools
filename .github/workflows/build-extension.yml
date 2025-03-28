@@ -48,4 +48,4 @@ jobs:
             - if: ${{ matrix.os == 'windows-latest' }}
               run: choco install blender
             - run: ls
-            - run: blender --command extension install -e speedtools-*.zip
+            - run: blender --command extension install-file -e -r user_default speedtools-*.zip
