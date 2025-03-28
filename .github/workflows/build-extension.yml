@@ -31,3 +31,19 @@ jobs:
               with:
                   name: speedtools
                   path: speedtools/blender/speedtools-*.zip
+
+    install:
+        name: Basic extension test
+        strategy:
+            matrix:
+                os: [windows-latest, ubuntu-latest]
+        runs-on: ${{ matrix.os }}
+        steps:
+            - uses: actions/download-artifact@v4
+              with:
+                  name: speedtools
+            - if: ${{ matrix.os == 'ubuntu-latest' }}
+              run: sudo snap install blender --classic
+            - if: ${{ matrix.os == 'windows-latest' }}
+              run: choco install blender
+            - run: npm --version
