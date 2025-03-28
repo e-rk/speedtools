@@ -47,4 +47,5 @@ jobs:
               run: sudo snap install blender --classic
             - if: ${{ matrix.os == 'windows-latest' }}
               run: choco install blender
-            - run: npm --version
+            - run: ls
+            - run: blender --command extension install -e speedtools-*.zip
