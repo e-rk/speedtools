@@ -33,6 +33,7 @@ jobs:
                   path: speedtools/blender/speedtools-*.zip
 
     install:
+        needs: extension
         name: Basic extension test
         strategy:
             matrix:
