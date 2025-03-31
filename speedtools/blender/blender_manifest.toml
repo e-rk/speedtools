@@ -1,6 +1,6 @@
 schema_version = "1.0.0"
 id = "speedtools"
-version = "0.22.0"
+version = "0.22.99"
 name = "NFS4 resource importer"
 tagline = "Import NFS4 cars and tracks into Blender"
 maintainer = "Rafał Kuźnia <rafal.kuznia@protonmail.com>"

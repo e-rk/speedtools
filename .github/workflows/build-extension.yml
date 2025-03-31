@@ -35,7 +35,7 @@ jobs:
                   pip download pillow --dest ./wheels --only-binary=:all: --python-version=3.11 --platform=win_amd64
                   ls wheels
                   VERSION=${{ steps.ghd.outputs.describe }}
-                  sed -i "s/0.22.0/${VERSION:1}/g" blender_manifest.toml
+                  sed -i "s/0.22.99/${VERSION:1}/g" blender_manifest.toml
                   blender --command extension build
             - name: Upload extension
               uses: actions/upload-artifact@v4
