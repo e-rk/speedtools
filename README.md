@@ -6,9 +6,19 @@ This project provides data extraction utilities for the following Need for Speed
 
 Additionally, Blender addon is provided to directly import track and car data.
 
-# Setup (Blender addon version)
+# Recommended setup
 
-> **Warning**: The addon requires Blender 4.2 or newer. Use v0.16.0 release of the plugin if you have to use older Blender releases.
+1. Download the latest ZIP file from [Releases][5].
+2. Open Blender.
+3. Go to `Edit -> Preferences -> Get Extensions`.
+4. Click `v` in the top right corner of the window.
+5. Click `Install from Disk...`.
+6. Select the downloaded ZIP file.
+7. Activate the addon in the `Add-ons` panel.
+
+# Old setup instructions
+
+> **Warning**: Use instructions from this section only if you have problems with the recommended setup.
 
 1. Create new empty Blender project
 2. Open the __Scripting__ tab
@@ -24,8 +34,6 @@ Additionally, Blender addon is provided to directly import track and car data.
 5. Click the __▶__ button.
 6. You should see `Track resources` and `Car resources` under `File > Import`.
 
-Until I figure out a better way to install Blender addons, this must suffice.
-
 # Setup (command line version)
 
 Install the package from PyPI:
@@ -36,6 +44,8 @@ pip install speedtools
 Currently, the command line version does not provide any useful functionality.
 
 # Development dependencies
+
+This setup is needed only if you plan to modify the add-on.
 
 To develop the project the following dependencies must be installed on your system:
 * [Kaitai Struct compiler][3]
@@ -50,3 +60,4 @@ This tool is a part of the re-make project. The project source code is available
 [2]: https://github.com/e-rk/speedtools/blob/master/speedtools/blender/io_nfs4_import.py
 [3]: https://kaitai.io/
 [4]: https://github.com/e-rk/velocity
+[5]: https://github.com/e-rk/speedtools/releases
