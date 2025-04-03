@@ -41,7 +41,12 @@ from speedtools.types import (
     VehicleLightType,
     Vertex,
 )
-from speedtools.utils import image_to_png, make_horizon_texture, pil_image_to_png
+from speedtools.utils import (
+    create_pil_image,
+    image_to_png,
+    make_horizon_texture,
+    pil_image_to_png,
+)
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -498,6 +503,9 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
         if sky_images:
             horizon_image = make_horizon_texture(sky_images)
             bpy_image = self._image_to_bpy_image("horizon", horizon_image)
+        sun = track.sun_image
+        sun_image = create_pil_image(sun.image)
+        bpy_sun = self._image_to_bpy_image("sun", sun_image)
 
 
 class CarImporterSimple(BaseImporter):
