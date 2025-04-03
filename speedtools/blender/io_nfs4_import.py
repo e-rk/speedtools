@@ -41,12 +41,18 @@ from speedtools.types import (
     VehicleLightType,
     Vertex,
 )
-from speedtools.utils import (
-    create_pil_image,
-    image_to_png,
-    make_horizon_texture,
-    pil_image_to_png,
-)
+from speedtools.utils import create_pil_image, image_to_png, make_horizon_texture, pil_image_to_png
+
+bl_info = {
+    "name": "Import NFS4 Track",
+    "author": "Rafał Kuźnia",
+    "version": (1, 0, 0),
+    "blender": (3, 4, 1),
+    "location": "File > Import > Track resource",
+    "description": "Imports a NFS4 track files (meshes, textures and objects)."
+    "Scripts/Import-Export/Track_Resource",
+    "category": "Import-Export",
+}
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
