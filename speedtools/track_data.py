@@ -15,7 +15,7 @@ from math import atan2, cos, tau
 from pathlib import Path
 from typing import TypeVar
 
-from more_itertools import collapse, take, triplewise
+from more_itertools import collapse, one, take, triplewise
 
 from speedtools.cam_data import CamData
 from speedtools.can_data import CanData
@@ -362,3 +362,16 @@ class TrackData:
         weather = "W" if self.weather else "C"
         night = "N" if self.night else "D"
         return filter(lambda x: fnmatch(x.name, f"H{night}{weather}?"), self.sky.resources)
+
+    @property
+    def sun_image(self) -> Resource:
+        match (self.night, self.weather):
+            case (False, False):
+                name = "SUND"
+            case (True, False):
+                name = "SUNN"
+            case (False, True):
+                name = "SUNW"
+            case (True, True):
+                name = "SUNW"
+        return one(filter(lambda x: x.name == name, self.sky.resources))
