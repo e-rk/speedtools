@@ -334,16 +334,19 @@ class TrackData:
     @property
     def directional_light(self) -> DirectionalLight | None:
         sun = self.ini.sun
-        if sun is None:
-            return None
-        # Angles in INI are in turns. Turns are converted to radians here.
-        # The INI angleRho value is not really a spherical coordinate.
-        # Some approximations are done here to convert to spherical coordinates.
-        rho = sun.angle_rho * tau
-        z = self.SUN_DISTANCE * cos(rho)
-        phi = atan2(z, self.SUN_DISTANCE)
-        theta = sun.angle_theta * tau
-        return DirectionalLight(rho=phi, theta=theta, radius=sun.radius)
+        sun_resource = self._sun_resource
+        if sun is None and sun_resource:
+            sun = sun_resource.sun_attributes
+        if sun:
+            # Angles in INI are in turns. Turns are converted to radians here.
+            # The INI angleRho value is not really a spherical coordinate.
+            # Some approximations are done here to convert to spherical coordinates.
+            rho = sun.angle_rho * tau
+            z = self.SUN_DISTANCE * cos(rho)
+            phi = atan2(z, self.SUN_DISTANCE)
+            theta = sun.angle_theta * tau
+            return DirectionalLight(phi=phi, theta=theta, radius=sun.radius, resource=sun_resource)
+        return None
 
     @property
     def cameras(self) -> Iterable[Camera]:
@@ -364,7 +367,7 @@ class TrackData:
         return filter(lambda x: fnmatch(x.name, f"H{night}{weather}?"), self.sky.resources)
 
     @property
-    def sun_image(self) -> Resource:
+    def _sun_resource(self) -> Resource:
         match (self.night, self.weather):
             case (False, False):
                 name = "SUND"

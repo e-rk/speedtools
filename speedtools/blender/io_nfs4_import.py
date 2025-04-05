@@ -477,6 +477,9 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
         if directional_light:
             bpy_obj = self.make_directional_light_object(name="sun", light=directional_light)
             light_collection.objects.link(bpy_obj)
+            sun = directional_light.resource
+            sun_image = create_pil_image(sun.image)
+            bpy_sun = self._image_to_bpy_image("sun", sun_image)
         if import_cameras:
             camera_collection = bpy.data.collections.new("Cameras")
             bpy.context.scene.collection.children.link(camera_collection)
@@ -509,9 +512,6 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
         if sky_images:
             horizon_image = make_horizon_texture(sky_images)
             bpy_image = self._image_to_bpy_image("horizon", horizon_image)
-        sun = track.sun_image
-        sun_image = create_pil_image(sun.image)
-        bpy_sun = self._image_to_bpy_image("sun", sun_image)
 
 
 class CarImporterSimple(BaseImporter):

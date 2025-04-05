@@ -9,13 +9,14 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterator
 from pathlib import Path
+from parse import search  # type: ignore[import-untyped]
 from struct import pack
 from typing import Container
 
 from more_itertools import one, only
 
 from speedtools.parsers import FshParser, QfsParser
-from speedtools.types import Bitmap, BlendMode, FshDataType, Resource
+from speedtools.types import Bitmap, BlendMode, FshDataType, Resource, SunAttributes
 
 logger = logging.getLogger(__name__)
 
@@ -95,12 +96,29 @@ class FshData:
             blend_mode = BlendMode.ALPHA
         elif additive:
             blend_mode = BlendMode.ADDITIVE
+        sun_attributes = None
+        radius = search("R{:d}", text_data) if text_data else None
+        angle_theta = search("A{:d}", text_data) if text_data else None
+        angle_rho = search("B{:d}", text_data) if text_data else None
+        if text_data and radius and angle_theta and angle_rho:
+            rotate = "ROTATE" in text_data
+            additive = "NOADD" not in text_data
+            in_front = "INFRONT" in text_data
+            sun_attributes = SunAttributes(
+                angle_theta=angle_theta[0] / 360.0,
+                angle_rho=angle_rho[0] / 360.0,
+                radius=radius[0] * 10,
+                rotates=rotate,
+                additive=additive,
+                in_front=in_front,
+            )
         return Resource(
             name=resource.name,
             image=bitmap,
             mirrored=mirrored,
             nonmirrored=nonmirrored,
             blend_mode=blend_mode,
+            sun_attributes=sun_attributes,
         )
 
     @property

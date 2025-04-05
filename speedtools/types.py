@@ -217,12 +217,23 @@ class Bitmap(Image):
 
 
 @dataclass(frozen=True)
+class SunAttributes:
+    angle_theta: float
+    angle_rho: float
+    radius: float
+    rotates: bool
+    additive: bool
+    in_front: bool
+
+
+@dataclass(frozen=True)
 class Resource:
     name: str
     image: Image
     mirrored: bool = False
     nonmirrored: bool = False
     blend_mode: BlendMode | None = None
+    sun_attributes: SunAttributes | None = None
 
 
 @dataclass(frozen=True)
@@ -301,13 +312,14 @@ class LightStub:
 
 @dataclass(frozen=True)
 class DirectionalLight:
-    rho: float
+    phi: float
     theta: float
     radius: float
+    resource: Resource
 
     @property
     def euler_xyz(self) -> Vector3d:
-        z = pi / 2 - self.rho
+        z = pi / 2 - self.phi
         y = self.theta
         return Vector3d(x=0, y=y, z=z)
 
