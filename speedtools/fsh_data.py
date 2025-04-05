@@ -9,11 +9,11 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterator
 from pathlib import Path
-from parse import search  # type: ignore[import-untyped]
 from struct import pack
 from typing import Container
 
 from more_itertools import one, only
+from parse import search  # type: ignore[import-untyped]
 
 from speedtools.parsers import FshParser, QfsParser
 from speedtools.types import Bitmap, BlendMode, FshDataType, Resource, SunAttributes

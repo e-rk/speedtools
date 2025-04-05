@@ -41,7 +41,12 @@ from speedtools.types import (
     VehicleLightType,
     Vertex,
 )
-from speedtools.utils import create_pil_image, image_to_png, make_horizon_texture, pil_image_to_png
+from speedtools.utils import (
+    create_pil_image,
+    image_to_png,
+    make_horizon_texture,
+    pil_image_to_png,
+)
 
 bl_info = {
     "name": "Import NFS4 Track",
