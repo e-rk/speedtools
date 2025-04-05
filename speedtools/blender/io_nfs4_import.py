@@ -64,6 +64,14 @@ logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
 
 
+def get_internal_asset_path():
+    for path_type in ("LOCAL", "SYSTEM", "USER"):
+        path = Path(bpy.utils.resource_path(path_type)) / "datafiles" / "assets"
+        if path.exists():
+            return path
+    assert False
+
+
 @total_ordering
 @dataclass(frozen=True)
 class ExtendedResource:
@@ -346,6 +354,18 @@ class BaseImporter(metaclass=ABCMeta):
         bpy_obj = bpy.data.objects.new(name, bpy_mesh)
         if mesh.shape_keys:
             bpy_obj.shape_key_add(name="Basis")
+        if not mesh.vertex_normals:
+            SMOOTH_BY_ANGLE_ASSET_PATH = str(
+                get_internal_asset_path() / "geometry_nodes" / "smooth_by_angle.blend"
+            )
+            smooth_by_angle_node_group = bpy.data.node_groups.get("Smooth by Angle")
+            if not smooth_by_angle_node_group or smooth_by_angle_node_group.type != "GEOMETRY":
+                with bpy.data.libraries.load(SMOOTH_BY_ANGLE_ASSET_PATH) as (data_from, data_to):
+                    data_to.node_groups = ["Smooth by Angle"]
+                smooth_by_angle_node_group = data_to.node_groups[0]
+            modifier = bpy_obj.modifiers.new("Smooth by Angle", "NODES")
+            modifier.node_group = smooth_by_angle_node_group
+            modifier["Input_1"] = radians(40)
         return bpy_obj
 
     def make_base_light(
