@@ -475,11 +475,17 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
             light_collection.objects.link(bpy_obj)
         directional_light = track.directional_light
         if directional_light:
-            bpy_obj = self.make_directional_light_object(name="sun", light=directional_light)
-            light_collection.objects.link(bpy_obj)
             sun = directional_light.resource
             sun_image = create_pil_image(sun.image)
             bpy_sun = self._image_to_bpy_image("sun", sun_image)
+            bpy_obj = self.make_directional_light_object(name="sun", light=directional_light)
+            bpy_obj["SPT_sun"] = {
+                "additive": directional_light.additive,
+                "is_front": directional_light.in_front,
+                "rotates": directional_light.rotates,
+                "radius": directional_light.radius,
+            }
+            light_collection.objects.link(bpy_obj)
         if import_cameras:
             camera_collection = bpy.data.collections.new("Cameras")
             bpy.context.scene.collection.children.link(camera_collection)

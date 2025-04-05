@@ -345,7 +345,15 @@ class TrackData:
             z = self.SUN_DISTANCE * cos(rho)
             phi = atan2(z, self.SUN_DISTANCE)
             theta = sun.angle_theta * tau
-            return DirectionalLight(phi=phi, theta=theta, radius=sun.radius, resource=sun_resource)
+            return DirectionalLight(
+                phi=phi,
+                theta=theta,
+                radius=sun.radius,
+                resource=sun_resource,
+                additive=sun.additive,
+                in_front=sun.in_front,
+                rotates=sun.rotates,
+            )
         return None
 
     @property

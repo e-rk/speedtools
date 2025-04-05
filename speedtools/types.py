@@ -315,6 +315,9 @@ class DirectionalLight:
     phi: float
     theta: float
     radius: float
+    rotates: bool
+    in_front: bool
+    additive: bool
     resource: Resource
 
     @property

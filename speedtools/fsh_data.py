@@ -101,16 +101,13 @@ class FshData:
         angle_theta = search("A{:d}", text_data) if text_data else None
         angle_rho = search("B{:d}", text_data) if text_data else None
         if text_data and radius and angle_theta and angle_rho:
-            rotate = "ROTATE" in text_data
-            additive = "NOADD" not in text_data
-            in_front = "INFRONT" in text_data
             sun_attributes = SunAttributes(
                 angle_theta=angle_theta[0] / 360.0,
                 angle_rho=angle_rho[0] / 360.0,
                 radius=radius[0] * 10,
-                rotates=rotate,
-                additive=additive,
-                in_front=in_front,
+                rotates="ROTATE" in text_data,
+                additive="NOADD" not in text_data,
+                in_front="INFRONT" in text_data,
             )
         return Resource(
             name=resource.name,
