@@ -121,6 +121,27 @@ class Color(NamedTuple):
     def rgba_float(self) -> tuple[float, float, float, float]:
         return (self.red / 255, self.green / 255, self.blue / 255, self.alpha / 255)
 
+    @property
+    def srgb_to_linear_rgb(self) -> Color:
+        (red, green, blue) = self.rgb_float
+        lred = round((red ** (1 / 2.2)) * 255)
+        lgreen = round((green ** (1 / 2.2)) * 255)
+        lblue = round((blue ** (1 / 2.2)) * 255)
+        return Color(red=lred, green=lgreen, blue=lblue)
+
+    @property
+    def linear_rgb_to_srgb(self) -> Color:
+        (red, green, blue) = self.rgb_float
+        sred = round((red**2.2) * 255)
+        sgreen = round((green**2.2) * 255)
+        sblue = round((blue**2.2) * 255)
+        return Color(red=sred, green=sgreen, blue=sblue)
+
+    @property
+    def luminance(self) -> float:
+        (R, G, B) = self.rgb_float
+        return sqrt(0.299 * (R**2) + 0.587 * (G**2) + 0.114 * (B**2))
+
 
 class Matrix3x3(NamedTuple):
     x: Vector3d

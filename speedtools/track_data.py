@@ -161,7 +161,9 @@ class TrackData:
         return data
 
     @classmethod
-    def _finalize_object(cls, actions: Iterable[AnimationAction], obj: TrackObject) -> TrackObject:
+    def _finalize_object(
+        cls, color: tuple[int, int, int], actions: Iterable[AnimationAction], obj: TrackObject
+    ) -> TrackObject:
         object_actions = list(obj.actions)
         if obj.collision_type is CollisionType.destructible:
             filtered_actions = filter(
@@ -170,13 +172,10 @@ class TrackData:
             )
             for action in filtered_actions:
                 object_actions.append(action)
-        return TrackObject(
-            mesh=obj.mesh,
-            collision_type=obj.collision_type,
-            location=obj.location,
-            actions=object_actions,
-            transform=obj.transform,
-        )
+        vertices = obj.mesh.vertices
+        colored_vertices = [cls._color_vertex(color=color, vertex=v) for v in vertices]
+        colored_mesh = replace(obj.mesh, vertices=colored_vertices)
+        return replace(obj, mesh=colored_mesh, actions=object_actions)
 
     @classmethod
     def _select_wall_edge_idx(cls, polygon: CollisionPolygon, edge: Edge) -> tuple[int, int]:
@@ -249,14 +248,38 @@ class TrackData:
         return reduce(merge_mesh, filtered)  # type: ignore[return-value]
 
     @classmethod
+    def _color_vertex(cls, color: tuple[int, int, int], vertex: Vertex) -> Vertex:
+        def scale(col: int, value: int) -> int:
+            if col <= 100:
+                value = value * col // 100
+            else:
+                value = value + (col - 100) * (255 - value)
+            return value
+
+        if vertex.color:
+            (red, green, blue) = color
+            (vertred, vertgreen, vertblue) = vertex.color.rgb
+            new_color = Color(
+                red=scale(red, vertred), green=scale(green, vertgreen), blue=scale(blue, vertblue)
+            )
+            return replace(vertex, color=new_color)
+        return vertex
+
+    @classmethod
     def _finalize_segment(
-        cls, heights: Iterable[tuple[Vector3d, float]], segment: TrackSegment
+        cls,
+        color: tuple[int, int, int],
+        heights: Iterable[tuple[Vector3d, float]],
+        segment: TrackSegment,
     ) -> TrackSegment:
         heights = list(heights)
         floor = segment.collision_meshes
         wall = cls._make_walls(heights=heights, segment=segment)
         collision_meshes = floor + [wall]  # type: ignore[operator]
-        return replace(segment, collision_meshes=collision_meshes)
+        vertices = segment.mesh.vertices
+        colored_vertices = [cls._color_vertex(color=color, vertex=v) for v in vertices]
+        colored_mesh = replace(segment.mesh, vertices=colored_vertices)
+        return replace(segment, collision_meshes=collision_meshes, mesh=colored_mesh)
 
     @classmethod
     def _make_waypoint_height_pair(
@@ -275,7 +298,9 @@ class TrackData:
     @property
     def objects(self) -> Iterator[TrackObject]:
         actions = [AnimationAction(action, can.animation) for action, can in self.can]
-        return map(partial(self._finalize_object, actions), self.frd.objects)
+        return map(
+            partial(self._finalize_object, self.ini.ambient_color, actions), self.frd.objects
+        )
 
     @property
     def track_segments(self) -> Iterator[TrackSegment]:
@@ -292,7 +317,7 @@ class TrackData:
         ]
         triples = triplewise(waypoints_and_heights)
         chained = starmap(self._make_waypoint_height_pair, triples)
-        return map(self._finalize_segment, chained, segments)
+        return map(partial(self._finalize_segment, self.ini.ambient_color), chained, segments)
 
     @property
     def track_resources(self) -> Iterator[Resource]:
@@ -362,7 +387,14 @@ class TrackData:
 
     @property
     def ambient_color(self) -> Color:
-        return self.ini.ambient_color
+        (red, green, blue) = self.ini.ambient_color
+        red = (red * 255) // 100
+        green = (green * 255) // 100
+        blue = (blue * 255) // 100
+        red = min(255, red)
+        green = min(255, green)
+        blue = min(255, blue)
+        return Color(red=red, green=green, blue=blue)
 
     @property
     def horizon(self) -> Horizon:
