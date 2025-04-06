@@ -12,7 +12,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass, replace
 from functools import total_ordering
 from itertools import chain, groupby
-from math import pi, radians
+from math import pi, radians, sqrt
 from pathlib import Path
 from typing import Any, Literal
 
@@ -408,9 +408,11 @@ class BaseImporter(metaclass=ABCMeta):
         return bpy_obj
 
     def make_directional_light_object(
-        self, name: str, light: DirectionalLight
+        self, name: str, light: DirectionalLight, energy: float, color: Color
     ) -> bpy.types.Object:
         bpy_sun = bpy.data.lights.new(name=name, type="SUN")
+        bpy_sun.energy = energy
+        bpy_sun.color = color.rgb_float
         bpy_obj = bpy.data.objects.new(name=name, object_data=bpy_sun)
         mu_rot = self.rot_mat @ mathutils.Euler(light.euler_xyz).to_matrix()
         bpy_obj.rotation_mode = "XYZ"
@@ -503,7 +505,12 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
             sun = directional_light.resource
             sun_image = create_pil_image(sun.image)
             bpy_sun = self._image_to_bpy_image("sun", sun_image)
-            bpy_obj = self.make_directional_light_object(name="sun", light=directional_light)
+            ambient_color = track.ambient_color
+            (R, G, B) = ambient_color.rgb_float
+            luminance = sqrt(0.299 * (R**2) + 0.587 * (G**2) + 0.114 * (B**2))
+            bpy_obj = self.make_directional_light_object(
+                name="sun", light=directional_light, energy=luminance, color=ambient_color
+            )
             bpy_obj["SPT_sun"] = {
                 "additive": directional_light.additive,
                 "is_front": directional_light.in_front,
