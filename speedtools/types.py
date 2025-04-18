@@ -336,5 +336,7 @@ class Camera:
 @dataclass(frozen=True)
 class Horizon:
     sun_side: Color
-    top_side: Color
-    opposite_side: Color
+    sun_top_side: Color
+    sun_opposite_side: Color
+    earth_bottom: Color
+    earth_top: Color

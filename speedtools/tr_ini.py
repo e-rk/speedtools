@@ -88,8 +88,12 @@ class TrackIni:
         sun_side = self._parse_color(strip["hrzSunColor"])
         top_side = self._parse_color(strip["hrzSkyTopColor"])
         opposite_side = self._parse_color(strip["hrzOppositeSunColor"])
+        earth_bottom = opposite_side = self._parse_color(strip["hrzEarthBotColor"])
+        earth_top = opposite_side = self._parse_color(strip["hrzEarthTopColor"])
         return Horizon(
             sun_side=sun_side,
-            top_side=top_side,
-            opposite_side=opposite_side,
+            sun_top_side=top_side,
+            sun_opposite_side=opposite_side,
+            earth_bottom=earth_bottom,
+            earth_top=earth_top,
         )
