@@ -513,9 +513,11 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
             environment["ambient"] = color_to_dict(ambient_color)
             horizon = track.horizon
             environment["horizon"] = {
-                "sun": color_to_dict(horizon.sun_side),  # type: ignore[dict-item]
-                "top": color_to_dict(horizon.top_side),  # type: ignore[dict-item]
-                "opposite": color_to_dict(horizon.opposite_side),  # type: ignore[dict-item]
+                "sun_side": color_to_dict(horizon.sun_side),  # type: ignore[dict-item]
+                "sun_top": color_to_dict(horizon.sun_top_side),  # type: ignore[dict-item]
+                "sun_opposite": color_to_dict(horizon.sun_opposite_side),  # type: ignore[dict-item]
+                "earth_bottom": color_to_dict(horizon.earth_bottom),  # type: ignore[dict-item]
+                "earth_top": color_to_dict(horizon.earth_top),  # type: ignore[dict-item]
             }
             spt_track["environment"] = environment  # type: ignore[assignment]
         bpy.context.scene["SPT_track"] = spt_track
