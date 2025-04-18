@@ -327,7 +327,7 @@ class BaseImporter(metaclass=ABCMeta):
         if mesh.vertex_colors and self.import_shading:
             colors = collapse(color.rgba_float for color in mesh.vertex_colors)
             bpy_colors = bpy_mesh.color_attributes.new(
-                name="Shading", type="FLOAT_COLOR", domain="POINT"
+                name="Shading", type="BYTE_COLOR", domain="POINT"
             )
             bpy_colors.data.foreach_set("color", tuple(colors))  # type: ignore[attr-defined]
         polygon_pairs = zip(mesh.polygons, bpy_mesh.polygons)
