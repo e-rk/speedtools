@@ -386,3 +386,9 @@ class TrackData:
             case (True, True):
                 name = "SUNW"
         return one(filter(lambda x: x.name == name, self.sky.resources))
+
+    @property
+    def clouds(self) -> Resource:
+        weather = "W" if self.weather else "D"
+        night = "N" if self.night else "D"
+        return one(filter(lambda x: x.name == f"CL{weather}{night}", self.sky.resources))
