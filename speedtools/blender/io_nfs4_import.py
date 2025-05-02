@@ -525,6 +525,9 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
         if sky_images:
             horizon_image = make_horizon_texture(sky_images)
             bpy_image = self._image_to_bpy_image("horizon", horizon_image)
+        clouds = track.clouds
+        clouds_image = create_pil_image(clouds.image)
+        bpy_clouds = self._image_to_bpy_image("clouds", clouds_image)
 
 
 class CarImporterSimple(BaseImporter):
