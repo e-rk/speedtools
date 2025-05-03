@@ -244,12 +244,19 @@ class ObjectData:
 
 
 @dataclass(frozen=True)
+class PhysicsData:
+    dimension: Vector3d
+    mass: float
+
+
+@dataclass(frozen=True)
 class TrackObject:
     mesh: DrawableMesh
     collision_type: CollisionType
     location: Optional[Vector3d] = None
     actions: Sequence[AnimationAction] = field(default_factory=tuple)
     transform: Optional[Matrix3x3] = None
+    physics: PhysicsData | None = None
 
 
 @dataclass(frozen=True)

@@ -170,13 +170,7 @@ class TrackData:
             )
             for action in filtered_actions:
                 object_actions.append(action)
-        return TrackObject(
-            mesh=obj.mesh,
-            collision_type=obj.collision_type,
-            location=obj.location,
-            actions=object_actions,
-            transform=obj.transform,
-        )
+        return replace(obj, actions=object_actions)
 
     @classmethod
     def _select_wall_edge_idx(cls, polygon: CollisionPolygon, edge: Edge) -> tuple[int, int]:

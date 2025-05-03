@@ -39,6 +39,7 @@ from speedtools.types import (
     LightStub,
     Matrix3x3,
     ObjectType,
+    PhysicsData,
     Polygon,
     Quaternion,
     RoadEffect,
@@ -132,11 +133,18 @@ class FrdData:
         location = None
         actions = []
         transform = None
+        physics = None
         if obj.type in (ObjectType.normal, ObjectType.billboard):
             location = Vector3d(x=obj.location.x, y=obj.location.y, z=obj.location.z)
         if obj.type == ObjectType.special:
             location = Vector3d(x=obj.location.x, y=obj.location.y, z=obj.location.z)
             transform = cls._make_matrix(extra.special.transform)
+            dimension = Vector3d(
+                x=extra.special.dimensions.x,
+                y=extra.special.dimensions.y,
+                z=extra.special.dimensions.z,
+            )
+            physics = PhysicsData(dimension=dimension, mass=extra.special.mass)
         elif obj.type == ObjectType.animated:
             locations = [
                 Vector3d.from_frd_int3(keyframe.location) for keyframe in extra.animation.keyframes
@@ -173,6 +181,7 @@ class FrdData:
             location=location,
             actions=actions,
             transform=transform,
+            physics=physics,
         )
 
     @classmethod
