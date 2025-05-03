@@ -470,7 +470,15 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
             if obj.location:
                 self.set_object_location(obj=bpy_obj, location=obj.location)
             if obj.transform:
-                self.set_object_rotation(obj=bpy_obj, transform=obj.transform)
+                offset = mathutils.Euler((0, 0, pi))
+                self.set_object_rotation(obj=bpy_obj, transform=obj.transform, offset=offset)
+            if obj.physics:
+                dim = obj.physics.dimension
+                bpy_obj["SPT_object"] = {
+                    "type": "rigid",
+                    "mass": obj.physics.mass,
+                    "dimensions": (dim.x, dim.y, dim.z),
+                }
             object_collection.objects.link(bpy_obj)
         light_collection = bpy.data.collections.new("Lights")
         bpy.context.scene.collection.children.link(light_collection)
