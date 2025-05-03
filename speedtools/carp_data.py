@@ -25,6 +25,10 @@ def bool_str(value: str) -> bool:
     return value != "0"
 
 
+def float_to_int(value: str) -> int:
+    return int(float(value))
+
+
 class CarpItem:
     def __init__(self, name: str, constructor: Callable[[str], Any]):
         self.name = name
@@ -83,7 +87,7 @@ class CarpData:
         38: CarpItem("slide_multiplier", float),
         39: CarpItem("spin_velocity_cap", float),
         40: CarpItem("slide_velocity_cap", float),
-        41: CarpItem("slide_assistance_factor", int),
+        41: CarpItem("slide_assistance_factor", float_to_int),
         42: CarpItem("push_factor", int),
         43: CarpItem("low_turn_factor", float),
         44: CarpItem("high_turn_factor", float),
@@ -128,7 +132,7 @@ class CarpData:
 
     @classmethod
     def to_dict(cls, value: str) -> dict[str, Any]:
-        values = filter(lambda x: x, value.splitlines())
+        values = filter(lambda x: x and not x.isspace(), value.splitlines())
         grouped = grouper(values, 2, incomplete="strict")
         items = map(cls.parse, grouped)  # type: ignore[arg-type]
         return reduce(lambda x, y: x | y, items)
