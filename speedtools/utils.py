@@ -16,7 +16,7 @@ from operator import getitem
 from pathlib import Path
 from typing import Any, Dict, TypeVar
 from base64 import b64encode
-from gzip import compress
+import gzip
 import struct
 import tempfile
 
@@ -218,4 +218,4 @@ def raw_stream_to_wav(audio_stream: AudioStream) -> bytes:
 
 
 def raw_stream_to_wav_b64(audio_stream: AudioStream) -> str:
-    return b64encode(compress(raw_stream_to_wav(audio_stream))).decode("ascii")
+    return b64encode(gzip.compress(raw_stream_to_wav(audio_stream))).decode("ascii")
