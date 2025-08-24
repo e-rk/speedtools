@@ -7,7 +7,7 @@
 import logging
 from typing import Any
 
-from more_itertools import first, only, one
+from more_itertools import first, one, only
 
 import speedtools.parsers.bnk as bnk
 

@@ -4,13 +4,15 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
-from functools import reduce
 import logging
 from collections import namedtuple
-from typing import Self
+from functools import reduce
 from pathlib import Path
+from typing import Self
+
 from more_itertools import one, split_at
 from more_itertools.more import filter_map
+
 from speedtools.parsers import BnkParser
 from speedtools.parsers.bnk_audio_stream import bnk_find_tlv
 from speedtools.types import AudioEncoding, AudioStream, BnkTlvType
