@@ -15,7 +15,7 @@ from math import atan2, cos, tau
 from pathlib import Path
 from typing import TypeVar
 
-from more_itertools import collapse, one, filter_map, take, triplewise
+from more_itertools import collapse, filter_map, one, take, triplewise
 
 from speedtools.bnk_data import BnkData
 from speedtools.cam_data import CamData
@@ -40,8 +40,8 @@ from speedtools.types import (
     LightStub,
     Polygon,
     Resource,
-    TrackLight,
     SoundStub,
+    TrackLight,
     TrackObject,
     TrackSegment,
     Vector3d,
