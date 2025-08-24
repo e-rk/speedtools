@@ -173,7 +173,7 @@ def make_horizon_texture(resources: list[Resource]) -> Any:
 
 
 def raw_stream_to_wav(audio_stream: AudioStream) -> bytes:
-    import ffmpeg
+    import ffmpeg  # pylint: disable=all
 
     match audio_stream.encoding:
         case AudioEncoding.ADPCM:
