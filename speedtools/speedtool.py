@@ -78,8 +78,8 @@ def bnk() -> None:
 @bnk.command()
 @click.argument("path", type=click.Path(path_type=Path))
 def bnk_unpack(path: Path):
-    bnk = BnkData.from_file(path)
-    audio_streams = bnk.sound_streams
+    bnk_data = BnkData.from_file(path)
+    audio_streams = bnk_data.sound_streams
     for index, sounds in audio_streams.items():
         for num, sound in enumerate(sounds):
             with open(f"out_{hex(index)}_{num}.wav", "wb") as f:
