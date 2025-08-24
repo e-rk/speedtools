@@ -16,8 +16,6 @@
 from io import BytesIO
 from struct import pack, unpack
 
-from more_itertools import chunked
-
 adpcm_table = [0, 240, 460, 392, 0, 0, -208, -220, 0, 1, 3, 4, 7, 8, 10, 11, 0, -1, -3, -4]
 
 
