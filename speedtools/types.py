@@ -318,6 +318,12 @@ class LightStub:
 
 
 @dataclass(frozen=True)
+class SoundStub:
+    location: Vector3d
+    patch: int
+
+
+@dataclass(frozen=True)
 class DirectionalLight:
     phi: float
     theta: float
