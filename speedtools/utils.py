@@ -15,10 +15,24 @@ from itertools import chain, compress, islice
 from operator import getitem
 from pathlib import Path
 from typing import Any, Dict, TypeVar
+from base64 import b64encode
+from gzip import compress
+import struct
+import tempfile
 
 from PIL import Image as pil_Image
 
-from speedtools.types import BaseMesh, BasePolygon, Bitmap, Image, Resource, Vertex
+from speedtools.audio_decoders import adpcm_to_s16le
+from speedtools.types import (
+    AudioStream,
+    BaseMesh,
+    BasePolygon,
+    Bitmap,
+    Image,
+    Resource,
+    Vertex,
+    AudioEncoding,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -156,3 +170,52 @@ def make_horizon_texture(resources: list[Resource]) -> Any:
     for idx, image in enumerate(images):
         horizon_image.paste(image, (image.width * idx, width_hrz // 2 - image.width // 2))
     return horizon_image
+
+
+def raw_stream_to_wav(audio_stream: AudioStream) -> bytes:
+    import ffmpeg
+
+    match audio_stream.encoding:
+        case AudioEncoding.ADPCM:
+            codec = "pcm_s16le"
+            data = adpcm_to_s16le(
+                stream=audio_stream.audio_samples, num_channels=audio_stream.num_channels
+            )
+        case _:
+            codec = "pcm_s16le"
+            data = audio_stream.audio_samples
+
+    with tempfile.NamedTemporaryFile() as fp:
+        stream = (
+            ffmpeg.input(
+                "pipe:",
+                format="s16le",
+                ar=audio_stream.sample_rate,
+                ac=audio_stream.num_channels,
+            )
+            .output(fp.name, format="wav")
+            .overwrite_output()
+            .global_args("-hide_banner")
+        )
+        logger.debug(stream.get_args())
+        process = stream.run_async(pipe_stdin=True)
+        process.stdin.write(data)
+        process.stdin.close()
+        process.wait()
+        l = len(data) // 2
+        data = fp.read()
+    loop_end = audio_stream.loop_length
+    smpl = struct.pack(
+        "<4x4x4x4x4x4x4xl4xllll4x4x",
+        1,
+        0,
+        0,
+        audio_stream.loop_start,
+        len(data) // 2,
+    )
+    chunk = struct.pack("<4sl", "smpl".encode("ASCII"), len(smpl))
+    return data + chunk + smpl
+
+
+def raw_stream_to_wav_b64(audio_stream: AudioStream) -> str:
+    return b64encode(compress(raw_stream_to_wav(audio_stream))).decode("ascii")
