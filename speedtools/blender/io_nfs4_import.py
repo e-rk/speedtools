@@ -46,6 +46,7 @@ from speedtools.utils import (
     image_to_png,
     make_horizon_texture,
     pil_image_to_png,
+    raw_stream_to_wav_b64,
 )
 
 bl_info = {
@@ -434,6 +435,7 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
         import_actions: bool = False,
         import_cameras: bool = False,
         import_ambient: bool = False,
+        import_audio: bool = False,
     ) -> None:
         bpy.context.scene.render.fps = track.ANIMATION_FPS
         track_collection = bpy.data.collections.new("Track segments")
@@ -528,6 +530,14 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
                 "earth_top": color_to_dict(horizon.earth_top),  # type: ignore[dict-item]
             }
             spt_track["environment"] = environment  # type: ignore[assignment]
+        if import_audio:
+            spt_track["audio_sources"] = [
+                {
+                    "location": (gltf_transform @ mathutils.Vector(source.location)).to_tuple(),
+                    "samples": raw_stream_to_wav_b64(source.stream),
+                }
+                for source in track.audio_sources
+            ]
         bpy.context.scene["SPT_track"] = spt_track
         sky_images = list(track.sky_images)
         if sky_images:
@@ -651,6 +661,11 @@ class TrackImporter(bpy.types.Operator):
         description="Import ambient light",
         default=False,
     )
+    import_audio: BoolProperty(  # type: ignore[valid-type]
+        name="Import audio",
+        description="Import audio samples",
+        default=False,
+    )
 
     def invoke(
         self, context: bpy.types.Context, event: bpy.types.Event
@@ -682,6 +697,7 @@ class TrackImporter(bpy.types.Operator):
             import_actions=self.import_actions,
             import_cameras=self.import_cameras,
             import_ambient=self.import_ambient,
+            import_audio=self.import_audio,
         )
         return {"FINISHED"}
 
