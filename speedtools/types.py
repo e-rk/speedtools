@@ -12,12 +12,13 @@ from enum import Enum
 from math import pi, sqrt
 from typing import NamedTuple, Optional, TypeAlias
 
-from speedtools.parsers import FceParser, FrdParser, FshParser
+from speedtools.parsers import BnkParser, FceParser, FrdParser, FshParser
 
 RoadEffect: TypeAlias = FrdParser.DriveablePolygon.RoadEffect
 CollisionType: TypeAlias = FrdParser.ObjectAttribute.CollisionType
 ObjectType: TypeAlias = FrdParser.ObjectHeader.ObjectType
 FshDataType: TypeAlias = FshParser.DataType
+BnkTlvType: TypeAlias = BnkParser.TvType
 
 
 class Action(Enum):
@@ -49,6 +50,11 @@ class VehicleLightType(Enum):
     REVERSE = 4
     DIRECTIONAL = 5
     SIREN = 6
+
+
+class AudioEncoding(Enum):
+    PCM_S16LE = 1
+    ADPCM = 2
 
 
 class Vector3d(NamedTuple):
@@ -353,3 +359,19 @@ class Horizon:
     sun_opposite_side: Color
     earth_bottom: Color
     earth_top: Color
+
+
+@dataclass(frozen=True)
+class AudioStream:
+    num_channels: int
+    sample_rate: int
+    audio_samples: bytes
+    loop_start: int
+    loop_length: int
+    encoding: AudioEncoding
+
+
+@dataclass(frozen=True)
+class AudioSource:
+    stream: AudioStream
+    location: Vector3d
