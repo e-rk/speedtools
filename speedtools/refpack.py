@@ -30,7 +30,6 @@ class Refpack:
 
     def decode(self, compressed_data: bytes) -> bytes:
         decompressed_data = bytearray()
-        compressed_data = bytearray(compressed_data)
 
         for cmd, data in self._decode_cmd(compressed_data):
             logger.debug(f"Decompressing: {cmd}")
@@ -44,58 +43,59 @@ class Refpack:
                 f"Bad decompressed length {len(decompressed_data)} != {self.expanded_length}"
             )
 
-        return decompressed_data
+        return bytes(decompressed_data)
 
-    def _decode_cmd(self, compressed_data: bytearray) -> Iterator[tuple[Opcode, bytes]]:
+    def _decode_cmd(self, compressed_data: bytes) -> Iterator[tuple[Opcode, bytearray]]:
+        current = bytearray(compressed_data)
         while True:
-            (opcode,) = unpack("<B", compressed_data[:1])
+            (opcode,) = unpack("<B", current[:1])
             logger.debug(f"opcode: {opcode}")
             if opcode & 0x80 == 0:
-                cmd = self._decode_2b_cmd(compressed_data[:2])
-                del compressed_data[:2]
+                cmd = self._decode_2b_cmd(current[:2])
+                del current[:2]
             elif opcode & 0xC0 == 0x80:
-                cmd = self._decode_3b_cmd(compressed_data[:3])
-                del compressed_data[:3]
+                cmd = self._decode_3b_cmd(current[:3])
+                del current[:3]
             elif opcode & 0xE0 == 0xC0:
-                cmd = self._decode_4b_cmd(compressed_data[:4])
-                del compressed_data[:4]
+                cmd = self._decode_4b_cmd(current[:4])
+                del current[:4]
             elif opcode & 0xE0 == 0xE0:
-                cmd = self._decode_1b_cmd(compressed_data[:1])
-                del compressed_data[:1]
+                cmd = self._decode_1b_cmd(current[:1])
+                del current[:1]
             else:
                 raise ValueError("Bad opcode")
 
             logger.debug(cmd)
-            logger.debug(f"Remaining: {len(compressed_data)}")
+            logger.debug(f"Remaining: {len(current)}")
 
-            yield cmd, compressed_data[: cmd.proclen]
-            del compressed_data[: cmd.proclen]
+            yield cmd, current[: cmd.proclen]
+            del current[: cmd.proclen]
 
             if cmd.is_stop:
                 break
 
-    def _decode_2b_cmd(self, opdata: bytes) -> Opcode:
+    def _decode_2b_cmd(self, opdata: bytearray) -> Opcode:
         a, b = unpack("BB", opdata)
         proclen = a & 0x03
         reflen = ((a & 0x1C) >> 2) + 3
         refdist = ((a & 0x60) << 3) + b + 1
         return Opcode(proclen=proclen, refdist=refdist, reflen=reflen)
 
-    def _decode_3b_cmd(self, opdata: bytes) -> Opcode:
+    def _decode_3b_cmd(self, opdata: bytearray) -> Opcode:
         a, b, c = unpack("BBB", opdata)
         proclen = (b & 0xC0) >> 6
         reflen = (a & 0x3F) + 4
         refdist = ((b & 0x3F) << 8) + c + 1
         return Opcode(proclen=proclen, refdist=refdist, reflen=reflen)
 
-    def _decode_4b_cmd(self, opdata: bytes) -> Opcode:
+    def _decode_4b_cmd(self, opdata: bytearray) -> Opcode:
         a, b, c, d = unpack("BBBB", opdata)
         proclen = a & 0x03
         reflen = ((a & 0x0C) << 6) + d + 5
         refdist = ((a & 0x10) << 12) + (b << 8) + c + 1
         return Opcode(proclen=proclen, refdist=refdist, reflen=reflen)
 
-    def _decode_1b_cmd(self, opdata: bytes) -> Opcode:
+    def _decode_1b_cmd(self, opdata: bytearray) -> Opcode:
         (a,) = unpack("B", opdata)
         if a < 0xFC:
             proclen = ((a & 0x1F) + 1) << 2
