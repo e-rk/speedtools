@@ -202,16 +202,14 @@ def raw_stream_to_wav(audio_stream: AudioStream) -> bytes:
         process.stdin.write(data)
         process.stdin.close()
         process.wait()
-        l = len(data) // 2
         data = fp.read()
-    loop_end = audio_stream.loop_length
     smpl = struct.pack(
         "<4x4x4x4x4x4x4xl4xllll4x4x",
         1,
         0,
         0,
         audio_stream.loop_start,
-        len(data) // 2,
+        audio_stream.loop_length,
     )
     chunk = struct.pack("<4sl", "smpl".encode("ASCII"), len(smpl))
     return data + chunk + smpl
