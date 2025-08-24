@@ -17,8 +17,8 @@ from speedtools.fsh_data import FshData
 from speedtools.utils import (
     export_resource,
     make_horizon_texture,
-    unique_named_resources,
     raw_stream_to_wav,
+    unique_named_resources,
 )
 
 logger = logging.getLogger()
