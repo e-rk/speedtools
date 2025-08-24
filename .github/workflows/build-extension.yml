@@ -2,7 +2,8 @@ name: Extension
 
 on:
     push:
-        branches: []
+        branches:
+            - "*"
         tags:
             - "*"
     pull_request:
