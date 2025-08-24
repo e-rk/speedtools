@@ -4,8 +4,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
+import gzip
 import logging
 import os
+import struct
+import tempfile
+from base64 import b64encode
 from collections.abc import Callable, Hashable, Iterable, Iterator, Sequence
 from contextlib import suppress
 from dataclasses import replace
@@ -15,15 +19,12 @@ from itertools import chain, compress, islice
 from operator import getitem
 from pathlib import Path
 from typing import Any, Dict, TypeVar
-from base64 import b64encode
-import gzip
-import struct
-import tempfile
 
 from PIL import Image as pil_Image
 
 from speedtools.audio_decoders import adpcm_to_s16le
 from speedtools.types import (
+    AudioEncoding,
     AudioStream,
     BaseMesh,
     BasePolygon,
@@ -31,7 +32,6 @@ from speedtools.types import (
     Image,
     Resource,
     Vertex,
-    AudioEncoding,
 )
 
 logger = logging.getLogger(__name__)
