@@ -177,19 +177,19 @@ def raw_stream_to_wav(audio_stream: AudioStream) -> bytes:
 
     match audio_stream.encoding:
         case AudioEncoding.ADPCM:
-            codec = "pcm_s16le"
+            codec = "s16le"
             data = adpcm_to_s16le(
                 stream=audio_stream.audio_samples, num_channels=audio_stream.num_channels
             )
         case _:
-            codec = "pcm_s16le"
+            codec = "s16le"
             data = audio_stream.audio_samples
 
     with tempfile.NamedTemporaryFile() as fp:
         stream = (
             ffmpeg.input(
                 "pipe:",
-                format="s16le",
+                format=codec,
                 ar=audio_stream.sample_rate,
                 ac=audio_stream.num_channels,
             )
