@@ -4,33 +4,33 @@
 name: Upload Python Package
 
 on:
-  release:
-    types: [published]
+    release:
+        types: [published]
 
 permissions:
-  contents: read
+    contents: read
 
 jobs:
-  deploy:
-    name: Publish package
-    runs-on: ubuntu-latest
+    deploy:
+        name: Publish package
+        runs-on: ubuntu-latest
 
-    steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.x'
-    - name: Install dependencies
-      run: |
-        curl -LO https://github.com/kaitai-io/kaitai_struct_compiler/releases/download/0.10/kaitai-struct-compiler_0.10_all.deb
-        sudo apt-get install ./kaitai-struct-compiler_0.10_all.deb
-        python -m pip install --upgrade pip
-        pip install build
-    - name: Build package
-      run: python -m build
-    - name: Publish package
-      uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_API_TOKEN }}
+        steps:
+            - uses: actions/checkout@v3
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.x"
+            - name: Install dependencies
+              run: |
+                  curl -fsSLO https://github.com/kaitai-io/kaitai_struct_compiler/releases/download/0.11/kaitai-struct-compiler_0.11_all.deb
+                  sudo apt-get install ./kaitai-struct-compiler_0.11_all.deb
+                  python -m pip install --upgrade pip
+                  pip install build
+            - name: Build package
+              run: python -m build
+            - name: Publish package
+              uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+              with:
+                  user: __token__
+                  password: ${{ secrets.PYPI_API_TOKEN }}
