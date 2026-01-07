@@ -294,7 +294,7 @@ class BaseImporter(metaclass=ABCMeta):
                 frame=interval,
                 options={"INSERTKEY_CYCLE_AWARE"},
             )
-        bpy_strip = bpy_action.layers[0].strips[0]
+        bpy_strip = bpy_action.layers[0].strips[0]  # type: ignore[attr-defined]
         bpy_slot = bpy_action.slots[0]  # type: ignore[attr-defined]
         points = chain.from_iterable(
             fcurve.keyframe_points for fcurve in bpy_strip.channelbag(bpy_slot).fcurves
