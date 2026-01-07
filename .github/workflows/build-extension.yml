@@ -60,7 +60,7 @@ jobs:
             - if: ${{ matrix.os == 'windows-latest' }}
               run: |
                   choco install blender
-                  echo 'C:\Program Files\Blender Foundation\Blender 4.5\' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+                  echo 'C:\Program Files\Blender Foundation\Blender 5.0\' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
             - run: blender --command extension install-file -e -r user_default speedtools-*.zip
 
     release:
