@@ -296,7 +296,7 @@ class BaseImporter(metaclass=ABCMeta):
             )
         points = chain.from_iterable(
             fcurve.keyframe_points
-            for fcurve in bpy_action.layers[0].strips[0].channelbag(bpy_action.slots[0]).fcurves  # type: ignore[attr-defined]
+            for fcurve in bpy_action.layers[0].strips[0].channelbag(bpy_action.slots[0]).fcurves
         )
         for point in points:
             point.interpolation = "LINEAR"
