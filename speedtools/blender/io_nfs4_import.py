@@ -452,7 +452,7 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
             if import_collision:
                 for collision_index, collision_mesh in enumerate(segment.collision_meshes):
                     effect = collision_mesh.collision_effect
-                    name = f"Collision {collision_index}.{effect}-colonly"
+                    name = f"Collision {collision_index}.{effect.name}-colonly"
                     bpy_mesh = self.make_base_mesh(name=name, mesh=collision_mesh)
                     bpy_obj = bpy.data.objects.new(name, bpy_mesh)
                     segment_collection.objects.link(bpy_obj)
