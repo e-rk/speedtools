@@ -174,14 +174,14 @@ class BaseImporter(metaclass=ABCMeta):
     def _image_to_bpy_image(self, name: str, image: Any) -> bpy.types.Image:
         image_data = pil_image_to_png(image)
         bpy_image = bpy.data.images.new(name, 8, 8)
-        bpy_image.pack(data=image_data, data_len=len(image_data))  # type: ignore[arg-type]
+        bpy_image.pack(data=image_data, data_len=len(image_data))
         bpy_image.source = "FILE"
         return bpy_image
 
     def _image_from_resource(self, resource: Resource) -> bpy.types.Image:
         image_data = image_to_png(resource.image)
         bpy_image = bpy.data.images.new(resource.name, 8, 8)
-        bpy_image.pack(data=image_data, data_len=len(image_data))  # type: ignore[arg-type]
+        bpy_image.pack(data=image_data, data_len=len(image_data))
         bpy_image.source = "FILE"
         return bpy_image
 
@@ -286,19 +286,18 @@ class BaseImporter(metaclass=ABCMeta):
             obj.delta_location = mu_location
             obj.delta_rotation_quaternion = mu_quaternion
             interval = index * animation.delay
-            obj.keyframe_insert(
+            obj.keyframe_insert(  # type: ignore[call-arg]
                 data_path="delta_location", frame=interval, options={"INSERTKEY_CYCLE_AWARE"}
             )
-            obj.keyframe_insert(
+            obj.keyframe_insert(  # type: ignore[call-arg]
                 data_path="delta_rotation_quaternion",
                 frame=interval,
                 options={"INSERTKEY_CYCLE_AWARE"},
             )
-        bpy_strip = bpy_action.layers[0].strips[0]  # type: ignore[attr-defined]
-        bpy_slot = bpy_action.slots[0]  # type: ignore[attr-defined]
-        points = chain.from_iterable(
-            fcurve.keyframe_points for fcurve in bpy_strip.channelbag(bpy_slot).fcurves
-        )
+        bpy_strip = bpy_action.layers[0].strips[0]
+        bpy_slot = bpy_action.slots[0]
+        bpy_channelbags = bpy_strip.channelbag(bpy_slot)  # type: ignore[attr-defined]
+        points = chain.from_iterable(fcurve.keyframe_points for fcurve in bpy_channelbags.fcurves)
         for point in points:
             point.interpolation = "LINEAR"
         bpy_action.name = f"{obj.name}-action-{action.action}"
@@ -327,7 +326,7 @@ class BaseImporter(metaclass=ABCMeta):
         uv_layer.data.foreach_set("uv", list(uvs))
         if mesh.vertex_normals:
             normals = [mathutils.Vector(normal) @ self.rot_mat for normal in mesh.vertex_normals]
-            bpy_mesh.normals_split_custom_set_from_vertices(normals)  # type: ignore[arg-type]
+            bpy_mesh.normals_split_custom_set_from_vertices(normals)
         if mesh.vertex_colors and self.import_shading:
             colors = collapse(color.rgba_float for color in mesh.vertex_colors)
             bpy_colors = bpy_mesh.color_attributes.new(
@@ -439,9 +438,9 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
         import_cameras: bool = False,
         import_ambient: bool = False,
     ) -> None:
-        bpy.context.scene.render.fps = track.ANIMATION_FPS
+        bpy.context.scene.render.fps = track.ANIMATION_FPS  # type: ignore[union-attr]
         track_collection = bpy.data.collections.new("Track segments")
-        bpy.context.scene.collection.children.link(track_collection)
+        bpy.context.scene.collection.children.link(track_collection)  # type: ignore[union-attr]
         for index, segment in enumerate(track.track_segments):
             name = f"Segment {index}"
             segment_collection = bpy.data.collections.new(name=name)
@@ -459,7 +458,7 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
                     bpy_obj.hide_set(True)
                     bpy_obj["SPT_surface_type"] = effect.value
         object_collection = bpy.data.collections.new("Objects")
-        bpy.context.scene.collection.children.link(object_collection)
+        bpy.context.scene.collection.children.link(object_collection)  # type: ignore[union-attr]
         for index, obj in enumerate(track.objects):
             name = f"Object {index}"
             mesh = self.duplicate_common_vertices(mesh=obj.mesh)
@@ -485,7 +484,7 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
                 }
             object_collection.objects.link(bpy_obj)
         light_collection = bpy.data.collections.new("Lights")
-        bpy.context.scene.collection.children.link(light_collection)
+        bpy.context.scene.collection.children.link(light_collection)  # type: ignore[union-attr]
         for index, light in enumerate(track.lights):
             name = f"Light {index}"
             bpy_obj = self.make_point_light_object(name=name, light=light)
@@ -505,7 +504,7 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
             light_collection.objects.link(bpy_obj)
         if import_cameras:
             camera_collection = bpy.data.collections.new("Cameras")
-            bpy.context.scene.collection.children.link(camera_collection)
+            bpy.context.scene.collection.children.link(camera_collection)  # type: ignore[union-attr]
             for index, camera in enumerate(track.cameras):
                 bpy_obj = self.make_camera_object(name=f"Camera {index}", camera=camera)
                 camera_collection.objects.link(bpy_obj)
@@ -532,7 +531,7 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
                 "earth_top": color_to_dict(horizon.earth_top),  # type: ignore[dict-item]
             }
             spt_track["environment"] = environment  # type: ignore[assignment]
-        bpy.context.scene["SPT_track"] = spt_track
+        bpy.context.scene["SPT_track"] = spt_track  # type: ignore[index]
         sky_images = list(track.sky_images)
         if sky_images:
             horizon_image = make_horizon_texture(sky_images)
@@ -574,7 +573,7 @@ class CarImporterSimple(BaseImporter):
 
     def import_car(self, car: VivData, import_interior: bool, import_lights: bool) -> None:
         car_collection = bpy.data.collections.new("Car parts")
-        bpy.context.scene.collection.children.link(car_collection)
+        bpy.context.scene.collection.children.link(car_collection)  # type: ignore[union-attr]
         parts = car.interior if import_interior else car.parts
         for part in parts:
             bpy_obj = self.make_drawable_object(name=part.name, mesh=part.mesh)
@@ -583,7 +582,7 @@ class CarImporterSimple(BaseImporter):
             for shape_key in part.mesh.shape_keys:
                 self.make_shape_key(obj=bpy_obj, shape_key=shape_key)
         light_collection = bpy.data.collections.new("Car lights")
-        bpy.context.scene.collection.children.link(light_collection)
+        bpy.context.scene.collection.children.link(light_collection)  # type: ignore[union-attr]
         if import_lights:
             for index, light in enumerate(car.lights):
                 name = f"{light.type.name.lower()}-{index}"
@@ -602,7 +601,7 @@ class CarImporterSimple(BaseImporter):
             "performance": car.performance,
             "dimensions": (dimensions.x, dimensions.y, dimensions.z),
         }
-        bpy.context.scene["SPT_car"] = car_metadata
+        bpy.context.scene["SPT_car"] = car_metadata  # type: ignore[index]
 
 
 class TrackImporter(bpy.types.Operator):
@@ -660,7 +659,7 @@ class TrackImporter(bpy.types.Operator):
         self, context: bpy.types.Context, event: bpy.types.Event
     ) -> set[Literal["RUNNING_MODAL", "CANCELLED", "FINISHED", "PASS_THROUGH", "INTERFACE"]]:
         wm = context.window_manager
-        wm.fileselect_add(self)
+        wm.fileselect_add(self)  # type: ignore[union-attr]
         return {"RUNNING_MODAL"}
 
     def execute(
@@ -720,7 +719,7 @@ class CarImporter(bpy.types.Operator):
         self, context: bpy.types.Context, event: bpy.types.Event
     ) -> set[Literal["RUNNING_MODAL", "CANCELLED", "FINISHED", "PASS_THROUGH", "INTERFACE"]]:
         wm = context.window_manager
-        wm.fileselect_add(self)
+        wm.fileselect_add(self)  # type: ignore[union-attr]
         return {"RUNNING_MODAL"}
 
     def execute(
