@@ -25,7 +25,7 @@ jobs:
                   curl -fsSLO https://github.com/kaitai-io/kaitai_struct_compiler/releases/download/0.11/kaitai-struct-compiler_0.11_all.deb
                   sudo apt-get install ./kaitai-struct-compiler_0.11_all.deb
                   python -m pip install --upgrade pip
-                  python -m pip install fake-bpy-module-4.3 pylint
+                  python -m pip install fake-bpy-module-5.0 pylint
                   pip install .
             - name: Run lint
               run: |
@@ -48,7 +48,7 @@ jobs:
                   curl -fsSLO https://github.com/kaitai-io/kaitai_struct_compiler/releases/download/0.11/kaitai-struct-compiler_0.11_all.deb
                   sudo apt-get install ./kaitai-struct-compiler_0.11_all.deb
                   python -m pip install --upgrade pip
-                  python -m pip install fake-bpy-module-4.3
+                  python -m pip install fake-bpy-module-5.0
                   pip install .
             - uses: psf/black@stable
               with:
@@ -74,7 +74,7 @@ jobs:
                   curl -fsSLO https://github.com/kaitai-io/kaitai_struct_compiler/releases/download/0.11/kaitai-struct-compiler_0.11_all.deb
                   sudo apt-get install ./kaitai-struct-compiler_0.11_all.deb
                   python -m pip install --upgrade pip
-                  python -m pip install fake-bpy-module-4.3 mypy
+                  python -m pip install fake-bpy-module-5.0 mypy
                   pip install .
             - name: Correctness check
               run: |
