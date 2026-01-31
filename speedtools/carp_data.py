@@ -35,17 +35,14 @@ def remove_consecutive_dots(value: str) -> str:
     for x in value:
         if dot_found and x == ".":
             continue
-        elif x == ".":
-            dot_found = True
-        else:
-            dot_found = False
+        dot_found = x == "."
         result += x
     return result
 
 
 def float_relaxed(value: str) -> float:
     sanitized = remove_consecutive_dots(value)
-    # TODO: Figure out if the fractional part occuring after multiple dots
+    # Figure out if the fractional part occuring after multiple dots
     # should be ignored or not.
     return float(sanitized)
 
