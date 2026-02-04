@@ -240,7 +240,7 @@ types:
         type: u1
       - id: saturation
         type: u1
-      - id: brightness
+      - id: value
         type: u1
       - id: unknown
         size: 1
