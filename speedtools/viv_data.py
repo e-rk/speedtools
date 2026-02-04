@@ -21,6 +21,8 @@ from speedtools.parsers import FceParser, VivParser
 from speedtools.types import (
     UV,
     Color,
+    ColorHSV,
+    ColorPreset,
     DrawableMesh,
     Image,
     Part,
@@ -32,6 +34,8 @@ from speedtools.types import (
     VehicleLight,
     VehicleLightType,
     Vertex,
+    Car,
+    ColorPreset,
 )
 from speedtools.utils import islicen
 
@@ -254,6 +258,10 @@ class VivData:
         logger.debug(f"Color: {color}")
         return VehicleLight(location=loc, color=color, type=light_type)
 
+    @classmethod
+    def _make_hsv(cls, color: FceParser.Color) -> ColorHSV:
+        return ColorHSV(hue=color.hue, value=color.value, saturation=color.saturation)
+
     @property
     def parts(self) -> Iterator[Part]:
         fce = one(filter(lambda x: x.name in self.body_geometry, self.viv.entries))
@@ -295,3 +303,32 @@ class VivData:
         fce = one(filter(lambda x: x.name in self.body_geometry, self.viv.entries))
         lights = filter(lambda x: x.magic in self.light_types, fce.body.dummies)
         return map(self._make_light, fce.body.light_sources, lights)
+
+    @property
+    def colors(self) -> Iterator[ColorPreset]:
+        fce = one(filter(lambda x: x.name in self.body_geometry, self.viv.entries))
+        colors = zip(
+            fce.body.primary_colors,
+            fce.body.secondary_colors,
+            fce.body.driver_colors,
+            fce.body.interior_colors,
+        )
+        return starmap(
+            lambda x, y, z, w: ColorPreset(
+                primary=self._make_hsv(x),
+                secondary=self._make_hsv(y),
+                driver=self._make_hsv(z),
+                interior=self._make_hsv(w),
+            ),
+            colors,
+        )
+
+    @property
+    def car(self) -> Car:
+        return Car(
+            parts=list(self.parts),
+            colors=list(self.colors),
+            lights=list(self.lights),
+            performance=self.performance,
+            dimensions=self.dimensions,
+        )

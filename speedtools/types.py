@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from math import pi, sqrt
-from typing import NamedTuple, Optional, TypeAlias
+from typing import NamedTuple, Optional, TypeAlias, Any
 
 from speedtools.parsers import FceParser, FrdParser, FshParser
 
@@ -120,6 +120,12 @@ class Color(NamedTuple):
     @property
     def rgba_float(self) -> tuple[float, float, float, float]:
         return (self.red / 255, self.green / 255, self.blue / 255, self.alpha / 255)
+
+
+class ColorHSV(NamedTuple):
+    hue: int
+    saturation: int
+    value: int
 
 
 class Matrix3x3(NamedTuple):
@@ -277,6 +283,23 @@ class TrackSegment:
     mesh: DrawableMesh
     collision_meshes: Sequence[CollisionMesh]
     waypoints: Sequence[Vector3d]
+
+
+@dataclass(frozen=True)
+class ColorPreset:
+    primary: ColorHSV
+    secondary: ColorHSV
+    driver: ColorHSV
+    interior: ColorHSV
+
+
+@dataclass(frozen=True)
+class Car:
+    parts: list[Part]
+    colors: list[ColorPreset]
+    lights: list[VehicleLight]
+    performance: dict[str, Any]
+    dimensions: Vector3d
 
 
 @dataclass(frozen=True)
