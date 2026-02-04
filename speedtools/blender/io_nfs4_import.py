@@ -29,6 +29,8 @@ from speedtools.types import (
     BlendMode,
     Camera,
     Color,
+    ColorHSV,
+    ColorPreset,
     DirectionalLight,
     DrawableMesh,
     Light,
@@ -571,10 +573,24 @@ class CarImporterSimple(BaseImporter):
         VehicleLightType.SIREN: (100, 180, 40.0, mathutils.Matrix.Rotation(radians(-90), 3, "X")),
     }
 
-    def import_car(self, car: VivData, import_interior: bool, import_lights: bool) -> None:
+    @staticmethod
+    def _serialize_color(color: ColorHSV) -> dict[str, Any]:
+        return {"hue": color.hue, "value": color.value, "saturation": color.saturation}
+
+    @staticmethod
+    def _serialize_color_preset(preset: ColorPreset) -> dict[str, Any]:
+        return {
+            "primary": CarImporterSimple._serialize_color(preset.primary),
+            "secondary": CarImporterSimple._serialize_color(preset.secondary),
+            "driver": CarImporterSimple._serialize_color(preset.driver),
+            "interior": CarImporterSimple._serialize_color(preset.interior),
+        }
+
+    def import_car(self, viv: VivData, import_interior: bool, import_lights: bool) -> None:
+        car = viv.car
         car_collection = bpy.data.collections.new("Car parts")
         bpy.context.scene.collection.children.link(car_collection)  # type: ignore[union-attr]
-        parts = car.interior if import_interior else car.parts
+        parts = car.parts
         for part in parts:
             bpy_obj = self.make_drawable_object(name=part.name, mesh=part.mesh)
             self.set_object_location(obj=bpy_obj, location=part.location)
@@ -597,9 +613,11 @@ class CarImporterSimple(BaseImporter):
                 self.set_object_rotation(obj=bpy_obj, transform=attributes[3])
                 light_collection.objects.link(bpy_obj)
         dimensions = car.dimensions
+        colors = [CarImporterSimple._serialize_color_preset(x) for x in car.colors]
         car_metadata = {
             "performance": car.performance,
             "dimensions": (dimensions.x, dimensions.y, dimensions.z),
+            "colors": colors,
         }
         bpy.context.scene["SPT_car"] = car_metadata  # type: ignore[index]
 
@@ -725,16 +743,15 @@ class CarImporter(bpy.types.Operator):
     def execute(
         self, context: bpy.types.Context
     ) -> set[Literal["RUNNING_MODAL", "CANCELLED", "FINISHED", "PASS_THROUGH", "INTERFACE"]]:
-        car = VivData.from_file(Path(self.directory, "CAR.VIV"))
-        logger.debug(car)
+        viv = VivData.from_file(Path(self.directory, "CAR.VIV"))
 
         if self.import_interior:
-            resource = one(car.interior_materials)
+            resource = one(viv.interior_materials)
         else:
-            resource = one(car.body_materials)
+            resource = one(viv.body_materials)
         importer = CarImporterSimple(material_map=lambda _: resource)
         importer.import_car(
-            car, import_interior=self.import_interior, import_lights=self.import_lights
+            viv, import_interior=self.import_interior, import_lights=self.import_lights
         )
 
         return {"FINISHED"}
