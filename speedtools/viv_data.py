@@ -20,6 +20,7 @@ from speedtools.carp_data import CarpData
 from speedtools.parsers import FceParser, VivParser
 from speedtools.types import (
     UV,
+    Car,
     Color,
     ColorHSV,
     ColorPreset,
@@ -34,8 +35,6 @@ from speedtools.types import (
     VehicleLight,
     VehicleLightType,
     Vertex,
-    Car,
-    ColorPreset,
 )
 from speedtools.utils import islicen
 

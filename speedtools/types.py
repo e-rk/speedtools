@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from math import pi, sqrt
-from typing import NamedTuple, Optional, TypeAlias, Any
+from typing import Any, NamedTuple, Optional, TypeAlias
 
 from speedtools.parsers import FceParser, FrdParser, FshParser
 
