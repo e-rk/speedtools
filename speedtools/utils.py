@@ -212,22 +212,26 @@ def raw_stream_to_wav(audio_stream: AudioStream) -> bytes:
             .overwrite_output()
             .global_args("-hide_banner")
         )
-        _, err = stream.run(capture_stderr=True)
-        logger.debug(stream.get_args())
-        logger.debug(err.decode("utf-8"))
+        try:
+            _, err = stream.run(cmd="asdf", capture_stderr=True)
+            logger.debug(stream.get_args())
+            logger.debug(err.decode("utf-8"))
 
-        wav_data = outfile.read()
-        smpl_chunk = make_smpl_chunk(audio_stream)
+            wav_data = outfile.read()
+            smpl_chunk = make_smpl_chunk(audio_stream)
 
-        new_riff_size = len(wav_data) - 8 + len(smpl_chunk)
+            new_riff_size = len(wav_data) - 8 + len(smpl_chunk)
 
-        # Patch the riff size and append smpl chunk to the file.
-        outfile.seek(4)
-        outfile.write(struct.pack("<I", new_riff_size))
-        outfile.seek(0, os.SEEK_END)
-        outfile.write(smpl_chunk)
-        outfile.seek(0)
-        return outfile.read()
+            # Patch the riff size and append smpl chunk to the file.
+            outfile.seek(4)
+            outfile.write(struct.pack("<I", new_riff_size))
+            outfile.seek(0, os.SEEK_END)
+            outfile.write(smpl_chunk)
+            outfile.seek(0)
+            return outfile.read()
+        except ffmpeg.Error as e:
+            logger.exception(e)
+            raise
 
 
 def raw_stream_to_wav_b64(audio_stream: AudioStream) -> str:
