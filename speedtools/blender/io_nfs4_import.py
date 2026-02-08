@@ -34,6 +34,7 @@ from speedtools.types import (
     ColorPreset,
     DirectionalLight,
     DrawableMesh,
+    EngineAudio,
     Light,
     Matrix3x3,
     Part,
@@ -606,7 +607,9 @@ class CarImporterSimple(BaseImporter):
             "interior": CarImporterSimple._serialize_color(preset.interior),
         }
 
-    def import_car(self, viv: VivData, import_interior: bool, import_lights: bool) -> None:
+    def import_car(
+        self, viv: VivData, import_interior: bool, import_lights: bool, import_audio: bool
+    ) -> None:
         car = viv.car
         car_collection = bpy.data.collections.new("Car parts")
         bpy.context.scene.collection.children.link(car_collection)  # type: ignore[union-attr]
@@ -639,6 +642,25 @@ class CarImporterSimple(BaseImporter):
             "dimensions": (dimensions.x, dimensions.y, dimensions.z),
             "colors": colors,
         }
+        if import_audio:
+
+            def mkaudioattr(eng: EngineAudio) -> dict[str, Any]:
+                return {
+                    "samples": [
+                        {
+                            "sample": raw_stream_to_wav_b64(stream),
+                            "pitch_unknown0": stream.pitch_unknown0,
+                            "pitch_unknown1": stream.pitch_unknown1,
+                            "pitch_unknown2": stream.pitch_unknown2,
+                        }
+                        for stream in eng.streams
+                    ],
+                    "tables": [x.to_dict() for x in eng.tables],
+                    "is_rear": eng.is_rear,
+                }
+
+            audio = car.engine_audio
+            car_metadata["engine_samples"] = [mkaudioattr(x) for x in audio]
         bpy.context.scene["SPT_car"] = car_metadata  # type: ignore[index]
 
 
@@ -752,10 +774,14 @@ class CarImporter(bpy.types.Operator):
     import_interior: BoolProperty(  # type: ignore[valid-type]
         name="Import interior", description="Import car interior geometry", default=False
     )
-
     import_lights: BoolProperty(  # type: ignore[valid-type]
         name="Import car lights",
         description="Import car lights and assign default attribute values",
+        default=False,
+    )
+    import_audio: BoolProperty(  # type: ignore[valid-type]
+        name="Import audio (experimental)",
+        description="Import car audio",
         default=False,
     )
 
@@ -777,7 +803,10 @@ class CarImporter(bpy.types.Operator):
             resource = one(viv.body_materials)
         importer = CarImporterSimple(material_map=lambda _: resource)
         importer.import_car(
-            viv, import_interior=self.import_interior, import_lights=self.import_lights
+            viv,
+            import_interior=self.import_interior,
+            import_lights=self.import_lights,
+            import_audio=self.import_audio,
         )
 
         return {"FINISHED"}
