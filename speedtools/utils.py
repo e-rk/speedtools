@@ -231,6 +231,8 @@ def raw_stream_to_wav(audio_stream: AudioStream) -> bytes:
             return outfile.read()
         except ffmpeg.Error as e:
             logger.exception(e)
+            logger.error(e.stderr)
+            logger.error(e.stdout)
             raise
 
 
