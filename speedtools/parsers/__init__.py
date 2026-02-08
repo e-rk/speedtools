@@ -8,6 +8,7 @@
 from .bnk import Bnk as BnkParser
 from .cam import Cam as CamParser
 from .can import Can as CanParser
+from .ctb import Ctb as CtbParser
 from .fce import Fce as FceParser
 from .frd import Frd as FrdParser
 from .fsh import Fsh as FshParser
