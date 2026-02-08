@@ -199,9 +199,14 @@ def raw_stream_to_wav(audio_stream: AudioStream) -> bytes:
         case _:
             data = audio_stream.audio_samples
 
-    with tempfile.NamedTemporaryFile() as outfile, tempfile.NamedTemporaryFile() as infile:
+    with (
+        tempfile.NamedTemporaryFile(delete=False) as outfile,
+        tempfile.NamedTemporaryFile(delete=False) as infile,
+    ):
         infile.write(data)
         infile.flush()
+        infile.close()
+        outfile.close()
         stream = (
             ffmpeg.input(
                 infile.name,
@@ -214,27 +219,30 @@ def raw_stream_to_wav(audio_stream: AudioStream) -> bytes:
             .global_args("-hide_banner")
         )
         try:
-            ffmpeg = shutil.which("ffmpeg")
-            _, err = stream.run(cmd=ffmpeg, capture_stderr=True)
+            ffmpeg_path = shutil.which("ffmpeg")
+            _, err = stream.run(cmd=ffmpeg_path, capture_stderr=True)
             logger.debug(stream.get_args())
             logger.debug(err.decode("utf-8"))
 
-            wav_data = outfile.read()
-            smpl_chunk = make_smpl_chunk(audio_stream)
+            with open(outfile.name, "r+b") as output:
+                wav_data = output.read()
+                smpl_chunk = make_smpl_chunk(audio_stream)
 
-            new_riff_size = len(wav_data) - 8 + len(smpl_chunk)
+                new_riff_size = len(wav_data) - 8 + len(smpl_chunk)
 
-            # Patch the riff size and append smpl chunk to the file.
-            outfile.seek(4)
-            outfile.write(struct.pack("<I", new_riff_size))
-            outfile.seek(0, os.SEEK_END)
-            outfile.write(smpl_chunk)
-            outfile.seek(0)
-            return outfile.read()
+                # Patch the riff size and append smpl chunk to the file.
+                output.seek(4)
+                output.write(struct.pack("<I", new_riff_size))
+                output.seek(0, os.SEEK_END)
+                output.write(smpl_chunk)
+                output.seek(0)
+                return output.read()
         except ffmpeg.Error as e:
             logger.exception(e)
-            logger.error(e.stderr)
-            logger.error(e.stdout)
+            if e.stderr:
+                logger.error(e.stderr.decode("utf-8"))
+            if e.stdout:
+                logger.error(e.stdout.decode("utf-8"))
             raise
 
 
