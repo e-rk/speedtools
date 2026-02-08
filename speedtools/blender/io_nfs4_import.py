@@ -549,8 +549,10 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
                     }
                     for source in track.audio_sources
                 ]
-            except:
-                logger.error("Error during audio import. No audio samples will be imported.")
+            except Exception:
+                logger.warning(
+                    "Error during audio import. No audio samples will be imported.", exc_info=True
+                )
         bpy.context.scene["SPT_track"] = spt_track  # type: ignore[index]
         sky_images = list(track.sky_images)
         if sky_images:
