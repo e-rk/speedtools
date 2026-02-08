@@ -20,6 +20,7 @@ from speedtools.utils import (
     raw_stream_to_wav,
     unique_named_resources,
 )
+from speedtools.viv_data import VivData
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -68,6 +69,36 @@ def cubemap(ctx: Any, output: Path | None) -> None:
     resources = list(filter(lambda x: fnmatch(x.name, "HDC?"), data.resources))
     image = make_horizon_texture(resources)
     image.save("horizon.png", "png")
+
+
+@click.group()
+def viv() -> None:
+    pass
+
+
+@viv.command()
+@click.argument("path", type=click.Path(path_type=Path))
+def viv_unpack(path: Path) -> None:
+    viv_data = VivData.from_file(path)
+    audio_streams = viv_data.engine_audio
+    table = viv_data.engine_tables("careng.ctb")
+    logger.info("Unpacking sound tables")
+    with open("careng.ctb", "wb") as f:
+        f.write(table)
+    table = viv_data.engine_tables("careng.ltb")
+    with open("careng.ltb", "wb") as f:
+        f.write(table)
+    logger.info("Unpacking samples...")
+    for sound in audio_streams:
+        prefix = "rear_" if sound.is_rear else "front_"
+        for secidx, stream in enumerate(sound.streams):
+            name = f"{prefix}out_patch_{hex(sound.patchnum)}_idx_{secidx}"
+            logger.info(f"Unpacking {name}")
+            with open(f"{name}.wav", "wb") as f, open(
+                f"{hex(sound.patchnum)}.tbl", "w", encoding="utf-8"
+            ) as t:
+                f.write(raw_stream_to_wav(stream))
+                t.write(str(sound.tables))
 
 
 @main.group()
