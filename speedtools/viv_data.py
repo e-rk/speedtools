@@ -15,22 +15,28 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 from more_itertools import one
+from more_itertools.more import groupby_transform
 
+from speedtools.bnk_data import BnkData
 from speedtools.carp_data import CarpData
 from speedtools.parsers import FceParser, VivParser
 from speedtools.types import (
     UV,
+    AudioStream,
     Car,
     Color,
     ColorHSV,
     ColorPreset,
     DrawableMesh,
+    EngineAudio,
+    EngineAudioType,
     Image,
     Part,
     Polygon,
     Resource,
     ShapeKey,
     ShapeKeyType,
+    SoundTable,
     Vector3d,
     VehicleLight,
     VehicleLightType,
@@ -144,6 +150,9 @@ class VivData:
     body_textures = {"car00.tga", "hel00.tga"}
     interior_geometry = {"dash.fce"}
     interior_textures = {"dash00.tga"}
+    ltb = "careng.ltb"
+    ctb = "careng.ctb"
+    bnk = "careng.bnk"
 
     def __init__(self, parser: VivParser) -> None:
         self.viv = parser
@@ -261,6 +270,43 @@ class VivData:
     def _make_hsv(cls, color: FceParser.Color) -> ColorHSV:
         return ColorHSV(hue=color.hue, value=color.value, saturation=color.saturation)
 
+    @classmethod
+    def _make_sound_table(
+        cls, table_type: EngineAudioType, entry: VivParser.DirectoryEntry
+    ) -> Iterable[tuple[int, SoundTable]]:
+        table_data = filter(
+            lambda x: x[0] != -1, zip(entry.body.patchnum, entry.body.volume, entry.body.pitch)
+        )
+        return starmap(
+            lambda patchnum, volume, pitch: (
+                patchnum,
+                SoundTable(volume=volume.value, pitch=pitch.value, table_type=table_type),
+            ),
+            table_data,
+        )
+
+    @staticmethod
+    def merge_tables(
+        samples: dict[int, list[AudioStream]],
+        load: list[tuple[int, SoundTable]],
+        coast: list[tuple[int, SoundTable]],
+    ) -> Iterable[EngineAudio]:
+        def mkenginesound(patchnum: int, tables: list[SoundTable]) -> EngineAudio:
+            is_rear = patchnum > 0x40
+            return EngineAudio(
+                streams=samples[patchnum],
+                tables=tables,
+                is_rear=is_rear,
+                patchnum=patchnum,
+            )
+
+        tables = load + coast
+        tables.sort(key=lambda x: x[0])
+        table_by_patchnum = groupby_transform(
+            tables, keyfunc=lambda x: x[0], valuefunc=lambda x: x[1], reducefunc=list
+        )
+        return starmap(mkenginesound, table_by_patchnum)
+
     @property
     def parts(self) -> Iterator[Part]:
         fce = one(filter(lambda x: x.name in self.body_geometry, self.viv.entries))
@@ -330,4 +376,26 @@ class VivData:
             lights=list(self.lights),
             performance=self.performance,
             dimensions=self.dimensions,
+            engine_audio=list(self.engine_audio),
         )
+
+    @property
+    def engine_audio(self) -> Iterable[EngineAudio]:
+        try:
+            ctb = one(filter(lambda x: x.name == self.ctb, self.viv.entries))
+            ltb = one(filter(lambda x: x.name == self.ltb, self.viv.entries))
+            bnk = one(filter(lambda x: x.name == self.bnk, self.viv.entries))
+            data = BnkData(bnk.body)
+            samples = dict(data.sound_streams)
+            ctb_engine_sounds = list(self._make_sound_table(EngineAudioType.COAST, ctb))
+            ltb_engine_sounds = list(self._make_sound_table(EngineAudioType.LOAD, ltb))
+            return self.merge_tables(
+                samples=samples, load=ltb_engine_sounds, coast=ctb_engine_sounds
+            )
+        except ValueError:
+            return []
+
+    def engine_tables(self, name: str) -> Any:
+        ctb = one(filter(lambda x: x.name == name, self.viv.entries))
+        _ = ctb.body
+        return ctb._raw__m_body  # pylint: disable=protected-access

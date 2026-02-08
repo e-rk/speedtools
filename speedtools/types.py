@@ -306,6 +306,7 @@ class Car:
     lights: list[VehicleLight]
     performance: dict[str, Any]
     dimensions: Vector3d
+    engine_audio: list[EngineAudio]
 
 
 @dataclass(frozen=True)
