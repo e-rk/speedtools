@@ -52,6 +52,11 @@ class VehicleLightType(Enum):
     SIREN = 6
 
 
+class EngineAudioType(Enum):
+    COAST = 0
+    LOAD = 1
+
+
 class Vector3d(NamedTuple):
     x: float
     z: float
@@ -379,6 +384,20 @@ class Horizon:
     earth_top: Color
 
 
+@dataclass(frozen=True)
+class SoundTable:
+    volume: list[int]
+    pitch: list[int]
+    table_type: EngineAudioType
+
+    def to_dict(self) -> dict[str, list[int] | str]:
+        return {
+            "type": "load" if self.table_type is EngineAudioType.LOAD else "coast",
+            "volume": self.volume,
+            "pitch": self.pitch,
+        }
+
+
 class Compression(Enum):
     PCM = 1
     ADPCM = 2
@@ -396,6 +415,14 @@ class AudioStream:
     pitch_unknown1: int
     pitch_unknown2: int
     compression: Compression
+
+
+@dataclass(frozen=True)
+class EngineAudio:
+    streams: list[AudioStream]
+    tables: list[SoundTable]
+    is_rear: bool
+    patchnum: int
 
 
 @dataclass(frozen=True)
