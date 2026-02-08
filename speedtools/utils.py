@@ -4,8 +4,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
+import gzip
 import logging
 import os
+import struct
+import tempfile
+from base64 import b64encode
 from collections.abc import Callable, Hashable, Iterable, Iterator, Sequence
 from contextlib import suppress
 from dataclasses import replace
@@ -16,9 +20,20 @@ from operator import getitem
 from pathlib import Path
 from typing import Any, Dict, TypeVar
 
+import ffmpeg  # type: ignore[import-untyped]
 from PIL import Image as pil_Image
 
-from speedtools.types import BaseMesh, BasePolygon, Bitmap, Image, Resource, Vertex
+from speedtools.decoders import adpcm_to_s16le
+from speedtools.types import (
+    AudioStream,
+    BaseMesh,
+    BasePolygon,
+    Bitmap,
+    Compression,
+    Image,
+    Resource,
+    Vertex,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -156,3 +171,64 @@ def make_horizon_texture(resources: list[Resource]) -> Any:
     for idx, image in enumerate(images):
         horizon_image.paste(image, (image.width * idx, width_hrz // 2 - image.width // 2))
     return horizon_image
+
+
+def make_smpl_chunk(audio_stream: AudioStream) -> bytes:
+    loop_end = audio_stream.loop_length
+    if loop_end == 0:
+        loop_end = audio_stream.decompressed_samples - 1
+    smpl = struct.pack(
+        "<4x4x4x4x4x4x4xl4xllll4x4x",
+        1,
+        0,
+        0,
+        audio_stream.loop_start,
+        loop_end,
+    )
+    chunk = struct.pack("<4sl", "smpl".encode("ASCII"), len(smpl))
+    return chunk + smpl
+
+
+def raw_stream_to_wav(audio_stream: AudioStream) -> bytes:
+    match audio_stream.compression:
+        case Compression.ADPCM:
+            data = adpcm_to_s16le(
+                stream=audio_stream.audio_samples, num_channels=audio_stream.num_channels
+            )
+        case _:
+            data = audio_stream.audio_samples
+
+    with tempfile.NamedTemporaryFile() as outfile, tempfile.NamedTemporaryFile() as infile:
+        infile.write(data)
+        infile.flush()
+        stream = (
+            ffmpeg.input(
+                infile.name,
+                format="s16le",
+                ar=audio_stream.sample_rate,
+                ac=audio_stream.num_channels,
+            )
+            .output(outfile.name, format="wav")
+            .overwrite_output()
+            .global_args("-hide_banner")
+        )
+        _, err = stream.run(capture_stderr=True)
+        logger.debug(stream.get_args())
+        logger.debug(err.decode("utf-8"))
+
+        wav_data = outfile.read()
+        smpl_chunk = make_smpl_chunk(audio_stream)
+
+        new_riff_size = len(wav_data) - 8 + len(smpl_chunk)
+
+        # Patch the riff size and append smpl chunk to the file.
+        outfile.seek(4)
+        outfile.write(struct.pack("<I", new_riff_size))
+        outfile.seek(0, os.SEEK_END)
+        outfile.write(smpl_chunk)
+        outfile.seek(0)
+        return outfile.read()
+
+
+def raw_stream_to_wav_b64(audio_stream: AudioStream) -> str:
+    return b64encode(gzip.compress(raw_stream_to_wav(audio_stream))).decode("ascii")
