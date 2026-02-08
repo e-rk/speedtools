@@ -12,12 +12,13 @@ from enum import Enum
 from math import pi, sqrt
 from typing import Any, NamedTuple, Optional, TypeAlias
 
-from speedtools.parsers import FceParser, FrdParser, FshParser
+from speedtools.parsers import BnkParser, FceParser, FrdParser, FshParser
 
 RoadEffect: TypeAlias = FrdParser.DriveablePolygon.RoadEffect
 CollisionType: TypeAlias = FrdParser.ObjectAttribute.CollisionType
 ObjectType: TypeAlias = FrdParser.ObjectHeader.ObjectType
 FshDataType: TypeAlias = FshParser.DataType
+BnkTlvType: TypeAlias = BnkParser.TvType
 
 
 class Action(Enum):
@@ -341,6 +342,12 @@ class LightStub:
 
 
 @dataclass(frozen=True)
+class SoundStub:
+    location: Vector3d
+    patch: int
+
+
+@dataclass(frozen=True)
 class DirectionalLight:
     phi: float
     theta: float
@@ -370,3 +377,28 @@ class Horizon:
     sun_opposite_side: Color
     earth_bottom: Color
     earth_top: Color
+
+
+class Compression(Enum):
+    PCM = 1
+    ADPCM = 2
+
+
+@dataclass(frozen=True)
+class AudioStream:
+    num_channels: int
+    sample_rate: int
+    audio_samples: bytes
+    loop_start: int
+    loop_length: int
+    decompressed_samples: int
+    pitch_unknown0: int
+    pitch_unknown1: int
+    pitch_unknown2: int
+    compression: Compression
+
+
+@dataclass(frozen=True)
+class AudioSource:
+    streams: list[AudioStream]
+    location: Vector3d
