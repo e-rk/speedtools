@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABCMeta, abstractmethod
+from base64 import b64encode
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, replace
 from functools import total_ordering
@@ -48,6 +49,7 @@ from speedtools.utils import (
     image_to_png,
     make_horizon_texture,
     pil_image_to_png,
+    raw_stream_to_wav_b64,
 )
 
 bl_info = {
@@ -427,6 +429,7 @@ class TrackImportStrategy(metaclass=ABCMeta):
         import_actions: bool = False,
         import_cameras: bool = False,
         import_ambient: bool = False,
+        import_audio: bool = False,
     ) -> None:
         pass
 
@@ -439,6 +442,7 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
         import_actions: bool = False,
         import_cameras: bool = False,
         import_ambient: bool = False,
+        import_audio: bool = False,
     ) -> None:
         bpy.context.scene.render.fps = track.ANIMATION_FPS  # type: ignore[union-attr]
         track_collection = bpy.data.collections.new("Track segments")
@@ -510,7 +514,7 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
             for index, camera in enumerate(track.cameras):
                 bpy_obj = self.make_camera_object(name=f"Camera {index}", camera=camera)
                 camera_collection.objects.link(bpy_obj)
-        spt_track = {}
+        spt_track: dict[str, Any] = {}
         gltf_transform = mathutils.Euler((-pi / 2.0, 0.0, 0.0)).to_matrix() @ self.rot_mat
         waypoints = chain.from_iterable(segment.waypoints for segment in track.track_segments)
         waypoint_metadata = [gltf_transform @ mathutils.Vector(w) for w in waypoints]
@@ -521,18 +525,32 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
                 red, green, blue = color.rgb_float
                 return {"red": red, "green": green, "blue": blue}
 
-            environment = {}
+            environment: dict[str, Any] = {}
             ambient_color = track.ambient_color
             environment["ambient"] = color_to_dict(ambient_color)
             horizon = track.horizon
             environment["horizon"] = {
-                "sun_side": color_to_dict(horizon.sun_side),  # type: ignore[dict-item]
-                "sun_top": color_to_dict(horizon.sun_top_side),  # type: ignore[dict-item]
-                "sun_opposite": color_to_dict(horizon.sun_opposite_side),  # type: ignore[dict-item]
-                "earth_bottom": color_to_dict(horizon.earth_bottom),  # type: ignore[dict-item]
-                "earth_top": color_to_dict(horizon.earth_top),  # type: ignore[dict-item]
+                "sun_side": color_to_dict(horizon.sun_side),
+                "sun_top": color_to_dict(horizon.sun_top_side),
+                "sun_opposite": color_to_dict(horizon.sun_opposite_side),
+                "earth_bottom": color_to_dict(horizon.earth_bottom),
+                "earth_top": color_to_dict(horizon.earth_top),
             }
-            spt_track["environment"] = environment  # type: ignore[assignment]
+            spt_track["environment"] = environment
+
+        if import_audio:
+            try:
+                spt_track["audio_sources"] = [
+                    {
+                        "location": (
+                            gltf_transform @ mathutils.Vector(source.location)
+                        ).to_tuple(),
+                        "samples": [raw_stream_to_wav_b64(s) for s in source.streams],
+                    }
+                    for source in track.audio_sources
+                ]
+            except:
+                logger.error("Error during audio import. No audio samples will be imported.")
         bpy.context.scene["SPT_track"] = spt_track  # type: ignore[index]
         sky_images = list(track.sky_images)
         if sky_images:
@@ -672,6 +690,11 @@ class TrackImporter(bpy.types.Operator):
         description="Import ambient light",
         default=False,
     )
+    import_audio: BoolProperty(  # type: ignore[valid-type]
+        name="Import audio (experimental)",
+        description="Import track audio",
+        default=False,
+    )
 
     def invoke(
         self, context: bpy.types.Context, event: bpy.types.Event
@@ -703,6 +726,7 @@ class TrackImporter(bpy.types.Operator):
             import_actions=self.import_actions,
             import_cameras=self.import_cameras,
             import_ambient=self.import_ambient,
+            import_audio=self.import_audio,
         )
         return {"FINISHED"}
 
