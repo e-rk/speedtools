@@ -15,8 +15,9 @@ from math import atan2, cos, tau
 from pathlib import Path
 from typing import TypeVar
 
-from more_itertools import collapse, one, take, triplewise
+from more_itertools import collapse, filter_map, one, take, triplewise
 
+from speedtools.bnk_data import BnkData
 from speedtools.cam_data import CamData
 from speedtools.can_data import CanData
 from speedtools.frd_data import FrdData
@@ -26,6 +27,7 @@ from speedtools.tr_ini import TrackIni
 from speedtools.types import (
     Action,
     AnimationAction,
+    AudioSource,
     Camera,
     CollisionMesh,
     CollisionPolygon,
@@ -38,6 +40,7 @@ from speedtools.types import (
     LightStub,
     Polygon,
     Resource,
+    SoundStub,
     TrackLight,
     TrackObject,
     TrackSegment,
@@ -63,6 +66,28 @@ class TrackData:
     SUN_DISTANCE = 3000
     ANIMATION_FPS = 64
     SFX_RESOURCE_FILE = Path("Data", "GAMEART", "SFX.FSH")
+    AUDIO_DATA_PATH = Path("Data", "AUDIO", "SFX")
+    AUDIO_MAPPING = {
+        "HILLS": 12,
+        "GERMANY": 15,
+        "COASTAL": 10,
+        "PARK": 13,
+        "FRANCE": 16,
+        "UK": 14,
+        "SNOWY": 11,
+        "GT1": 17,
+        "GT2": 17,
+        "GT3": 17,
+        "HOMETOWN": 0,
+        "REDROCK": 1,
+        "ATLANTIC": 2,
+        "ROCKYPAS": 3,
+        "COUNTRY": 4,
+        "LOSTCANY": 5,
+        "AQUATICA": 6,
+        "SUMMIT": 7,
+        "EMPIRE": 8,
+    }
 
     def __init__(
         self,
@@ -127,6 +152,8 @@ class TrackData:
         self.mirrored: bool = mirrored
         self.night: bool = night
         self.weather: bool = weather
+        self.name: str = directory.name.upper()
+        self.game_root: Path = game_root
 
     @classmethod
     def tr_open(
@@ -386,3 +413,28 @@ class TrackData:
         weather = "W" if self.weather else "D"
         night = "N" if self.night else "D"
         return one(filter(lambda x: x.name == f"CL{weather}{night}", self.sky.resources))
+
+    @classmethod
+    def _make_audio_source(cls, bnk: BnkData, dummy: SoundStub) -> AudioSource | None:
+        try:
+            patch_map = dict(bnk.sound_streams)
+            stream = patch_map[dummy.patch]
+            return AudioSource(streams=stream, location=dummy.location)
+        except KeyError as e:
+            logger.exception(e)
+            return None
+
+    @property
+    def audio_sources(self) -> Iterable[AudioSource]:
+        track_name = self.name
+        audio_id = self.AUDIO_MAPPING[track_name]
+        audio_file = self.tr_open(
+            constructor=BnkData.from_file,
+            directory=Path(self.game_root, self.AUDIO_DATA_PATH),
+            prefix=f"TRAM{audio_id:02}",
+            postfix=".BNK",
+            mirrored=self.mirrored,
+            night=self.night,
+            weather=self.weather,
+        )
+        return filter_map(partial(self._make_audio_source, audio_file), self.frd.sound_dummies)
