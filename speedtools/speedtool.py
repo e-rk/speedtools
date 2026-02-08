@@ -12,10 +12,12 @@ from typing import Any
 
 import click
 
+from speedtools.bnk_data import BnkData
 from speedtools.fsh_data import FshData
 from speedtools.utils import (
     export_resource,
     make_horizon_texture,
+    raw_stream_to_wav,
     unique_named_resources,
 )
 
@@ -66,3 +68,22 @@ def cubemap(ctx: Any, output: Path | None) -> None:
     resources = list(filter(lambda x: fnmatch(x.name, "HDC?"), data.resources))
     image = make_horizon_texture(resources)
     image.save("horizon.png", "png")
+
+
+@main.group()
+def bnk() -> None:
+    pass
+
+
+@bnk.command()
+@click.argument("path", type=click.Path(path_type=Path))
+def bnk_unpack(path: Path) -> None:
+    bnk_data = BnkData.from_file(path)
+    audio_streams = bnk_data.sound_streams
+    prefix = path.name.replace(".", "_")
+    for index, sounds in audio_streams:
+        for secidx, sound in enumerate(sounds):
+            name = f"{prefix}_{hex(index)}_{secidx}"
+            with open(f"{name}.wav", "wb") as f:
+                logger.info(f"Unpacking: {name}")
+                f.write(raw_stream_to_wav(sound))
