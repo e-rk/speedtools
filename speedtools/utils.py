@@ -7,6 +7,7 @@
 import gzip
 import logging
 import os
+import shutil
 import struct
 import tempfile
 from base64 import b64encode
@@ -213,7 +214,8 @@ def raw_stream_to_wav(audio_stream: AudioStream) -> bytes:
             .global_args("-hide_banner")
         )
         try:
-            _, err = stream.run(cmd="asdf", capture_stderr=True)
+            ffmpeg = shutil.which("ffmpeg")
+            _, err = stream.run(cmd=ffmpeg, capture_stderr=True)
             logger.debug(stream.get_args())
             logger.debug(err.decode("utf-8"))
 
