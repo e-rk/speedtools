@@ -23,7 +23,6 @@ from pathlib import Path
 from typing import Any, Dict, TypeVar
 
 import ffmpeg  # type: ignore[import-untyped]
-from more_itertools import only
 from PIL import Image as pil_Image
 
 from speedtools.decoders import adpcm_to_s16le
