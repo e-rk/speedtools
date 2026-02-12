@@ -48,6 +48,7 @@ from speedtools.types import (
     Vertex,
 )
 from speedtools.utils import (
+    get_path_case_insensitive,
     merge_mesh,
     remove_unused_vertices,
     slicen,
@@ -143,9 +144,13 @@ class TrackData:
             night=night,
             weather=weather,
         )
-        self.sfx: FshData = FshData.from_file(Path(game_root, self.SFX_RESOURCE_FILE))
+        self.sfx: FshData = FshData.from_file(
+            get_path_case_insensitive(game_root, Path(game_root, self.SFX_RESOURCE_FILE))
+        )
         self.can: Sequence[tuple[Action, CanData]] = self.tr_can_open(directory=directory)
-        self.heights: HeightsParser = HeightsParser.from_file(Path(directory, "HEIGHTS.SIM"))
+        self.heights: HeightsParser = HeightsParser.from_file(
+            get_path_case_insensitive(directory, Path(directory, "HEIGHTS.SIM"))
+        )
         self.resources: dict[int, Resource] = {}
         self.sfx_resources: dict[str, Resource] = {}
         self.light_glows: dict[int, LightAttributes] = {}
@@ -176,13 +181,18 @@ class TrackData:
             try_options = [""]
         for variant in try_options:
             with suppress(FileNotFoundError):
-                return constructor(Path(directory, f"{prefix}{variant}{postfix}"))
+                path = Path(directory, f"{prefix}{variant}{postfix}")
+                path = get_path_case_insensitive(directory, path)
+                return constructor(path)
         raise FileNotFoundError(f"File {prefix}{postfix} or its variants not found")
 
     @classmethod
     def tr_can_open(cls, directory: Path) -> Sequence[tuple[Action, CanData]]:
         data = [
-            (action, CanData.from_file(Path(directory, filename)))
+            (
+                action,
+                CanData.from_file(get_path_case_insensitive(directory, Path(directory, filename))),
+            )
             for action, filename in cls.ANIMATION_ACTIONS
         ]
         return data

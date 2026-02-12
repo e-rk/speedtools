@@ -47,6 +47,7 @@ from speedtools.types import (
 )
 from speedtools.utils import (
     create_pil_image,
+    get_path_case_insensitive,
     image_to_png,
     make_horizon_texture,
     pil_image_to_png,
@@ -795,7 +796,9 @@ class CarImporter(bpy.types.Operator):
     def execute(
         self, context: bpy.types.Context
     ) -> set[Literal["RUNNING_MODAL", "CANCELLED", "FINISHED", "PASS_THROUGH", "INTERFACE"]]:
-        viv = VivData.from_file(Path(self.directory, "CAR.VIV"))
+        viv_path = Path(self.directory, "CAR.VIV")
+        viv_path = get_path_case_insensitive(Path(self.directory), viv_path)
+        viv = VivData.from_file(viv_path)
 
         if self.import_interior:
             resource = one(viv.interior_materials)
