@@ -12,7 +12,7 @@ from contextlib import suppress
 from functools import partial
 from itertools import chain, compress, groupby, starmap
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 from more_itertools import (
     chunked,
@@ -181,7 +181,7 @@ class FrdData:
     ) -> CollisionPolygon:
         poly_face = segment.chunks[4].polygons[polygon.polygon].face
         face = tuple(poly_face)
-        edges: Sequence[Edge] = []
+        edges: list[Edge] = []
         if polygon.front_edge and poly_face[0] != poly_face[1]:
             edges.append(Edge.FRONT)
         if polygon.left_edge and poly_face[1] != poly_face[2]:

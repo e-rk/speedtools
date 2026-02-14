@@ -53,7 +53,6 @@ from speedtools.utils import (
     remove_unused_vertices,
     slicen,
     unique_named_resources,
-    validate_face,
 )
 
 logger = logging.getLogger(__name__)
