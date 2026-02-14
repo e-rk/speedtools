@@ -131,9 +131,9 @@ class FrdData:
             location = Vector3d(x=obj.location.x, y=obj.location.y, z=obj.location.z)
             transform = cls._make_matrix(extra.special.transform)
             dimension = Vector3d(
-                x=extra.special.dimensions.x,
-                y=extra.special.dimensions.y,
-                z=extra.special.dimensions.z,
+                x=extra.special.dimensions.x * 2,
+                y=extra.special.dimensions.y * 2,
+                z=extra.special.dimensions.z * 2,
             )
             physics = PhysicsData(dimension=dimension, mass=extra.special.mass)
         elif obj.type == ObjectType.animated:
