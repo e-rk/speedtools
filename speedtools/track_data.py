@@ -438,9 +438,11 @@ class TrackData:
     def audio_sources(self) -> Iterable[AudioSource]:
         track_name = self.name
         audio_id = self.AUDIO_MAPPING[track_name]
+        audio_path = Path(self.game_root, self.AUDIO_DATA_PATH)
+        audio_path = get_path_case_insensitive(self.game_root, audio_path)
         audio_file = self.tr_open(
             constructor=BnkData.from_file,
-            directory=Path(self.game_root, self.AUDIO_DATA_PATH),
+            directory=audio_path,
             prefix=f"TRAM{audio_id:02}",
             postfix=".BNK",
             mirrored=self.mirrored,
