@@ -8,8 +8,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABCMeta, abstractmethod
-from base64 import b64encode
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from functools import total_ordering
 from itertools import chain, groupby
@@ -19,14 +18,16 @@ from typing import Any, Literal
 
 import bpy
 import mathutils
-from bpy.props import BoolProperty, EnumProperty, StringProperty
-from more_itertools import collapse, duplicates_everseen, one, unique_everseen
+from bpy.props import BoolProperty, StringProperty
+from more_itertools import collapse, duplicates_everseen, one, unique_everseen, unzip
 
 from speedtools import TrackData, VivData
 from speedtools.types import (
+    UV,
     Action,
     AnimationAction,
     BaseMesh,
+    BasePolygon,
     BlendMode,
     Camera,
     Color,
@@ -37,13 +38,11 @@ from speedtools.types import (
     EngineAudio,
     Light,
     Matrix3x3,
-    Part,
     Polygon,
     Resource,
     ShapeKey,
     Vector3d,
     VehicleLightType,
-    Vertex,
 )
 from speedtools.utils import (
     create_pil_image,
@@ -52,6 +51,7 @@ from speedtools.utils import (
     make_horizon_texture,
     pil_image_to_png,
     raw_stream_to_wav_b64,
+    validate_face,
 )
 
 bl_info = {
@@ -257,13 +257,19 @@ class BaseImporter(metaclass=ABCMeta):
             self.materials[ext_resource] = bpy_material
         return self.materials[ext_resource]
 
+    @classmethod
+    def _validate_face(cls, polygon: BasePolygon) -> tuple[int, ...]:
+        (face,) = unzip(validate_face(polygon.face))
+        return tuple(face)
+
     def make_base_mesh(self, name: str, mesh: BaseMesh) -> bpy.types.Mesh:
         vertices_rot = [mathutils.Vector(vert) @ self.rot_mat for vert in mesh.vertex_locations]
+        faces = [self._validate_face(polygon) for polygon in mesh.polygons]
         bpy_mesh = bpy.data.meshes.new(name)
         bpy_mesh.from_pydata(
             vertices=vertices_rot,
             edges=[],
-            faces=[polygon.face for polygon in mesh.polygons],
+            faces=faces,
         )
         return bpy_mesh
 
@@ -325,10 +331,16 @@ class BaseImporter(metaclass=ABCMeta):
         obj.rotation_mode = "XYZ"
         obj.rotation_euler = mu_euler
 
+    @classmethod
+    def _validate_uv(cls, polygon: Polygon) -> tuple[UV, ...]:
+        _, uv = unzip(validate_face(polygon.face, polygon.uv))
+        return tuple(uv)
+
     def make_drawable_object(self, name: str, mesh: DrawableMesh) -> bpy.types.Object:
         bpy_mesh = self.make_base_mesh(name=name, mesh=mesh)
         uv_layer = bpy_mesh.uv_layers.new()
-        uvs = collapse(polygon.uv for polygon in mesh.polygons)
+        validated_uv = [self._validate_uv(polygon) for polygon in mesh.polygons]
+        uvs = collapse(validated_uv)
         uv_layer.data.foreach_set("uv", list(uvs))
         if mesh.vertex_normals:
             normals = [mathutils.Vector(normal) @ self.rot_mat for normal in mesh.vertex_normals]
@@ -461,6 +473,7 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
                     effect = collision_mesh.collision_effect
                     name = f"Collision {collision_index}.{effect.name}-colonly"
                     bpy_mesh = self.make_base_mesh(name=name, mesh=collision_mesh)
+                    bpy_mesh.validate()
                     bpy_obj = bpy.data.objects.new(name, bpy_mesh)
                     segment_collection.objects.link(bpy_obj)
                     bpy_obj.hide_set(True)

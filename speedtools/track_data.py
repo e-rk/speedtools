@@ -53,6 +53,7 @@ from speedtools.utils import (
     remove_unused_vertices,
     slicen,
     unique_named_resources,
+    validate_face,
 )
 
 logger = logging.getLogger(__name__)
@@ -210,21 +211,22 @@ class TrackData:
         return replace(obj, actions=object_actions)
 
     @classmethod
-    def _select_wall_edge_idx(cls, polygon: CollisionPolygon, edge: Edge) -> tuple[int, int]:
+    def _select_wall_edge_idx(cls, polygon: CollisionPolygon) -> Sequence[tuple[int, int]]:
         face = polygon.face
-        if edge is Edge.FRONT:
-            edge_vertex_idx = (face[1], face[0])
-        if edge is Edge.LEFT:
-            edge_vertex_idx = (face[2], face[1])
-        if edge is Edge.BACK:
-            edge_vertex_idx = (face[-1], face[2])
-        if edge is Edge.RIGHT:
-            edge_vertex_idx = (face[0], face[-1])
-        return edge_vertex_idx  # pylint: disable=possibly-used-before-assignment
+        edges: list[tuple[int, int]] = []
+        if Edge.FRONT in polygon.edges and face[0] != face[1]:
+            edges.append((face[1], face[0]))
+        if Edge.LEFT in polygon.edges and face[1] != face[2]:
+            edges.append((face[2], face[1]))
+        if Edge.BACK in polygon.edges and face[2] != face[3]:
+            edges.append((face[3], face[2]))
+        if Edge.RIGHT in polygon.edges and face[3] != face[0]:
+            edges.append((face[0], face[3]))
+        return edges
 
     @classmethod
     def _get_wall_edge_idx(cls, polygon: CollisionPolygon) -> Iterable[tuple[int, int]]:
-        return [cls._select_wall_edge_idx(polygon, x) for x in polygon.edges]
+        return cls._select_wall_edge_idx(polygon)
 
     @classmethod
     def _raise_vertex(cls, heights: Sequence[tuple[Vector3d, float]], vertex: Vertex) -> Vertex:

@@ -17,11 +17,8 @@ from typing import Any, Optional
 from more_itertools import (
     chunked,
     collapse,
-    nth,
     strictly_n,
     transpose,
-    unique_everseen,
-    unzip,
 )
 
 from speedtools.parsers import FrdParser
@@ -79,21 +76,14 @@ class FrdData:
         return cls(parser)
 
     @classmethod
-    def _validate_polygon(
-        cls, face: Sequence[int], *iterables: Iterable[Any]
-    ) -> Iterator[tuple[Any, ...]]:
-        polygon_data_zipped = zip(face, *iterables)
-        return unique_everseen(polygon_data_zipped, key=lambda x: nth(x, 0))
-
-    @classmethod
     def _make_polygon(cls, polygon: FrdParser.Polygon, billboard: bool = False) -> Polygon:
         material = polygon.texture_id
         backface_culling = polygon.backface_culling
-        quads_or_triangles = cls._validate_polygon(polygon.face, cls._texture_flags_to_uv(polygon))
-        face, uv = unzip(quads_or_triangles)  # pylint: disable=unbalanced-tuple-unpacking
+        face = tuple(polygon.face)
+        uv = tuple(cls._texture_flags_to_uv(polygon))
         return Polygon(
-            face=tuple(face),
-            uv=tuple(uv),
+            face=face,
+            uv=uv,
             material=material,
             backface_culling=backface_culling,
             is_lane=polygon.lane,
@@ -189,24 +179,19 @@ class FrdData:
     def _make_collision_polygon(
         cls, segment: FrdParser.SegmentData, polygon: FrdParser.DriveablePolygon
     ) -> CollisionPolygon:
-        all_edges = (Edge.FRONT, Edge.LEFT, Edge.BACK, Edge.RIGHT)
         poly_face = segment.chunks[4].polygons[polygon.polygon].face
-        face, validated_edges = unzip(  # pylint: disable=unbalanced-tuple-unpacking
-            cls._validate_polygon(poly_face, all_edges)
-        )
-        allowed_edges = list(validated_edges)
-        edges: list[Edge] = []
-        if polygon.front_edge:
+        face = tuple(poly_face)
+        edges: Sequence[Edge] = []
+        if polygon.front_edge and poly_face[0] != poly_face[1]:
             edges.append(Edge.FRONT)
-        if polygon.left_edge:
+        if polygon.left_edge and poly_face[1] != poly_face[2]:
             edges.append(Edge.LEFT)
-        if polygon.back_edge:
+        if polygon.back_edge and poly_face[2] != poly_face[3]:
             edges.append(Edge.BACK)
-        if polygon.right_edge:
+        if polygon.right_edge and poly_face[3] != poly_face[0]:
             edges.append(Edge.RIGHT)
-        edges = list(filter(lambda x: x in allowed_edges, edges))
         return CollisionPolygon(
-            face=tuple(face),
+            face=face,
             edges=edges,
             has_finite_height=polygon.has_finite_height,
             has_wall_collision=polygon.has_wall_collision,

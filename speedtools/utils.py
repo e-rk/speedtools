@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any, Dict, TypeVar
 
 import ffmpeg  # type: ignore[import-untyped]
+from more_itertools import unique_everseen
 from PIL import Image as pil_Image
 
 from speedtools.decoders import adpcm_to_s16le
@@ -164,6 +165,11 @@ def merge_mesh(a: T, b: T) -> T:
     b_polygons = map(remap_idx, b.polygons)  # type: ignore[attr-defined]
     polygons = list(chain(a.polygons, b_polygons))  # type: ignore[attr-defined]
     return replace(a, vertices=vertices, polygons=polygons)  # type: ignore[type-var]
+
+
+def validate_face(face: Sequence[int], *iterables: Iterable[Any]) -> Iterator[tuple[Any, ...]]:
+    polygon_data_zipped = zip(face, *iterables)
+    return unique_everseen(polygon_data_zipped, key=lambda x: x[0])
 
 
 def make_horizon_texture(resources: list[Resource]) -> Any:
