@@ -19,7 +19,14 @@ from typing import Any, Literal
 import bpy
 import mathutils
 from bpy.props import BoolProperty, StringProperty
-from more_itertools import collapse, duplicates_everseen, one, unique_everseen, unzip
+from more_itertools import (
+    collapse,
+    duplicates_everseen,
+    one,
+    only,
+    unique_everseen,
+    unzip,
+)
 
 from speedtools import TrackData, VivData
 from speedtools.types import (
@@ -418,8 +425,13 @@ class BaseImporter(metaclass=ABCMeta):
         bpy_obj.rotation_euler = mu_rot.to_euler()
         return bpy_obj
 
-    def make_camera_object(self, name: str, camera: Camera) -> bpy.types.Object:
+    def make_camera_object(
+        self, name: str, camera: Camera, fov: float | None = None
+    ) -> bpy.types.Object:
         bpy_camera = bpy.data.cameras.new(name=name)
+        if fov:
+            bpy_camera.lens_unit = "FOV"
+            bpy_camera.angle = fov
         bpy_obj = bpy.data.objects.new(name=name, object_data=bpy_camera)
         offset = mathutils.Euler((pi / 2, 0, 0))
         self.set_object_location(obj=bpy_obj, location=camera.location)
@@ -632,8 +644,23 @@ class CarImporterSimple(BaseImporter):
             bpy_obj = self.make_drawable_object(name=part.name, mesh=part.mesh)
             self.set_object_location(obj=bpy_obj, location=part.location)
             car_collection.objects.link(bpy_obj)
+            bpy_obj["SPT_interior"] = False
             for shape_key in part.mesh.shape_keys:
                 self.make_shape_key(obj=bpy_obj, shape_key=shape_key)
+        if import_interior:
+            interior_collection = bpy.data.collections.new("Interior parts")
+            bpy.context.scene.collection.children.link(interior_collection)  # type: ignore[union-attr]
+            for part in car.interior:
+                bpy_obj = self.make_drawable_object(name=part.name, mesh=part.mesh)
+                self.set_object_location(obj=bpy_obj, location=part.location)
+                interior_collection.objects.link(bpy_obj)
+                bpy_obj.hide_set(True)
+                bpy_obj["SPT_interior"] = True
+            if car.interior_camera:
+                bpy_obj = self.make_camera_object(
+                    name=f"Interior camera", camera=car.interior_camera, fov=radians(60)
+                )
+                interior_collection.objects.link(bpy_obj)
         light_collection = bpy.data.collections.new("Car lights")
         bpy.context.scene.collection.children.link(light_collection)  # type: ignore[union-attr]
         if import_lights:
@@ -812,12 +839,7 @@ class CarImporter(bpy.types.Operator):
         viv_path = Path(self.directory, "CAR.VIV")
         viv_path = get_path_case_insensitive(Path(self.directory), viv_path)
         viv = VivData.from_file(viv_path)
-
-        if self.import_interior:
-            resource = one(viv.interior_materials)
-        else:
-            resource = one(viv.body_materials)
-        importer = CarImporterSimple(material_map=lambda _: resource)
+        importer = CarImporterSimple(material_map=viv.material_map)
         importer.import_car(
             viv,
             import_interior=self.import_interior,

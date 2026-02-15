@@ -315,7 +315,7 @@ class VivData:
         interior_resource = only(self.interior_materials)
         exterior_resource = one(self.body_materials)
 
-        def inner(polygon: Polygon):
+        def inner(polygon: Polygon) -> Resource:
             if polygon.material == 0:
                 return exterior_resource
             if interior_resource:
