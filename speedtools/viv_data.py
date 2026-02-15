@@ -7,14 +7,14 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable
 from enum import Enum
 from functools import partial
 from itertools import compress, starmap
 from pathlib import Path
-from typing import Any, NamedTuple
+from typing import Any, Callable, NamedTuple
 
-from more_itertools import one
+from more_itertools import one, only
 from more_itertools.more import groupby_transform
 
 from speedtools.bnk_data import BnkData
@@ -23,6 +23,7 @@ from speedtools.parsers import FceParser, VivParser
 from speedtools.types import (
     UV,
     AudioStream,
+    Camera,
     Car,
     Color,
     ColorHSV,
@@ -31,6 +32,7 @@ from speedtools.types import (
     EngineAudio,
     EngineAudioType,
     Image,
+    Matrix3x3,
     Part,
     Polygon,
     Resource,
@@ -163,13 +165,13 @@ class VivData:
         return cls(parser=parser)
 
     @classmethod
-    def _make_polygon(cls, polygon: FceParser.Polygon) -> Polygon:
+    def _make_polygon(cls, index: int, polygon: FceParser.Polygon) -> Polygon:
         face = tuple(vertex for vertex in polygon.face)
         uv = tuple(UV(u, 1 - v) for u, v in zip(polygon.u, polygon.v))
         return Polygon(
             face=face,
             uv=uv,
-            material=polygon.texture,
+            material=index,
             backface_culling=polygon.backface_culling,
             transparent=polygon.transparent,
             highly_reflective=polygon.highly_reflective,
@@ -205,6 +207,7 @@ class VivData:
     @classmethod
     def _make_part_mesh(
         cls,
+        index: int,
         part_vertices: Iterable[FceParser.Float3],
         part_normals: Iterable[FceParser.Float3],
         part_polygons: Iterable[FceParser.Polygon],
@@ -213,7 +216,7 @@ class VivData:
     ) -> DrawableMesh:
         vertices = list(map(cls._make_vertex, part_vertices, part_normals))
         shape_key = cls._make_part_shape_key(part_damaged_vertices, part_damaged_normals)
-        polygons = [cls._make_polygon(polygon) for polygon in part_polygons]
+        polygons = [cls._make_polygon(index, polygon) for polygon in part_polygons]
         return DrawableMesh(vertices=vertices, polygons=polygons, shape_keys=[shape_key])
 
     @classmethod
@@ -229,7 +232,7 @@ class VivData:
         return Resource(name=entry.name, image=tga)
 
     @classmethod
-    def _make_geometry(cls, fce: FceParser) -> Iterator[Part]:
+    def _make_geometry(cls, index: int, fce: FceParser) -> Iterable[Part]:
         slice_vert = partial(islicen, fce.undamaged_vertices)
         part_vertices_iter = map(slice_vert, fce.part_vertex_index, fce.part_num_vertices)
         slice_norm = partial(islicen, fce.undamaged_normals)
@@ -245,7 +248,7 @@ class VivData:
             slice_damaged_norm, fce.part_vertex_index, fce.part_num_vertices
         )
         meshes = map(
-            cls._make_part_mesh,
+            partial(cls._make_part_mesh, index),
             part_vertices_iter,
             part_normals_iter,
             part_polygons_iter,
@@ -308,27 +311,43 @@ class VivData:
         return starmap(mkenginesound, table_by_patchnum)
 
     @property
-    def parts(self) -> Iterator[Part]:
+    def material_map(self) -> Callable[[Polygon], Resource]:
+        interior_resource = only(self.interior_materials)
+        exterior_resource = one(self.body_materials)
+
+        def inner(polygon: Polygon):
+            if polygon.material == 0:
+                return exterior_resource
+            if interior_resource:
+                return interior_resource
+            raise KeyError(f"Material {polygon.material} not found")
+
+        return inner
+
+    @property
+    def parts(self) -> Iterable[Part]:
         fce = one(filter(lambda x: x.name in self.body_geometry, self.viv.entries))
-        return self._make_geometry(fce.body)
+        return self._make_geometry(0, fce.body)
 
     @property
-    def interior(self) -> Iterator[Part]:
-        fce = one(filter(lambda x: x.name in self.interior_geometry, self.viv.entries))
-        return self._make_geometry(fce.body)
+    def interior(self) -> Iterable[Part]:
+        fce = only(filter(lambda x: x.name in self.interior_geometry, self.viv.entries))
+        if fce:
+            return self._make_geometry(1, fce.body)
+        return []
 
     @property
-    def materials(self) -> Iterator[Resource]:
+    def materials(self) -> Iterable[Resource]:
         return map(
             self._make_resource, filter(lambda x: x.name.endswith(".tga"), self.viv.entries)
         )
 
     @property
-    def body_materials(self) -> Iterator[Resource]:
+    def body_materials(self) -> Iterable[Resource]:
         return filter(lambda x: x.name in self.body_textures, self.materials)
 
     @property
-    def interior_materials(self) -> Iterator[Resource]:
+    def interior_materials(self) -> Iterable[Resource]:
         return filter(lambda x: x.name in self.interior_textures, self.materials)
 
     @property
@@ -344,13 +363,27 @@ class VivData:
         return Vector3d(x=half_sizes.x * 2, y=half_sizes.y * 2, z=half_sizes.z * 2)
 
     @property
-    def lights(self) -> Iterator[VehicleLight]:
+    def lights(self) -> Iterable[VehicleLight]:
         fce = one(filter(lambda x: x.name in self.body_geometry, self.viv.entries))
         lights = filter(lambda x: x.magic in self.light_types, fce.body.dummies)
         return map(self._make_light, fce.body.light_sources, lights)
 
     @property
-    def colors(self) -> Iterator[ColorPreset]:
+    def interior_camera(self) -> Camera | None:
+        fce = only(filter(lambda x: x.name in self.interior_geometry, self.viv.entries))
+        if fce:
+            return one(
+                map(
+                    lambda x: Camera(
+                        location=Vector3d.from_fce_float3(x), transform=Matrix3x3.identity()
+                    ),
+                    fce.body.light_sources,
+                )
+            )
+        return None
+
+    @property
+    def colors(self) -> Iterable[ColorPreset]:
         fce = one(filter(lambda x: x.name in self.body_geometry, self.viv.entries))
         colors = zip(
             fce.body.primary_colors,
@@ -372,11 +405,13 @@ class VivData:
     def car(self) -> Car:
         return Car(
             parts=list(self.parts),
+            interior=list(self.interior),
             colors=list(self.colors),
             lights=list(self.lights),
             performance=self.performance,
             dimensions=self.dimensions,
             engine_audio=list(self.engine_audio),
+            interior_camera=self.interior_camera,
         )
 
     @property

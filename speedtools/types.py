@@ -139,6 +139,10 @@ class Matrix3x3(NamedTuple):
     z: Vector3d
     y: Vector3d
 
+    @staticmethod
+    def identity() -> Matrix3x3:
+        return Matrix3x3(Vector3d(1.0, 0.0, 0.0), Vector3d(0.0, 1.0, 0.0), Vector3d(0.0, 0.0, 1.0))
+
 
 @dataclass(frozen=True)
 class Vertex:
@@ -302,11 +306,13 @@ class ColorPreset:
 @dataclass(frozen=True)
 class Car:
     parts: list[Part]
+    interior: list[Part]
     colors: list[ColorPreset]
     lights: list[VehicleLight]
     performance: dict[str, Any]
     dimensions: Vector3d
     engine_audio: list[EngineAudio]
+    interior_camera: Camera | None
 
 
 @dataclass(frozen=True)
