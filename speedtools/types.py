@@ -199,6 +199,7 @@ class Polygon(BasePolygon):
     animation_ticks: int = 0
     animation_count: int = 0
     billboard: bool = False
+    emissive: bool = False
 
 
 @dataclass(frozen=True)

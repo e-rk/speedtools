@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
+from dataclasses import replace
 from enum import Enum
-from functools import partial
+from functools import partial, reduce
 from itertools import compress, starmap
 from pathlib import Path
 from typing import Any, Callable, NamedTuple
@@ -59,6 +60,7 @@ class PartAttributes(NamedTuple):
     name: str
     interior: bool = False
     resolution: Resolution = Resolution.HIGH
+    emissive: bool = False
 
 
 class VivData:
@@ -104,7 +106,7 @@ class VivData:
         # Driver head
         ":OH": PartAttributes(resolution=Resolution.HIGH, name="driver_head"),
         # Dash when lit
-        ":ODL": PartAttributes(resolution=Resolution.HIGH, name="dashboard_lit"),
+        ":ODL": PartAttributes(resolution=Resolution.HIGH, emissive=True, name="dashboard_lit"),
         # Left Mirror
         ":OLM": PartAttributes(resolution=Resolution.HIGH, name="left_mirror"),
         # Right Mirror
@@ -129,6 +131,23 @@ class VivData:
         ":Lmain": PartAttributes(resolution=Resolution.LOW, name="main_rotor"),
         # Low resolution tail rotor
         ":Ltail": PartAttributes(resolution=Resolution.LOW, name="tail_rotor"),
+        "passenger_mirror": PartAttributes(
+            resolution=Resolution.HIGH, interior=True, name="passenger_mirror"
+        ),
+        "driver_mirror": PartAttributes(
+            resolution=Resolution.HIGH, interior=True, name="driver_mirror"
+        ),
+        "steering": PartAttributes(resolution=Resolution.HIGH, interior=True, name="steering"),
+        "interior_dashboard_lit": PartAttributes(
+            resolution=Resolution.HIGH, interior=True, emissive=True, name="interior_dashboard_lit"
+        ),
+    }
+
+    special_interior_parts_rename = {
+        "_PM": "passenger_mirror",
+        "_DM": "driver_mirror",
+        "_W": "steering",
+        "_LDASH": "interior_dashboard_lit",
     }
 
     light_types = {
@@ -184,10 +203,15 @@ class VivData:
 
     @classmethod
     def _get_part_attributes(cls, strings: FceParser.Part) -> PartAttributes:
+        renamed = reduce(
+            lambda previous, rename: (rename[1] if rename[0] in previous else previous),
+            cls.special_interior_parts_rename.items(),
+            strings.value[0],
+        )
         try:
-            return cls.known_parts[strings.value[0]]
+            return cls.known_parts[renamed]
         except KeyError:
-            return PartAttributes(name=strings.value[0])
+            return PartAttributes(name=renamed)
 
     @classmethod
     def _make_vertex(
@@ -223,6 +247,9 @@ class VivData:
     def _make_part(
         cls, location: FceParser.Float3, mesh: DrawableMesh, attribute: PartAttributes
     ) -> Part:
+        if attribute.emissive:
+            polygons = [replace(polygon, emissive=True) for polygon in mesh.polygons]
+            mesh = replace(mesh, polygons=polygons)
         location_vect = Vector3d(x=location.x, y=location.y, z=location.z)
         return Part(name=attribute.name, location=location_vect, mesh=mesh)
 
