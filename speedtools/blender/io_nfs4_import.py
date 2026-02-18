@@ -88,6 +88,7 @@ class ExtendedResource:
     animation_ticks: int
     animation_resources: tuple[Resource, ...]
     billboard: bool
+    emissive: bool
 
     def __lt__(self, other: ExtendedResource) -> bool:
         return hash(self) < hash(other)
@@ -138,6 +139,7 @@ class BaseImporter(metaclass=ABCMeta):
             animation_ticks=polygon.animation_ticks,
             animation_resources=tuple(animation_resources),
             billboard=polygon.billboard,
+            emissive=polygon.emissive,
         )
 
     def _link_texture_to_shader(
@@ -239,6 +241,9 @@ class BaseImporter(metaclass=ABCMeta):
                 resource=resource,
             )
             node_tree.links.new(output_socket, material_output.inputs["Surface"])  # type: ignore[union-attr]
+            if ext_resource.emissive:
+                node_tree.links.new(image_texture.outputs["Color"], bsdf.inputs["Emission Color"])
+                bsdf.inputs["Emission Strength"].default_value = 1.0  # type: ignore[union-attr]
         if ext_resource.highly_reflective:
             # bsdf.inputs["Base Color"].default_value = (1.0, 1.0, 1.0, 1.0)  # type: ignore[union-attr]
             bsdf.inputs["Specular IOR Level"].default_value = 0.50  # type: ignore[union-attr]
