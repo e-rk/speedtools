@@ -242,7 +242,7 @@ class BaseImporter(metaclass=ABCMeta):
             )
             node_tree.links.new(output_socket, material_output.inputs["Surface"])  # type: ignore[union-attr]
             if ext_resource.emissive:
-                node_tree.links.new(image_texture.outputs["Color"], bsdf.inputs["Emission Color"])
+                node_tree.links.new(image_texture.outputs["Color"], bsdf.inputs["Emission Color"])  # type: ignore[union-attr]
                 bsdf.inputs["Emission Strength"].default_value = 1.0  # type: ignore[union-attr]
         if ext_resource.highly_reflective:
             # bsdf.inputs["Base Color"].default_value = (1.0, 1.0, 1.0, 1.0)  # type: ignore[union-attr]
