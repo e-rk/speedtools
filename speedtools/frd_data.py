@@ -332,3 +332,7 @@ class FrdData:
     def sound_dummies(self) -> Iterator[SoundStub]:
         sounds = chain.from_iterable(segment.sound_sources for segment in self.frd.segment_data)
         return map(self._make_sound_dummy, sounds)
+
+    @property
+    def num_road_blocks(self) -> int:
+        return self.frd.num_road_blocks  # type: ignore[no-any-return]

@@ -23,6 +23,7 @@ from speedtools.can_data import CanData
 from speedtools.frd_data import FrdData
 from speedtools.fsh_data import FshData
 from speedtools.parsers import HeightsParser
+from speedtools.spd_data import SpdData
 from speedtools.tr_ini import TrackIni
 from speedtools.types import (
     Action,
@@ -159,6 +160,14 @@ class TrackData:
         self.weather: bool = weather
         self.name: str = directory.name.upper()
         self.game_root: Path = game_root
+        self.spd_forward: SpdData = SpdData.from_file(
+            self.frd.num_road_blocks,
+            get_path_case_insensitive(directory, Path(directory, "SPDFA.BIN")),
+        )
+        self.spd_backward: SpdData = SpdData.from_file(
+            self.frd.num_road_blocks,
+            get_path_case_insensitive(directory, Path(directory, "SPDRA.BIN")),
+        )
 
     @classmethod
     def tr_open(

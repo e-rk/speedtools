@@ -14,6 +14,7 @@ from .frd import Frd as FrdParser
 from .fsh import Fsh as FshParser
 from .qfs import Qfs as QfsParser
 from .sim import Sim as HeightsParser
+from .spd_bin import SpdBin as SpdParser
 from .viv import Viv as VivParser
 
 __all__ = [
@@ -26,5 +27,6 @@ __all__ = [
     "FceParser",
     "CanParser",
     "CamParser",
+    "SpdParser",
     "HeightsParser",
 ]
