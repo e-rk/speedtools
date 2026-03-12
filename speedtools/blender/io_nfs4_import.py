@@ -549,8 +549,49 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
         spt_track: dict[str, Any] = {}
         gltf_transform = mathutils.Euler((-pi / 2.0, 0.0, 0.0)).to_matrix() @ self.rot_mat
         waypoints = chain.from_iterable(segment.waypoints for segment in track.track_segments)
-        waypoint_metadata = [gltf_transform @ mathutils.Vector(w) for w in waypoints]
-        spt_track["waypoints"] = [(w.x, w.y, w.z) for w in waypoint_metadata]
+        waypoint_data = zip(
+            waypoints,
+            track.spd_forward.lane,
+            track.spd_forward.offset,
+            track.spd_backward.lane,
+            track.spd_backward.offset,
+        )
+        waypoint_metadata = [
+            (
+                gltf_transform @ mathutils.Vector(wp.location),
+                gltf_transform.inverted() @ mathutils.Matrix(wp.orientation) @ gltf_transform,
+                forward_lane,
+                forward_offset,
+                backward_lane,
+                backward_offset,
+                wp.left_wall,
+                wp.right_wall,
+            )
+            for (
+                wp,
+                forward_lane,
+                forward_offset,
+                backward_lane,
+                backward_offset,
+            ) in waypoint_data
+        ]
+        spt_track["waypoints"] = [
+            {
+                "position": (w[0].x, w[0].y, w[0].z),
+                "orientation": {
+                    "right": tuple(w[1].row[0]),
+                    "normal": tuple(w[1].row[1]),
+                    "forward": tuple(w[1].row[2]),
+                },
+                "forward_lane": w[2],
+                "forward_offset": -w[3],
+                "backward_lane": w[4],
+                "backward_offset": -w[5],
+                "left_wall": w[6],
+                "right_wall": w[7],
+            }
+            for w in waypoint_metadata
+        ]
         if import_ambient:
 
             def color_to_dict(color: Color) -> dict[str, float]:
