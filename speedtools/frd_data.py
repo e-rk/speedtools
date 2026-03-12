@@ -45,6 +45,7 @@ from speedtools.types import (
     TrackSegment,
     Vector3d,
     Vertex,
+    Waypoint,
 )
 from speedtools.utils import islicen, remove_unused_vertices
 
@@ -225,8 +226,19 @@ class FrdData:
         return meshes
 
     @classmethod
-    def _make_waypoints(cls, road_block: FrdParser.RoadBlock) -> Vector3d:
-        return Vector3d(x=road_block.location.x, y=road_block.location.y, z=road_block.location.z)
+    def _make_waypoints(cls, road_block: FrdParser.RoadBlock) -> Waypoint:
+        location = Vector3d.from_frd_float3(road_block.location)
+        orientation = Matrix3x3(
+            x=Vector3d.from_frd_float3(road_block.right),
+            y=Vector3d.from_frd_float3(road_block.normal),
+            z=Vector3d.from_frd_float3(road_block.forward),
+        )
+        return Waypoint(
+            location=location,
+            orientation=orientation,
+            left_wall=road_block.left_wall,
+            right_wall=road_block.right_wall,
+        )
 
     @classmethod
     def _make_track_segment(

@@ -290,10 +290,18 @@ class CollisionMesh(BaseMesh):
 
 
 @dataclass(frozen=True)
+class Waypoint:
+    location: Vector3d
+    orientation: Matrix3x3
+    left_wall: float
+    right_wall: float
+
+
+@dataclass(frozen=True)
 class TrackSegment:
     mesh: DrawableMesh
     collision_meshes: Sequence[CollisionMesh]
-    waypoints: Sequence[Vector3d]
+    waypoints: Sequence[Waypoint]
 
 
 @dataclass(frozen=True)

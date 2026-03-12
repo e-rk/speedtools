@@ -45,8 +45,8 @@ from speedtools.types import (
     TrackLight,
     TrackObject,
     TrackSegment,
-    Vector3d,
     Vertex,
+    Waypoint,
 )
 from speedtools.utils import (
     get_path_case_insensitive,
@@ -237,13 +237,13 @@ class TrackData:
         return cls._select_wall_edge_idx(polygon)
 
     @classmethod
-    def _raise_vertex(cls, heights: Sequence[tuple[Vector3d, float]], vertex: Vertex) -> Vertex:
-        def sort_key(vertex: Vertex, x: tuple[Vector3d, float]) -> float:
-            location, _ = x
-            diff = vertex.location.subtract(location)
+    def _raise_vertex(cls, heights: Sequence[tuple[Waypoint, float]], vertex: Vertex) -> Vertex:
+        def sort_key(vertex: Vertex, x: tuple[Waypoint, float]) -> float:
+            waypoint, _ = x
+            diff = vertex.location.subtract(waypoint.location)
             return diff.magnitude()
 
-        def get_height(x: tuple[Vector3d, float]) -> float:
+        def get_height(x: tuple[Waypoint, float]) -> float:
             _, height = x
             return height
 
@@ -257,7 +257,7 @@ class TrackData:
 
     @classmethod
     def _make_polygon_wall(
-        cls, heights: Sequence[tuple[Vector3d, float]], mesh: CollisionMesh
+        cls, heights: Sequence[tuple[Waypoint, float]], mesh: CollisionMesh
     ) -> CollisionMesh | None:
         polygons = filter(lambda x: x.has_wall_collision and x.edges, mesh.polygons)
         edges = [cls._get_wall_edge_idx(polygon) for polygon in polygons]
@@ -283,7 +283,7 @@ class TrackData:
 
     @classmethod
     def _make_walls(
-        cls, heights: Sequence[tuple[Vector3d, float]], segment: TrackSegment
+        cls, heights: Sequence[tuple[Waypoint, float]], segment: TrackSegment
     ) -> CollisionMesh:
         walls = map(lambda x: cls._make_polygon_wall(heights, x), segment.collision_meshes)
         filtered = filter(lambda x: x is not None, walls)
@@ -291,7 +291,7 @@ class TrackData:
 
     @classmethod
     def _finalize_segment(
-        cls, heights: Iterable[tuple[Vector3d, float]], segment: TrackSegment
+        cls, heights: Iterable[tuple[Waypoint, float]], segment: TrackSegment
     ) -> TrackSegment:
         heights = list(heights)
         floor = segment.collision_meshes
@@ -302,10 +302,10 @@ class TrackData:
     @classmethod
     def _make_waypoint_height_pair(
         cls,
-        first: tuple[Iterable[Vector3d], Iterable[float]],
-        middle: tuple[Iterable[Vector3d], Iterable[float]],
-        last: tuple[Iterable[Vector3d], Iterable[float]],
-    ) -> Iterable[tuple[Vector3d, float]]:
+        first: tuple[Iterable[Waypoint], Iterable[float]],
+        middle: tuple[Iterable[Waypoint], Iterable[float]],
+        last: tuple[Iterable[Waypoint], Iterable[float]],
+    ) -> Iterable[tuple[Waypoint, float]]:
         fw, fh = first
         mw, mh = middle
         lw, lh = last
