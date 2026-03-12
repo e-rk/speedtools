@@ -392,8 +392,9 @@ class VivData:
     @property
     def lights(self) -> Iterable[VehicleLight]:
         fce = one(filter(lambda x: x.name in self.body_geometry, self.viv.entries))
-        lights = filter(lambda x: x.magic in self.light_types, fce.body.dummies)
-        return map(self._make_light, fce.body.light_sources, lights)
+        dummies_with_location = zip(fce.body.light_sources, fce.body.dummies)
+        lights = filter(lambda x: x[1].magic in self.light_types, dummies_with_location)
+        return starmap(self._make_light, lights)
 
     @property
     def interior_camera(self) -> Camera | None:
