@@ -321,6 +321,7 @@ class TrackData:
     @property
     def track_segments(self) -> Iterator[TrackSegment]:
         segments = list(self.frd.track_segments)
+        return segments
         height_num = map(lambda x: len(x.waypoints), segments)
         height_idx = accumulate(segments, func=lambda x, y: x + len(y.waypoints), initial=0)
         heights = map(lambda i, n: slicen(self.heights.heights, i, n), height_idx, height_num)

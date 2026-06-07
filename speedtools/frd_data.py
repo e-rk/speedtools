@@ -9,16 +9,18 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterable, Iterator, Sequence
 from contextlib import suppress
-from functools import partial
-from itertools import chain, compress, groupby, starmap
+from functools import partial, reduce
+from itertools import chain, compress, groupby, pairwise, starmap
 from pathlib import Path
 from typing import Optional
 
+from more_itertools.more import groupby_transform
 from more_itertools import (
     chunked,
     collapse,
     strictly_n,
     transpose,
+    consecutive_groups,
 )
 
 from speedtools.parsers import FrdParser
@@ -199,14 +201,51 @@ class FrdData:
         )
 
     @classmethod
+    def _make_poly_waypoints(cls, segment: FrdParser.SegmentData) -> list[list[Vector3d]]:
+        def mkwaypoint(polygon: FrdParser.DriveablePolygon) -> Vector3d:
+            face = segment.chunks[4].polygons[polygon.polygon].face
+            vertices = [Vector3d.from_frd_float3(segment.vertices[i]) for i in face]
+            centroid = reduce(lambda x, a: a.add(x), vertices)
+            return centroid.multiply(0.25)
+
+        def is_adjacent(x: FrdParser.DriveablePolygon, y: FrdParser.DriveablePolygon) -> bool:
+            face_x = segment.chunks[4].polygons[x.polygon].face
+            face_y = segment.chunks[4].polygons[y.polygon].face
+            logger.error(f"face_x: {face_x}, face_y: {face_y}")
+            return face_x[0] == face_y[1] and face_x[3] == face_y[2]
+
+        driveable_polygons_pairs = pairwise(
+            chain(segment.driveable_polygons, [segment.driveable_polygons[0]])
+        )
+
+        consecutive_polys = list(
+            groupby_transform(
+                driveable_polygons_pairs,
+                keyfunc=lambda x: is_adjacent(x[0], x[1]),
+                valuefunc=lambda x: x[0],
+                reducefunc=list,
+            )
+        )
+        filtered_groups = [v for k, v in consecutive_polys if k]
+        logger.error(f"cons: {consecutive_polys} eval: {filtered_groups}")
+        return [
+            [mkwaypoint(x) for x in group]
+            for group in filtered_groups
+            if any([g.road_effect.value != RoadEffect.not_driveable for g in group])
+        ]
+
+    @classmethod
     def _make_collision_mesh(
         cls,
         segment: FrdParser.SegmentData,
         road_effect: int,
         driveable_polygons: Iterable[FrdParser.DriveablePolygon],
     ) -> CollisionMesh:
+        driveable_polygons = list(driveable_polygons)
         polygons = [
-            cls._make_collision_polygon(segment, polygon) for polygon in driveable_polygons
+            cls._make_collision_polygon(segment, polygon)
+            for polygon in driveable_polygons
+            # if int.from_bytes(polygon.unknown) == 8
         ]
         vertex_locations = [Vector3d.from_frd_float3(vertex) for vertex in segment.vertices]
         vertices = [Vertex(location=loc) for loc in vertex_locations]
@@ -223,7 +262,7 @@ class FrdData:
         driveable_polygons = sorted(segment.driveable_polygons, key=driveable_polygon_key)
         driveable_mesh_groups = groupby(driveable_polygons, key=driveable_polygon_key)
         meshes = starmap(partial(cls._make_collision_mesh, segment), driveable_mesh_groups)
-        return meshes
+        return filter(lambda x: x.polygons, meshes)
 
     @classmethod
     def _make_waypoints(cls, road_block: FrdParser.RoadBlock) -> Waypoint:
@@ -238,6 +277,11 @@ class FrdData:
             orientation=orientation,
             left_wall=road_block.left_wall,
             right_wall=road_block.right_wall,
+            left_lane_width=road_block.left_lane_width,
+            right_lane_width=road_block.right_lane_width,
+            num_left_lanes=road_block.num_left_lanes,
+            num_right_lanes=road_block.num_right_lanes,
+            lane_mask=road_block.lane_mask,
         )
 
     @classmethod
@@ -261,10 +305,13 @@ class FrdData:
         ]
         mesh = DrawableMesh(vertices=vertices, polygons=track_polygons)
         waypoints = [cls._make_waypoints(block) for block in road_blocks]
+        centroids = cls._make_poly_waypoints(segment)
+        logger.error(f"wp: {len(waypoints)}, centr: {len(centroids)}, data: {centroids}")
+        waypoints_tuples = list(zip(waypoints, centroids, strict=True))
         return TrackSegment(
             mesh=mesh,
             collision_meshes=collision_meshes,
-            waypoints=waypoints,
+            waypoints=waypoints_tuples,
         )
 
     @classmethod

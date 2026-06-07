@@ -92,15 +92,28 @@ types:
             - id: right_wall
               type: f4
               doc: Distance to the right wall
-            - id: unknown1
-              size: 8
+            - id: left_lane_width
+              type: f4
+              doc: Width of left lanes
+            - id: right_lane_width
+              type: f4
+              doc: Width of right lanes
             - id: neighbors
               type: u2
               repeat: expr
               repeat-expr: 2
               doc: Neighboring nodes
+            - id: num_left_lanes
+              type: u4
+              doc: Number of left lanes
+            - id: num_right_lanes
+              type: u4
+              doc: Number of right lanes
+            - id: lane_mask
+              type: b16
+              doc: Lane mask
             - id: unknown2
-              size: 16
+              size: 6
     segment_header:
         seq:
             - id: num_polygons

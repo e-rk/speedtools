@@ -558,14 +558,20 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
         )
         waypoint_metadata = [
             (
-                gltf_transform @ mathutils.Vector(wp.location),
-                gltf_transform.inverted() @ mathutils.Matrix(wp.orientation) @ gltf_transform,
+                gltf_transform @ mathutils.Vector(wp[0].location),
+                gltf_transform.inverted() @ mathutils.Matrix(wp[0].orientation) @ gltf_transform,
                 forward_lane,
                 forward_offset,
                 backward_lane,
                 backward_offset,
-                wp.left_wall,
-                wp.right_wall,
+                wp[0].left_wall,
+                wp[0].right_wall,
+                wp[0].left_lane_width,
+                wp[0].right_lane_width,
+                wp[0].num_left_lanes,
+                wp[0].num_right_lanes,
+                wp[0].lane_mask,
+                [gltf_transform @ mathutils.Vector(x) for x in wp[1]],
             )
             for (
                 wp,
@@ -589,6 +595,12 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
                 "backward_offset": -w[5],
                 "left_wall": w[6],
                 "right_wall": w[7],
+                "wp.left_lane_width": w[8],
+                "wp.right_lane_width": w[9],
+                "wp.num_left_lanes": w[10],
+                "wp.num_right_lanes": w[11],
+                "wp.lane_mask": w[12],
+                "strip_centroids": [(x.x, x.y, x.z) for x in w[13]],
             }
             for w in waypoint_metadata
         ]

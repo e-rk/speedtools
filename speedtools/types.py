@@ -87,6 +87,12 @@ class Vector3d(NamedTuple):
     def subtract(self, x: Vector3d) -> Vector3d:
         return Vector3d(x=self.x - x.x, y=self.y - x.y, z=self.z - x.z)
 
+    def add(self, x: Vector3d) -> Vector3d:
+        return Vector3d(x=self.x + x.x, y=self.y + x.y, z=self.z + x.z)
+
+    def multiply(self, x: float) -> Vector3d:
+        return Vector3d(x=self.x * x, y=self.y * x, z=self.z * x)
+
 
 class UV(NamedTuple):
     u: float
@@ -295,13 +301,18 @@ class Waypoint:
     orientation: Matrix3x3
     left_wall: float
     right_wall: float
+    left_lane_width: float
+    right_lane_width: float
+    num_left_lanes: int
+    num_right_lanes: int
+    lane_mask: int
 
 
 @dataclass(frozen=True)
 class TrackSegment:
     mesh: DrawableMesh
     collision_meshes: Sequence[CollisionMesh]
-    waypoints: Sequence[Waypoint]
+    waypoints: Sequence[tuple[Waypoint, Sequence[Vector3d]]]
 
 
 @dataclass(frozen=True)
