@@ -296,6 +296,7 @@ class TrackData:
         heights = list(heights)
         floor = segment.collision_meshes
         wall = cls._make_walls(heights=heights, segment=segment)
+        logger.error(f"walls process {wall}")
         collision_meshes = floor + [wall]  # type: ignore[operator]
         return replace(segment, collision_meshes=collision_meshes)
 
@@ -321,11 +322,11 @@ class TrackData:
     @property
     def track_segments(self) -> Iterator[TrackSegment]:
         segments = list(self.frd.track_segments)
-        return segments
+        # return segments
         height_num = map(lambda x: len(x.waypoints), segments)
         height_idx = accumulate(segments, func=lambda x, y: x + len(y.waypoints), initial=0)
         heights = map(lambda i, n: slicen(self.heights.heights, i, n), height_idx, height_num)
-        waypoints = map(lambda x: x.waypoints, segments)
+        waypoints = map(lambda x: [w[0] for w in x.waypoints], segments)
         waypoints_and_heights = list(zip(waypoints, heights))
         waypoints_and_heights = [
             waypoints_and_heights[-1],

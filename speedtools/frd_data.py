@@ -211,7 +211,7 @@ class FrdData:
         def is_adjacent(x: FrdParser.DriveablePolygon, y: FrdParser.DriveablePolygon) -> bool:
             face_x = segment.chunks[4].polygons[x.polygon].face
             face_y = segment.chunks[4].polygons[y.polygon].face
-            logger.error(f"face_x: {face_x}, face_y: {face_y}")
+            # logger.error(f"face_x: {face_x}, face_y: {face_y}")
             return face_x[0] == face_y[1] and face_x[3] == face_y[2]
 
         driveable_polygons_pairs = pairwise(
@@ -227,7 +227,7 @@ class FrdData:
             )
         )
         filtered_groups = [v for k, v in consecutive_polys if k]
-        logger.error(f"cons: {consecutive_polys} eval: {filtered_groups}")
+        # logger.error(f"cons: {consecutive_polys} eval: {filtered_groups}")
         return [
             [mkwaypoint(x) for x in group]
             for group in filtered_groups
@@ -306,7 +306,7 @@ class FrdData:
         mesh = DrawableMesh(vertices=vertices, polygons=track_polygons)
         waypoints = [cls._make_waypoints(block) for block in road_blocks]
         centroids = cls._make_poly_waypoints(segment)
-        logger.error(f"wp: {len(waypoints)}, centr: {len(centroids)}, data: {centroids}")
+        # logger.error(f"wp: {len(waypoints)}, centr: {len(centroids)}, data: {centroids}")
         waypoints_tuples = list(zip(waypoints, centroids, strict=True))
         return TrackSegment(
             mesh=mesh,
