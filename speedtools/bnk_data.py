@@ -7,6 +7,7 @@
 import logging
 from collections import namedtuple
 from collections.abc import Iterable
+from functools import partial
 from pathlib import Path
 from typing import Any, Self
 
@@ -37,37 +38,36 @@ class BnkData:
         return cls(parser=parser)
 
     @classmethod
-    def _make_sound(cls, tlvs: list[Any]) -> AudioStream:
+    def _make_sound(cls, tlvs: list[Any]) -> AudioStream | None:
         subheader = one(bnk_find_tlv(tlvs=tlvs, tlv_type=BnkTlvType.subheader))
         data_tlv = one(bnk_find_tlv(tlvs=subheader.value.tlvs, tlv_type=BnkTlvType.data_start))
-        pitch_unknown0 = bnk_find_tlv_only(
-            tlvs=tlvs, tlv_type=BnkTlvType.pitch_unknown0, default=60
-        )
-        pitch_unknown1 = bnk_find_tlv_only(
-            tlvs=tlvs, tlv_type=BnkTlvType.pitch_unknown1, default=0
-        )
-        pitch_unknown2 = bnk_find_tlv_only(
-            tlvs=tlvs, tlv_type=BnkTlvType.pitch_unknown2, default=0
-        )
-
         sound_data = data_tlv.value.body
         match sound_data.compression:
+            case 0:
+                compression = Compression.PCM
             case 7:
                 compression = Compression.ADPCM
             case _:
-                compression = Compression.PCM
+                logger.warning(f"Skipping sample with compression {sound_data.compression}")
+                return None
 
+        find = partial(bnk_find_tlv_only, tlvs)
         return AudioStream(
             num_channels=sound_data.num_channels,
             sample_rate=sound_data.sample_rate,
             audio_samples=sound_data.samples,
-            loop_start=sound_data.loop_start,
-            loop_length=sound_data.loop_length,
+            loop_start=max(sound_data.loop_start, 0),
+            loop_end=sound_data.loop_end if sound_data.loop_end > 0 else None,
             decompressed_samples=sound_data.num_samples,
-            pitch_unknown0=pitch_unknown0,
-            pitch_unknown1=pitch_unknown1,
-            pitch_unknown2=pitch_unknown2,
+            root_key=find(BnkTlvType.root_key, default=60),
+            pitch_bend_range=find(BnkTlvType.pitch_bend_range, default=0),
+            detune=find(BnkTlvType.detune, default=0),
             compression=compression,
+            volume=find(BnkTlvType.volume, default=127),
+            pan=find(BnkTlvType.pan, default=64),
+            volume_random_range=find(BnkTlvType.volume_random_range, default=0),
+            pan_random_range=find(BnkTlvType.pan_random_range, default=0),
+            detune_random_range=find(BnkTlvType.detune_random_range, default=0),
         )
 
     @classmethod
@@ -75,7 +75,7 @@ class BnkData:
         separated = split_at(
             sound_entry.body.header.tlvs, lambda x: x.type is BnkTlvType.separator
         )
-        return [cls._make_sound(x) for x in separated]
+        return list(filter_map(cls._make_sound, separated))
 
     @property
     def sound_streams(self) -> Iterable[tuple[int, list[AudioStream]]]:

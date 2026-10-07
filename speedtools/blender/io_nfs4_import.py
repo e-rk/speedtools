@@ -736,9 +736,14 @@ class CarImporterSimple(BaseImporter):
                     "samples": [
                         {
                             "sample": raw_stream_to_wav_b64(stream),
-                            "pitch_unknown0": stream.pitch_unknown0,
-                            "pitch_unknown1": stream.pitch_unknown1,
-                            "pitch_unknown2": stream.pitch_unknown2,
+                            "root_key": stream.root_key,
+                            "pitch_bend_range": stream.pitch_bend_range,
+                            "detune": stream.detune,
+                            "volume": stream.volume,
+                            "pan": stream.pan,
+                            "volume_random_range": stream.volume_random_range,
+                            "pan_random_range": stream.pan_random_range,
+                            "detune_random_range": stream.detune_random_range,
                         }
                         for stream in eng.streams
                     ],

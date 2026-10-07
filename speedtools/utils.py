@@ -182,15 +182,18 @@ def make_horizon_texture(resources: list[Resource]) -> Any:
 
 
 def make_smpl_chunk(audio_stream: AudioStream) -> bytes:
-    loop_end = audio_stream.loop_length
-    if loop_end == 0:
-        loop_end = audio_stream.decompressed_samples - 1
+    last_sample = audio_stream.decompressed_samples - 1
+    if audio_stream.loop_end:
+        loop_end = min(audio_stream.loop_end, last_sample)
+        loop_start = min(audio_stream.loop_start, loop_end)
+    else:
+        loop_start, loop_end = 0, last_sample
     smpl = struct.pack(
         "<4x4x4x4x4x4x4xl4xllll4x4x",
         1,
         0,
         0,
-        audio_stream.loop_start,
+        loop_start,
         loop_end,
     )
     chunk = struct.pack("<4sl", "smpl".encode("ASCII"), len(smpl))
@@ -200,9 +203,11 @@ def make_smpl_chunk(audio_stream: AudioStream) -> bytes:
 def raw_stream_to_wav(audio_stream: AudioStream) -> bytes:
     match audio_stream.compression:
         case Compression.ADPCM:
-            data = adpcm_to_s16le(
+            decoded = adpcm_to_s16le(
                 stream=audio_stream.audio_samples, num_channels=audio_stream.num_channels
             )
+            # The last frame decodes past the end of the sample
+            data = decoded[: audio_stream.decompressed_samples * audio_stream.num_channels * 2]
         case _:
             data = audio_stream.audio_samples
 

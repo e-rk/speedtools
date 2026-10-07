@@ -425,12 +425,17 @@ class AudioStream:
     sample_rate: int
     audio_samples: bytes
     loop_start: int
-    loop_length: int
+    loop_end: int | None
     decompressed_samples: int
-    pitch_unknown0: int
-    pitch_unknown1: int
-    pitch_unknown2: int
+    root_key: int
+    pitch_bend_range: int
+    detune: int
     compression: Compression
+    volume: int
+    pan: int
+    volume_random_range: int
+    pan_random_range: int
+    detune_random_range: int
 
 
 @dataclass(frozen=True)
