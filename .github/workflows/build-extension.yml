@@ -31,9 +31,9 @@ jobs:
               run: |
                   cd speedtools/blender
                   pip wheel ../.. -w wheels
-                  pip download pillow --dest ./wheels --only-binary=:all: --python-version=3.11 --platform=manylinux_2_28_x86_64
-                  pip download pillow --dest ./wheels --only-binary=:all: --python-version=3.11 --platform=macosx_11_0_arm64
-                  pip download pillow --dest ./wheels --only-binary=:all: --python-version=3.11 --platform=win_amd64
+                  pip download pillow --dest ./wheels --only-binary=:all: --python-version=3.13 --platform=manylinux_2_28_x86_64
+                  pip download pillow --dest ./wheels --only-binary=:all: --python-version=3.13 --platform=macosx_11_0_arm64
+                  pip download pillow --dest ./wheels --only-binary=:all: --python-version=3.13 --platform=win_amd64
                   ls wheels
                   VERSION=${{ steps.ghd.outputs.describe }}
                   sed -i "s/0.22.99/${VERSION:1}/g" blender_manifest.toml
@@ -60,7 +60,7 @@ jobs:
             - if: ${{ matrix.os == 'windows-latest' }}
               run: |
                   choco install blender
-                  echo 'C:\Program Files\Blender Foundation\Blender 5.0\' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+                  echo 'C:\Program Files\Blender Foundation\Blender 5.2\' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
             - run: blender --command extension install-file -e -r user_default speedtools-*.zip
 
     release:
