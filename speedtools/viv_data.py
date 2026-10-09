@@ -322,7 +322,7 @@ class VivData:
         coast: list[tuple[int, SoundTable]],
     ) -> Iterable[EngineAudio]:
         def mkenginesound(patchnum: int, tables: list[SoundTable]) -> EngineAudio:
-            is_rear = patchnum > 0x40
+            is_rear = patchnum >= 0x40
             return EngineAudio(
                 streams=samples[patchnum],
                 tables=tables,
