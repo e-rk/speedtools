@@ -45,7 +45,9 @@ seq:
     type: u4
   - id: driver_movement_offset
     type: u4
-    doc: Offset of the driver movement data in bytes after the FCE header
+    doc: |
+      Offset of the driver movement data in bytes after the FCE header.
+      One entry per vertex, indexed like the vertice table.
   - id: unknown4
     size: 8
   - id: half_sizes
@@ -221,11 +223,24 @@ instances:
     doc: Vertex damage weights
   movement_data:
     pos: 8248 + driver_movement_offset
-    type: u4
+    type: vertex_movement
     repeat: expr
     repeat-expr: num_vertices
-    doc: Vertex movement data
+    doc: |
+      Vertex movement data. Only the driver (:OD) and driver head (:OH) parts
+      are drawn with a per-vertex part rotation; the game ignores these flags
+      for every other part.
 types:
+  vertex_movement:
+    seq:
+      - id: flags
+        type: u4
+    instances:
+      is_static:
+        value: (flags & 0x0004) != 0
+        doc: |
+          Vertex ignores the part rotation (driver body). When clear, the
+          vertex follows it (driver hands turning the steering wheel).
   float3:
     seq:
       - id: x
