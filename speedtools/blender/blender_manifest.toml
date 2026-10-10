@@ -15,7 +15,7 @@ wheels = [
     "./wheels/kaitaistruct-0.11-py2.py3-none-any.whl",
     "./wheels/more_itertools-11.1.0-py3-none-any.whl",
     "./wheels/parse-1.22.2-py2.py3-none-any.whl",
-    "./wheels/speedtools-0.34.0-py3-none-any.whl",
+    "./wheels/speedtools-0.35.0-py3-none-any.whl",
     "./wheels/future-1.0.0-py3-none-any.whl",
     "./wheels/pillow-12.3.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
     "./wheels/pillow-12.3.0-cp313-cp313-macosx_11_0_arm64.whl",
