@@ -163,6 +163,18 @@ class ShapeKey:
 
 
 @dataclass(frozen=True)
+class ShapeKeys:
+    keys: Sequence[ShapeKey]
+
+
+@dataclass(frozen=True)
+class Rotation:
+    axis: Vector3d
+    angle: float
+    weights: Sequence[float]
+
+
+@dataclass(frozen=True)
 class BaseMesh:
     vertices: Sequence[Vertex]
     polygons: Sequence[BasePolygon]
@@ -219,7 +231,7 @@ class AnimationAction:
 @dataclass(frozen=True)
 class DrawableMesh(BaseMesh):
     polygons: Sequence[Polygon]
-    shape_keys: Sequence[ShapeKey] = field(default_factory=list)
+    morph: ShapeKeys | Rotation | None = None
 
 
 @dataclass(frozen=True)

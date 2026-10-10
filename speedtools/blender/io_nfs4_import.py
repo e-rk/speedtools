@@ -48,6 +48,7 @@ from speedtools.types import (
     Polygon,
     Resource,
     ShapeKey,
+    ShapeKeys,
     Vector3d,
     VehicleLightType,
 )
@@ -377,8 +378,11 @@ class BaseImporter(metaclass=ABCMeta):
                 bpy_polygon.material_index = index
         bpy_mesh.validate()
         bpy_obj = bpy.data.objects.new(name, bpy_mesh)
-        if mesh.shape_keys:
-            bpy_obj.shape_key_add(name="Basis")
+        match mesh.morph:
+            case ShapeKeys():
+                bpy_obj.shape_key_add(name="Basis")
+            case _:
+                pass
         return bpy_obj
 
     def make_base_light(
@@ -691,8 +695,12 @@ class CarImporterSimple(BaseImporter):
             self.set_object_location(obj=bpy_obj, location=part.location)
             car_collection.objects.link(bpy_obj)
             bpy_obj["SPT_interior"] = False
-            for shape_key in part.mesh.shape_keys:
-                self.make_shape_key(obj=bpy_obj, shape_key=shape_key)
+            match part.mesh.morph:
+                case ShapeKeys(keys=keys):
+                    for shape_key in keys:
+                        self.make_shape_key(obj=bpy_obj, shape_key=shape_key)
+                case _:
+                    pass
         if import_interior:
             interior_collection = bpy.data.collections.new("Interior parts")
             bpy.context.scene.collection.children.link(interior_collection)  # type: ignore[union-attr]

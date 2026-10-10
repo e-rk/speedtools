@@ -12,6 +12,7 @@ from dataclasses import replace
 from enum import Enum
 from functools import partial, reduce
 from itertools import compress, starmap
+from math import pi
 from pathlib import Path
 from typing import Any, Callable, NamedTuple
 
@@ -37,7 +38,9 @@ from speedtools.types import (
     Part,
     Polygon,
     Resource,
+    Rotation,
     ShapeKey,
+    ShapeKeys,
     ShapeKeyType,
     SoundTable,
     Vector3d,
@@ -61,6 +64,7 @@ class PartAttributes(NamedTuple):
     interior: bool = False
     resolution: Resolution = Resolution.HIGH
     emissive: bool = False
+    steered: bool = False
 
 
 class VivData:
@@ -102,7 +106,7 @@ class VivData:
         # Driver's chair and steering wheel
         ":OND": PartAttributes(resolution=Resolution.HIGH, name="driver_chair"),
         # Driver holding steering wheel
-        ":OD": PartAttributes(resolution=Resolution.HIGH, name="driver"),
+        ":OD": PartAttributes(resolution=Resolution.HIGH, steered=True, name="driver"),
         # Driver head
         ":OH": PartAttributes(resolution=Resolution.HIGH, name="driver_head"),
         # Dash when lit
@@ -229,6 +233,11 @@ class VivData:
         return ShapeKey(type=ShapeKeyType.DAMAGE, vertices=vert)
 
     @classmethod
+    def _make_part_rotation(cls, movement: Iterable[FceParser.VertexMovement]) -> Rotation:
+        weights = [0.0 if vertex.is_static else 1.0 for vertex in movement]
+        return Rotation(axis=Vector3d(x=0.0, y=0.0, z=1.0), angle=-pi / 2, weights=weights)
+
+    @classmethod
     def _make_part_mesh(
         cls,
         index: int,
@@ -237,11 +246,18 @@ class VivData:
         part_polygons: Iterable[FceParser.Polygon],
         part_damaged_vertices: Iterable[FceParser.Float3],
         part_damaged_normals: Iterable[FceParser.Float3],
+        part_movement: Iterable[FceParser.VertexMovement],
+        attribute: PartAttributes,
     ) -> DrawableMesh:
         vertices = list(map(cls._make_vertex, part_vertices, part_normals))
-        shape_key = cls._make_part_shape_key(part_damaged_vertices, part_damaged_normals)
         polygons = [cls._make_polygon(index, polygon) for polygon in part_polygons]
-        return DrawableMesh(vertices=vertices, polygons=polygons, shape_keys=[shape_key])
+        morph: ShapeKeys | Rotation
+        if attribute.steered:
+            morph = cls._make_part_rotation(part_movement)
+        else:
+            shape_key = cls._make_part_shape_key(part_damaged_vertices, part_damaged_normals)
+            morph = ShapeKeys(keys=[shape_key])
+        return DrawableMesh(vertices=vertices, polygons=polygons, morph=morph)
 
     @classmethod
     def _make_part(
@@ -274,6 +290,9 @@ class VivData:
         part_damaged_normals_iter = map(
             slice_damaged_norm, fce.part_vertex_index, fce.part_num_vertices
         )
+        slice_movement = partial(islicen, fce.movement_data)
+        part_movement_iter = map(slice_movement, fce.part_vertex_index, fce.part_num_vertices)
+        attributes = list(map(cls._get_part_attributes, fce.part_strings))
         meshes = map(
             partial(cls._make_part_mesh, index),
             part_vertices_iter,
@@ -281,8 +300,9 @@ class VivData:
             part_polygons_iter,
             part_damaged_vertices_iter,
             part_damaged_normals_iter,
+            part_movement_iter,
+            attributes,
         )
-        attributes = list(map(cls._get_part_attributes, fce.part_strings))
         part_data = zip(fce.part_locations, meshes, attributes, strict=True)
         selectors = map(cls._match_attributes, attributes)
         filtered_parts = compress(part_data, selectors)
