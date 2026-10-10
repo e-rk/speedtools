@@ -9,12 +9,13 @@ from __future__ import annotations
 import logging
 from abc import ABCMeta, abstractmethod
 from collections.abc import Callable
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from functools import total_ordering
 from itertools import chain, groupby
 from math import pi, radians
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Generator, Literal
 
 import bpy
 import mathutils
@@ -47,6 +48,7 @@ from speedtools.types import (
     Matrix3x3,
     Polygon,
     Resource,
+    Rotation,
     ShapeKey,
     ShapeKeys,
     Vector3d,
@@ -76,6 +78,29 @@ bl_info = {
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
+
+
+@contextmanager
+def edit_mode(obj: bpy.types.Object) -> Generator[None]:
+    view_layer = bpy.context.view_layer
+    previous = view_layer.objects.active  # type: ignore[union-attr]
+    view_layer.objects.active = obj  # type: ignore[union-attr]
+    # Mode selection ignores active object. Therefore must be done separately. Unfortunate.
+    try:
+        with bpy.context.temp_override(
+            active_object=obj,
+            object=obj,
+            selected_objects=[obj],
+            selected_editable_objects=[obj],
+            objects_in_mode=[obj],
+        ):
+            bpy.ops.object.mode_set(mode="EDIT")
+            try:
+                yield
+            finally:
+                bpy.ops.object.mode_set(mode="OBJECT")
+    finally:
+        view_layer.objects.active = previous  # type: ignore[union-attr]
 
 
 @total_ordering
@@ -454,6 +479,32 @@ class BaseImporter(metaclass=ABCMeta):
             mu_vector = self.rot_mat @ mathutils.Vector(vertex.location)
             data.co = mu_vector  # type: ignore[attr-defined]
 
+    def make_rotation_rig(
+        self, obj: bpy.types.Object, rotation: Rotation, collection: bpy.types.Collection
+    ) -> bpy.types.Object:
+        bpy_armature = bpy.data.armatures.new(f"{obj.name}_armature")
+        bpy_rig = bpy.data.objects.new(f"{obj.name}_rig", bpy_armature)
+        # Needed to make rig visible to bpy.context
+        collection.objects.link(bpy_rig)
+        bpy_rig.location = obj.location
+        obj.parent = bpy_rig
+        obj.location = (0.0, 0.0, 0.0)
+        axis = (self.rot_mat @ mathutils.Vector(rotation.axis)).normalized()
+        # Not possible to edit armature through data API itself. Unfortunate.
+        with edit_mode(bpy_rig):
+            for name in ("root", "rotation"):
+                bpy_bone = bpy_armature.edit_bones.new(name)
+                bpy_bone.head = (0.0, 0.0, 0.0)
+                bpy_bone.tail = axis * 0.1
+        static_group = obj.vertex_groups.new(name="root")
+        rotation_group = obj.vertex_groups.new(name="rotation")
+        for index, weight in enumerate(rotation.weights):
+            rotation_group.add([index], weight, "REPLACE")
+            static_group.add([index], 1.0 - weight, "REPLACE")
+        modifier = obj.modifiers.new(name="Armature", type="ARMATURE")
+        modifier.object = bpy_rig  # type: ignore[attr-defined]
+        return bpy_rig
+
 
 class TrackImportStrategy(metaclass=ABCMeta):
     @abstractmethod
@@ -699,8 +750,10 @@ class CarImporterSimple(BaseImporter):
                 case ShapeKeys(keys=keys):
                     for shape_key in keys:
                         self.make_shape_key(obj=bpy_obj, shape_key=shape_key)
-                case _:
-                    pass
+                case Rotation() as rotation:
+                    self.make_rotation_rig(
+                        obj=bpy_obj, rotation=rotation, collection=car_collection
+                    )
         if import_interior:
             interior_collection = bpy.data.collections.new("Interior parts")
             bpy.context.scene.collection.children.link(interior_collection)  # type: ignore[union-attr]
