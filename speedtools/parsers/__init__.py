@@ -10,6 +10,7 @@ from .cam import Cam as CamParser
 from .can import Can as CanParser
 from .ctb import Ctb as CtbParser
 from .fce import Fce as FceParser
+from .fedata import Fedata as FedataParser
 from .frd import Frd as FrdParser
 from .fsh import Fsh as FshParser
 from .qfs import Qfs as QfsParser
@@ -20,6 +21,7 @@ from .viv import Viv as VivParser
 __all__ = [
     "BnkParser",
     "FceParser",
+    "FedataParser",
     "FrdParser",
     "FshParser",
     "QfsParser",
