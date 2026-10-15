@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import Enum, StrEnum
 from math import pi, sqrt
 from typing import Any, NamedTuple, Optional, TypeAlias
 
@@ -55,6 +55,20 @@ class VehicleLightType(Enum):
 class EngineAudioType(Enum):
     COAST = 0
     LOAD = 1
+
+
+class EngineLocation(StrEnum):
+    FRONT = "front"
+    MID = "mid"
+    REAR = "rear"
+
+
+class CarClass(StrEnum):
+    AAA = "AAA"
+    AA = "AA"
+    A = "A"
+    B = "B"
+    NONE = "NONE"
 
 
 class Vector3d(NamedTuple):
@@ -334,6 +348,9 @@ class Car:
     dimensions: Vector3d
     engine_audio: list[EngineAudio]
     interior_camera: Camera | None
+    engine_location: EngineLocation
+    car_class: CarClass
+    police: bool = False
 
 
 @dataclass(frozen=True)

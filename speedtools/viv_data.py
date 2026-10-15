@@ -27,12 +27,14 @@ from speedtools.types import (
     AudioStream,
     Camera,
     Car,
+    CarClass,
     Color,
     ColorHSV,
     ColorPreset,
     DrawableMesh,
     EngineAudio,
     EngineAudioType,
+    EngineLocation,
     Image,
     Matrix3x3,
     Part,
@@ -460,6 +462,8 @@ class VivData:
             dimensions=self.dimensions,
             engine_audio=list(self.engine_audio),
             interior_camera=self.interior_camera,
+            engine_location=EngineLocation.FRONT,
+            car_class=CarClass.NONE,
         )
 
     @property
