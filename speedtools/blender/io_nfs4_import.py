@@ -663,6 +663,41 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
                 "sun_opposite": color_to_dict(horizon.sun_opposite_side),
                 "earth_bottom": color_to_dict(horizon.earth_bottom),
                 "earth_top": color_to_dict(horizon.earth_top),
+                "mirror": horizon.mirror,
+                "has_panorama": horizon.has_panorama,
+                "bottom_y": horizon.bottom_y,
+                "gouraud_middle": horizon.gouraud_middle,
+                "gouraud_height": horizon.gouraud_height,
+                "panorama_bottom": horizon.panorama_bottom,
+                "panorama_top": horizon.panorama_top,
+                "radius": horizon.radius,
+                "angle": horizon.angle,
+            }
+            clouds_attributes = track.cloud_attributes
+            environment["clouds"] = {
+                "type": clouds_attributes.cloud_type,
+                "bright": clouds_attributes.bright,
+                "variance": clouds_attributes.variance,
+                "nimbus": clouds_attributes.nimbus,
+                "fog": clouds_attributes.fog,
+                "visual_height": clouds_attributes.visual_height,
+                "wind_speed": clouds_attributes.wind_speed,
+                "wind_direction": clouds_attributes.wind_direction,
+                "y_offset": clouds_attributes.y_offset,
+                "height": clouds_attributes.height,
+                "u_scale": clouds_attributes.u_scale,
+                "v_scale": clouds_attributes.v_scale,
+            }
+            lightning = track.lightning
+            environment["lightning"] = {
+                "chance": lightning.chance,
+                "off_ticks": lightning.off_ticks,
+            }
+            fog = track.fog
+            environment["fog"] = {
+                "color": color_to_dict(fog.color),
+                "density": fog.density,
+                "horizon": fog.horizon,
             }
             spt_track["environment"] = environment
 
