@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any, Dict, TypeVar
 
 import ffmpeg  # type: ignore[import-untyped]
-from more_itertools import unique_everseen
+from more_itertools import first, unique_everseen
 from PIL import Image as pil_Image
 
 from speedtools.decoders import adpcm_to_s16le
@@ -295,3 +295,9 @@ def get_path_case_insensitive(stem: Path, target: Path) -> Path:
     if not file:
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(target))
     return file
+
+
+def to_parent_dir(name: str, path: Path) -> Path:
+    parents = path.parents
+    name = name.lower()
+    return first(filter(lambda x: x.name.lower() == name, parents))

@@ -29,7 +29,7 @@ from more_itertools import (
     unzip,
 )
 
-from speedtools import TrackData, VivData
+from speedtools import CarData, TrackData
 from speedtools.types import (
     UV,
     Action,
@@ -56,11 +56,11 @@ from speedtools.types import (
 )
 from speedtools.utils import (
     create_pil_image,
-    get_path_case_insensitive,
     image_to_png,
     make_horizon_texture,
     pil_image_to_png,
     raw_stream_to_wav_b64,
+    to_parent_dir,
     validate_face,
 )
 
@@ -735,9 +735,9 @@ class CarImporterSimple(BaseImporter):
         }
 
     def import_car(
-        self, viv: VivData, import_interior: bool, import_lights: bool, import_audio: bool
+        self, car_data: CarData, import_interior: bool, import_lights: bool, import_audio: bool
     ) -> None:
-        car = viv.car
+        car = car_data.car
         car_collection = bpy.data.collections.new("Car parts")
         bpy.context.scene.collection.children.link(car_collection)  # type: ignore[union-attr]
         parts = car.parts
@@ -789,6 +789,9 @@ class CarImporterSimple(BaseImporter):
             "performance": car.performance,
             "dimensions": (dimensions.x, dimensions.y, dimensions.z),
             "colors": colors,
+            "engine_location": car.engine_location.value,
+            "car_class": car.car_class.value if car.car_class else None,
+            "police": car.police,
         }
         if import_audio:
 
@@ -948,12 +951,12 @@ class CarImporter(bpy.types.Operator):
     def execute(
         self, context: bpy.types.Context
     ) -> set[Literal["RUNNING_MODAL", "CANCELLED", "FINISHED", "PASS_THROUGH", "INTERFACE"]]:
-        viv_path = Path(self.directory, "CAR.VIV")
-        viv_path = get_path_case_insensitive(Path(self.directory), viv_path)
-        viv = VivData.from_file(viv_path)
-        importer = CarImporterSimple(material_map=viv.material_map)
+        directory = Path(self.directory)
+        game_root = to_parent_dir("Data", directory).parent
+        car_data = CarData(game_root=game_root, directory=Path(directory))
+        importer = CarImporterSimple(material_map=car_data.material_map)
         importer.import_car(
-            viv,
+            car_data,
             import_interior=self.import_interior,
             import_lights=self.import_lights,
             import_audio=self.import_audio,

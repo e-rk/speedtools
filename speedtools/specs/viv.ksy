@@ -6,6 +6,7 @@ meta:
         - fce
         - ctb
         - bnk
+        - fedata
     ks-opaque-types: true
     endian: be
     encoding: ASCII
@@ -52,4 +53,10 @@ types:
                         '"careng.bnk"': bnk
                         '"ocareng.bnk"': bnk
                         '"scareng.bnk"': bnk
+                        '"fedata.eng"': fedata
+                        '"fedata.ger"': fedata
+                        '"fedata.spa"': fedata
+                        '"fedata.ita"': fedata
+                        '"fedata.jap"': fedata
+                        '"fedata.swe"': fedata
                 size: length
