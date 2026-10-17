@@ -17,7 +17,7 @@ from contextlib import suppress
 from dataclasses import replace
 from functools import partial, singledispatch
 from io import BytesIO
-from itertools import chain, compress, islice
+from itertools import accumulate, chain, compress, islice
 from operator import getitem
 from pathlib import Path
 from typing import Any, Dict, TypeVar
@@ -174,10 +174,11 @@ def validate_face(face: Sequence[int], *iterables: Iterable[Any]) -> Iterator[tu
 
 def make_horizon_texture(resources: list[Resource]) -> Any:
     images = [create_pil_image(x.image) for x in resources]
-    width_hrz = sum(x.width for x in images)
-    horizon_image = pil_Image.new("RGBA", (width_hrz, width_hrz))
-    for idx, image in enumerate(images):
-        horizon_image.paste(image, (image.width * idx, width_hrz // 2 - image.width // 2))
+    height = max(x.height for x in images)
+    offsets = accumulate((x.width for x in images), initial=0)
+    horizon_image = pil_Image.new("RGBA", (sum(x.width for x in images), height))
+    for offset, image in zip(offsets, images):
+        horizon_image.paste(image, (offset, height - image.height))
     return horizon_image
 
 
