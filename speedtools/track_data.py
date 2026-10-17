@@ -30,14 +30,17 @@ from speedtools.types import (
     AnimationAction,
     AudioSource,
     Camera,
+    CloudAttributes,
     CollisionMesh,
     CollisionPolygon,
     CollisionType,
     Color,
     DirectionalLight,
     Edge,
+    FogAttributes,
     Horizon,
     LightAttributes,
+    LightningAttributes,
     LightStub,
     Polygon,
     Resource,
@@ -408,6 +411,18 @@ class TrackData:
     @property
     def horizon(self) -> Horizon:
         return self.ini.horizon
+
+    @property
+    def cloud_attributes(self) -> CloudAttributes:
+        return self.ini.clouds
+
+    @property
+    def lightning(self) -> LightningAttributes:
+        return self.ini.lightning
+
+    @property
+    def fog(self) -> FogAttributes:
+        return self.ini.fog
 
     @property
     def sky_images(self) -> Iterable[Resource]:

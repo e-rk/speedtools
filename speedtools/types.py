@@ -427,6 +427,44 @@ class Horizon:
     sun_opposite_side: Color
     earth_bottom: Color
     earth_top: Color
+    mirror: bool
+    has_panorama: bool
+    bottom_y: float
+    gouraud_middle: float
+    gouraud_height: float
+    panorama_bottom: float
+    panorama_top: float
+    radius: float
+    angle: float
+
+
+@dataclass(frozen=True)
+class CloudAttributes:
+    cloud_type: int
+    bright: int
+    variance: int
+    nimbus: float
+    fog: bool
+    visual_height: int
+    wind_speed: int
+    wind_direction: int
+    y_offset: float
+    height: float
+    u_scale: float
+    v_scale: float
+
+
+@dataclass(frozen=True)
+class LightningAttributes:
+    chance: int
+    off_ticks: int
+
+
+@dataclass(frozen=True)
+class FogAttributes:
+    color: Color
+    density: int
+    horizon: float
 
 
 @dataclass(frozen=True)

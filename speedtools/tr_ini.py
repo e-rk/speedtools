@@ -9,12 +9,21 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterator
 from configparser import ConfigParser
+from functools import partial
 from itertools import starmap
 from pathlib import Path
 
 from parse import parse, search  # type: ignore[import-untyped]
 
-from speedtools.types import Color, Horizon, LightAttributes, SunAttributes
+from speedtools.types import (
+    CloudAttributes,
+    Color,
+    FogAttributes,
+    Horizon,
+    LightAttributes,
+    LightningAttributes,
+    SunAttributes,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -85,15 +94,56 @@ class TrackIni:
     @property
     def horizon(self) -> Horizon:
         strip = self.parser["strip"]
-        sun_side = self._parse_color(strip["hrzSunColor"])
-        top_side = self._parse_color(strip["hrzSkyTopColor"])
-        opposite_side = self._parse_color(strip["hrzOppositeSunColor"])
-        earth_bottom = opposite_side = self._parse_color(strip["hrzEarthBotColor"])
-        earth_top = opposite_side = self._parse_color(strip["hrzEarthTopColor"])
         return Horizon(
-            sun_side=sun_side,
-            sun_top_side=top_side,
-            sun_opposite_side=opposite_side,
-            earth_bottom=earth_bottom,
-            earth_top=earth_top,
+            sun_side=self._parse_color(strip["hrzSunColor"]),
+            sun_top_side=self._parse_color(strip["hrzSkyTopColor"]),
+            sun_opposite_side=self._parse_color(strip["hrzOppositeSunColor"]),
+            earth_bottom=self._parse_color(strip["hrzEarthBotColor"]),
+            earth_top=self._parse_color(strip["hrzEarthTopColor"]),
+            mirror=strip.getint("hrzMirror", 0) != 0,
+            has_panorama=strip.getint("hrzHasPMX", 0) != 0,
+            bottom_y=strip.getfloat("hrzBottomYOff", 0.0),
+            gouraud_middle=strip.getfloat("hrzGouraudMiddle", 0.0),
+            gouraud_height=strip.getfloat("hrzGouraudHeight", 0.0),
+            panorama_bottom=strip.getfloat("hrzPmxBottom", 0.0),
+            panorama_top=strip.getfloat("hrzPmxTop", 0.0),
+            radius=strip.getfloat("hrzfRadius", 0.0),
+            angle=strip.getfloat("hrzAngle", 0.0) % 1.0,
+        )
+
+    @property
+    def clouds(self) -> CloudAttributes:
+        get_int = partial(self.parser.getint, "clouds", fallback=0)
+        get_float = partial(self.parser.getfloat, "clouds", fallback=0.0)
+        bright = get_int("cloudBright")
+        return CloudAttributes(
+            cloud_type=get_int("cloudType"),
+            bright=bright,
+            variance=min(get_int("cloudVariance"), bright),
+            nimbus=get_float("cloudNimbus"),
+            fog=get_int("cloudFog") != 0,
+            visual_height=get_int("cloudVisualHeight"),
+            wind_speed=get_int("windSpeed"),
+            wind_direction=get_int("windDir"),
+            y_offset=get_float("cloudYOffset"),
+            height=get_float("cloudHeight"),
+            u_scale=get_float("cloudUscale") or 1.0,
+            v_scale=get_float("cloudVscale") or 1.0,
+        )
+
+    @property
+    def lightning(self) -> LightningAttributes:
+        get_int = partial(self.parser.getint, "lightning", fallback=0)
+        return LightningAttributes(
+            chance=get_int("lightningChance"),
+            off_ticks=get_int("lightningOffTicks"),
+        )
+
+    @property
+    def fog(self) -> FogAttributes:
+        color = self.parser.get("fog", "fogColor", fallback="[0,0,0]")
+        return FogAttributes(
+            color=self._parse_color(color),
+            density=self.parser.getint("fog", "fogDensity", fallback=0),
+            horizon=self.parser.getfloat("fog", "fogHorizon", fallback=0.0),
         )
