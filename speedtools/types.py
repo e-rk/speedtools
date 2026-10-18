@@ -57,6 +57,28 @@ class EngineAudioType(Enum):
     LOAD = 1
 
 
+class TrackName(StrEnum):
+    HILLS = "HILLS"
+    GERMANY = "GERMANY"
+    COASTAL = "COASTAL"
+    PARK = "PARK"
+    FRANCE = "FRANCE"
+    UK = "UK"
+    SNOWY = "SNOWY"
+    GT1 = "GT1"
+    GT2 = "GT2"
+    GT3 = "GT3"
+    HOMETOWN = "HOMETOWN"
+    REDROCK = "REDROCK"
+    ATLANTIC = "ATLANTIC"
+    ROCKYPAS = "ROCKYPAS"
+    COUNTRY = "COUNTRY"
+    LOSTCANY = "LOSTCANY"
+    AQUATICA = "AQUATICA"
+    SUMMIT = "SUMMIT"
+    EMPIRE = "EMPIRE"
+
+
 class EngineLocation(StrEnum):
     FRONT = "front"
     MID = "mid"
@@ -75,6 +97,15 @@ class WeatherType(IntEnum):
     NONE = 0
     RAIN = 1
     SNOW = 2
+
+
+class EmitterKind(StrEnum):
+    DriftingSmoke = "drifting_smoke"
+    Mist = "mist"
+    Leaves = "leaves"
+    Blossom = "blossom"
+    Flame = "flame"
+    RisingSmoke = "rising_smoke"
 
 
 class Vector3d(NamedTuple):
@@ -309,6 +340,14 @@ class ObjectData:
 class PhysicsData:
     dimension: Vector3d
     mass: float
+
+
+@dataclass(frozen=True)
+class ParticleEmitter:
+    location: Vector3d
+    kind: EmitterKind
+    forward: Vector3d
+    side: Vector3d
 
 
 @dataclass(frozen=True)

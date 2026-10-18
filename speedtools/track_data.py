@@ -20,7 +20,7 @@ from more_itertools import collapse, filter_map, one, take, triplewise
 from speedtools.bnk_data import BnkData
 from speedtools.cam_data import CamData
 from speedtools.can_data import CanData
-from speedtools.frd_data import FrdData
+from speedtools.frd_data import EmitterStub, FrdData, FrdEmitterKind
 from speedtools.fsh_data import FshData
 from speedtools.parsers import HeightsParser
 from speedtools.spd_data import SpdData
@@ -37,15 +37,18 @@ from speedtools.types import (
     Color,
     DirectionalLight,
     Edge,
+    EmitterKind,
     FogAttributes,
     Horizon,
     LightAttributes,
     LightningAttributes,
     LightStub,
+    ParticleEmitter,
     Polygon,
     Resource,
     SoundStub,
     TrackLight,
+    TrackName,
     TrackObject,
     TrackSegment,
     Vertex,
@@ -73,25 +76,33 @@ class TrackData:
     SFX_RESOURCE_FILE = Path("Data", "GAMEART", "SFX.FSH")
     AUDIO_DATA_PATH = Path("Data", "AUDIO", "SFX")
     AUDIO_MAPPING = {
-        "HILLS": 12,
-        "GERMANY": 15,
-        "COASTAL": 10,
-        "PARK": 13,
-        "FRANCE": 16,
-        "UK": 14,
-        "SNOWY": 11,
-        "GT1": 17,
-        "GT2": 17,
-        "GT3": 17,
-        "HOMETOWN": 0,
-        "REDROCK": 1,
-        "ATLANTIC": 2,
-        "ROCKYPAS": 3,
-        "COUNTRY": 4,
-        "LOSTCANY": 5,
-        "AQUATICA": 6,
-        "SUMMIT": 7,
-        "EMPIRE": 8,
+        TrackName.HILLS: 12,
+        TrackName.GERMANY: 15,
+        TrackName.COASTAL: 10,
+        TrackName.PARK: 13,
+        TrackName.FRANCE: 16,
+        TrackName.UK: 14,
+        TrackName.SNOWY: 11,
+        TrackName.GT1: 17,
+        TrackName.GT2: 17,
+        TrackName.GT3: 17,
+        TrackName.HOMETOWN: 0,
+        TrackName.REDROCK: 1,
+        TrackName.ATLANTIC: 2,
+        TrackName.ROCKYPAS: 3,
+        TrackName.COUNTRY: 4,
+        TrackName.LOSTCANY: 5,
+        TrackName.AQUATICA: 6,
+        TrackName.SUMMIT: 7,
+        TrackName.EMPIRE: 8,
+    }
+
+    PARTICLE_MAPPING: dict[EmitterKind, int] = {
+        EmitterKind.DriftingSmoke: 6,
+        EmitterKind.Mist: 10,
+        EmitterKind.Leaves: 12,
+        EmitterKind.Flame: 7,
+        EmitterKind.RisingSmoke: 6,
     }
 
     def __init__(
@@ -375,6 +386,35 @@ class TrackData:
                 self.light_glows[attribute.identifier] = attribute
         return map(self._make_light, self.frd.light_dummies)
 
+    def _has_blossom(self) -> bool:
+        return self.name == TrackName.FRANCE
+
+    def _make_emitter(self, emitter: EmitterStub) -> ParticleEmitter:
+        kind: EmitterKind
+        match emitter.kind:
+            case FrdEmitterKind.Leaves if self._has_blossom():
+                kind = EmitterKind.Blossom
+            case FrdEmitterKind.Leaves:
+                kind = EmitterKind.Leaves
+            case FrdEmitterKind.Flame:
+                kind = EmitterKind.Flame
+            case FrdEmitterKind.DriftingSmoke:
+                kind = EmitterKind.DriftingSmoke
+            case FrdEmitterKind.Mist:
+                kind = EmitterKind.Mist
+            case FrdEmitterKind.RisingSmoke:
+                kind = EmitterKind.RisingSmoke
+        return ParticleEmitter(
+            location=emitter.location,
+            kind=kind,
+            forward=emitter.forward,
+            side=emitter.side,
+        )
+
+    @property
+    def emitters(self) -> Iterator[ParticleEmitter]:
+        return map(self._make_emitter, self.frd.emitters)
+
     @property
     def directional_light(self) -> DirectionalLight | None:
         sun = self.ini.sun
@@ -461,7 +501,7 @@ class TrackData:
 
     @property
     def audio_sources(self) -> Iterable[AudioSource]:
-        track_name = self.name
+        track_name = TrackName(self.name)
         audio_id = self.AUDIO_MAPPING[track_name]
         audio_path = Path(self.game_root, self.AUDIO_DATA_PATH)
         audio_path = get_path_case_insensitive(self.game_root, audio_path)

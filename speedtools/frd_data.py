@@ -9,8 +9,11 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterable, Iterator, Sequence
 from contextlib import suppress
+from dataclasses import dataclass
+from enum import IntEnum
 from functools import partial
 from itertools import chain, compress, groupby, starmap
+from math import cos, radians, sin
 from pathlib import Path
 from typing import Optional
 
@@ -53,6 +56,22 @@ from speedtools.types import (
 from speedtools.utils import islicen, remove_unused_vertices
 
 logger = logging.getLogger(__name__)
+
+
+class FrdEmitterKind(IntEnum):
+    DriftingSmoke = 100
+    Mist = 102
+    Leaves = 103
+    Flame = 104
+    RisingSmoke = 105
+
+
+@dataclass(frozen=True)
+class EmitterStub:
+    location: Vector3d
+    kind: FrdEmitterKind
+    forward: Vector3d
+    side: Vector3d
 
 
 class FrdData:
@@ -330,8 +349,17 @@ class FrdData:
     @classmethod
     def _make_dummy(cls, dummy: FrdParser.SourceType) -> LightStub:
         location = Vector3d.from_frd_int3(dummy.location)
-        identifier = dummy.type & 0x1F
-        return LightStub(location=location, glow_id=identifier)
+        return LightStub(location=location, glow_id=dummy.type)
+
+    @classmethod
+    def _make_emitter(cls, dummy: FrdParser.SourceType) -> EmitterStub:
+        angle = radians(dummy.angle)
+        return EmitterStub(
+            location=Vector3d.from_frd_int3(dummy.location),
+            kind=FrdEmitterKind(dummy.type),
+            forward=Vector3d(x=cos(angle), y=0.0, z=sin(angle)),
+            side=Vector3d(x=sin(angle), y=0.0, z=cos(angle)),
+        )
 
     @classmethod
     def _make_sound_dummy(cls, dummy: FrdParser.SourceType) -> SoundStub:
@@ -361,9 +389,18 @@ class FrdData:
         )
 
     @property
+    def _light_sources(self) -> Iterator[FrdParser.SourceType]:
+        return chain.from_iterable(segment.light_sources for segment in self.frd.segment_data)
+
+    @property
     def light_dummies(self) -> Iterator[LightStub]:
-        lights = chain.from_iterable(segment.light_sources for segment in self.frd.segment_data)
-        return map(self._make_dummy, lights)
+        glows = filter(lambda source: source.is_light, self._light_sources)
+        return map(self._make_dummy, glows)
+
+    @property
+    def emitters(self) -> Iterator[EmitterStub]:
+        emitters = filter(lambda source: source.is_effect, self._light_sources)
+        return map(self._make_emitter, emitters)
 
     @property
     def sound_dummies(self) -> Iterator[SoundStub]:

@@ -385,8 +385,18 @@ types:
               type: int3
               doc: Source location
             - id: type
-              type: u4
-              doc: Source type
+              type: u2
+              doc: |
+                Source type. Light sources below 32 are glows of the track INI file,
+                100 to 105 are particle emitters
+            - id: angle
+              type: u2
+              doc: Direction in degrees that a particle emitter emits to
+        instances:
+            is_light:
+               value: type < 32
+            is_effect:
+                value: 100 <= type and type <= 105
     track_polygon:
         params:
             - id: num_polygons
