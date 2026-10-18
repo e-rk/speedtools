@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from enum import Enum, StrEnum
+from enum import Enum, IntEnum, StrEnum
 from math import pi, sqrt
 from typing import Any, NamedTuple, Optional, TypeAlias
 
@@ -69,6 +69,12 @@ class CarClass(StrEnum):
     A = "A"
     B = "B"
     NONE = "NONE"
+
+
+class WeatherType(IntEnum):
+    NONE = 0
+    RAIN = 1
+    SNOW = 2
 
 
 class Vector3d(NamedTuple):
@@ -458,6 +464,19 @@ class CloudAttributes:
 class LightningAttributes:
     chance: int
     off_ticks: int
+
+
+@dataclass(frozen=True)
+class WeatherAttributes:
+    weather_type: WeatherType
+    start_slice: int
+    end_slice: int
+    fade: int
+    stay_time_on: int
+    fade_time_off: int
+    stay_time_off: int
+    fade_time_on: int
+    density: int
 
 
 @dataclass(frozen=True)

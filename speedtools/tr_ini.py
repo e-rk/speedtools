@@ -23,6 +23,8 @@ from speedtools.types import (
     LightAttributes,
     LightningAttributes,
     SunAttributes,
+    WeatherAttributes,
+    WeatherType,
 )
 
 logger = logging.getLogger(__name__)
@@ -137,6 +139,21 @@ class TrackIni:
         return LightningAttributes(
             chance=get_int("lightningChance"),
             off_ticks=get_int("lightningOffTicks"),
+        )
+
+    @property
+    def weather(self) -> WeatherAttributes:
+        get_int = partial(self.parser.getint, "weather", fallback=0)
+        return WeatherAttributes(
+            weather_type=WeatherType(get_int("type")),
+            start_slice=get_int("startSlice"),
+            end_slice=get_int("endSlice"),
+            fade=get_int("fade"),
+            stay_time_on=get_int("stayTimeOn"),
+            fade_time_off=get_int("fadeTimeOff"),
+            stay_time_off=get_int("stayTimeOff"),
+            fade_time_on=get_int("fadeTimeOn"),
+            density=get_int("denstiy", fallback=100),
         )
 
     @property
