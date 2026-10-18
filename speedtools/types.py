@@ -219,6 +219,20 @@ class BaseMesh:
 
 
 @dataclass(frozen=True)
+class FlipBookAnimation:
+    ticks: int
+    count: int
+
+
+@dataclass(frozen=True)
+class UvScrollAnimation:
+    speed: float
+
+
+TextureAnimation: TypeAlias = FlipBookAnimation | UvScrollAnimation
+
+
+@dataclass(frozen=True)
 class Polygon(BasePolygon):
     face: tuple[int, ...]
     uv: tuple[UV, ...]
@@ -228,8 +242,7 @@ class Polygon(BasePolygon):
     transparent: bool = False
     highly_reflective: bool = False
     non_reflective: bool = False
-    animation_ticks: int = 0
-    animation_count: int = 0
+    animation: TextureAnimation | None = None
     billboard: bool = False
     emissive: bool = False
 

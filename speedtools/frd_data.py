@@ -33,6 +33,7 @@ from speedtools.types import (
     Color,
     DrawableMesh,
     Edge,
+    FlipBookAnimation,
     LightStub,
     Matrix3x3,
     ObjectType,
@@ -41,8 +42,10 @@ from speedtools.types import (
     Quaternion,
     RoadEffect,
     SoundStub,
+    TextureAnimation,
     TrackObject,
     TrackSegment,
+    UvScrollAnimation,
     Vector3d,
     Vertex,
     Waypoint,
@@ -67,6 +70,8 @@ class FrdData:
         True,  # High-resolution misc geometry
     ]
     ROAD_BLOCKS_PER_SEGMENT = 8
+    TRACK_UV_SCROLL = 15 * 64 / 1024
+    OBJECT_UV_SCROLL_PER_TICK = 64 / 256
 
     def __init__(self, parser: FrdParser) -> None:
         self.frd = parser
@@ -77,7 +82,26 @@ class FrdData:
         return cls(parser)
 
     @classmethod
-    def _make_polygon(cls, polygon: FrdParser.Polygon, billboard: bool = False) -> Polygon:
+    def _make_texture_animation(
+        cls, polygon: FrdParser.Polygon, track: bool
+    ) -> TextureAnimation | None:
+        if polygon.animation == 0:
+            return None
+        if polygon.animate_uv:
+            speed = (
+                cls.TRACK_UV_SCROLL
+                if track
+                else polygon.animation_ticks * cls.OBJECT_UV_SCROLL_PER_TICK
+            )
+            return UvScrollAnimation(speed=speed)
+        if polygon.texture_count == 0 or polygon.animation_ticks == 0:
+            return None
+        return FlipBookAnimation(ticks=polygon.animation_ticks, count=polygon.texture_count)
+
+    @classmethod
+    def _make_polygon(
+        cls, polygon: FrdParser.Polygon, track: bool, billboard: bool = False
+    ) -> Polygon:
         material = polygon.texture_id
         backface_culling = polygon.backface_culling
         face = tuple(polygon.face)
@@ -89,8 +113,7 @@ class FrdData:
             backface_culling=backface_culling,
             is_lane=polygon.lane,
             non_reflective=True,
-            animation_ticks=polygon.animation_ticks,
-            animation_count=polygon.texture_count if not polygon.animate_uv else 0,
+            animation=cls._make_texture_animation(polygon, track),
             billboard=billboard,
         )
 
@@ -154,7 +177,9 @@ class FrdData:
             actions = [AnimationAction(action=Action.DEFAULT_LOOP, animation=animation)]
         vertex_locations = [Vector3d.from_frd_float3(vertex) for vertex in extra.vertices]
         polygons = [
-            cls._make_polygon(polygon=polygon, billboard=obj.type == ObjectType.billboard)
+            cls._make_polygon(
+                polygon=polygon, billboard=obj.type == ObjectType.billboard, track=False
+            )
             for polygon in extra.polygons
         ]
         vertex_colors = [
@@ -249,7 +274,7 @@ class FrdData:
     ) -> TrackSegment:
         polygons = chain.from_iterable(chunk.polygons for chunk in cls._high_poly_chunks(segment))
         vertex_locations = [Vector3d.from_frd_float3(vertex) for vertex in segment.vertices]
-        track_polygons = [cls._make_polygon(polygon) for polygon in polygons]
+        track_polygons = [cls._make_polygon(polygon, track=True) for polygon in polygons]
         collision_meshes = list(cls._make_collision_meshes(segment))
         vertex_colors = [
             Color(alpha=shading.alpha, red=shading.red, green=shading.green, blue=shading.blue)

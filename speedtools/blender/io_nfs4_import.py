@@ -15,7 +15,7 @@ from functools import total_ordering
 from itertools import chain, groupby
 from math import pi, radians
 from pathlib import Path
-from typing import Any, Generator, Literal
+from typing import Any, Generator, Literal, TypeAlias
 
 import bpy
 import mathutils
@@ -44,6 +44,7 @@ from speedtools.types import (
     DirectionalLight,
     DrawableMesh,
     EngineAudio,
+    FlipBookAnimation,
     Light,
     Matrix3x3,
     Polygon,
@@ -51,6 +52,7 @@ from speedtools.types import (
     Rotation,
     ShapeKey,
     ShapeKeys,
+    UvScrollAnimation,
     Vector3d,
     VehicleLightType,
 )
@@ -103,6 +105,15 @@ def edit_mode(obj: bpy.types.Object) -> Generator[None]:
         view_layer.objects.active = previous  # type: ignore[union-attr]
 
 
+@dataclass(frozen=True)
+class FlipBookResources:
+    ticks: int
+    resources: tuple[Resource, ...]
+
+
+ResourceAnimation: TypeAlias = FlipBookResources | UvScrollAnimation
+
+
 @total_ordering
 @dataclass(frozen=True)
 class ExtendedResource:
@@ -111,8 +122,7 @@ class ExtendedResource:
     transparent: bool
     highly_reflective: bool
     non_reflective: bool
-    animation_ticks: int
-    animation_resources: tuple[Resource, ...]
+    animation: ResourceAnimation | None
     billboard: bool
     emissive: bool
 
@@ -152,18 +162,25 @@ class BaseImporter(metaclass=ABCMeta):
 
     def _extender_resource_map(self, polygon: Polygon) -> ExtendedResource:
         resource = self.material_map(polygon)
-        animation_resources = []
-        for i in range(polygon.animation_count):
-            next_poly = replace(polygon, material=(polygon.material + i))
-            animation_resources.append(self.material_map(next_poly))
+        animation: ResourceAnimation | None
+        match polygon.animation:
+            case FlipBookAnimation(ticks=ticks, count=count):
+                resources = tuple(
+                    self.material_map(replace(polygon, material=polygon.material + i))
+                    for i in range(count)
+                )
+                animation = FlipBookResources(ticks=ticks, resources=resources)
+            case UvScrollAnimation() as scroll:
+                animation = scroll
+            case None:
+                animation = None
         return ExtendedResource(
             resource=resource,
             backface_culling=polygon.backface_culling,
             transparent=polygon.transparent,
             highly_reflective=polygon.highly_reflective,
             non_reflective=polygon.non_reflective,
-            animation_ticks=polygon.animation_ticks,
-            animation_resources=tuple(animation_resources),
+            animation=animation,
             billboard=polygon.billboard,
             emissive=polygon.emissive,
         )
@@ -243,6 +260,18 @@ class BaseImporter(metaclass=ABCMeta):
         bsdf.inputs["Specular IOR Level"].default_value = 0.25  # type: ignore[union-attr]
         bsdf.inputs["Roughness"].default_value = 0.05  # type: ignore[union-attr]
         bsdf.inputs["Metallic"].default_value = 0.0  # type: ignore[union-attr]
+        extension = "EXTEND"
+        match ext_resource.animation:
+            case FlipBookResources(ticks=ticks, resources=resources):
+                bpy_material["SPT_animation_images"] = [img.name for img in resources]
+                bpy_material["SPT_animation_ticks"] = ticks
+                for frame in resources:
+                    self._image_from_resource(frame)
+            case UvScrollAnimation(speed=speed):
+                bpy_material["SPT_uv_scroll"] = speed
+                extension = "REPEAT"
+            case None:
+                pass
         if ext_resource.transparent:
             bsdf.inputs["Alpha"].default_value = 0.04  # type: ignore[union-attr]
             bsdf.inputs["Roughness"].default_value = 0.0  # type: ignore[union-attr]
@@ -253,7 +282,7 @@ class BaseImporter(metaclass=ABCMeta):
             image = self._image_from_resource_cached(resource)
             image_texture = node_tree.nodes.new("ShaderNodeTexImage")  # type: ignore[union-attr]
             image_texture.image = image  # type: ignore[union-attr]
-            image_texture.extension = "EXTEND"  # type: ignore[union-attr]
+            image_texture.extension = extension  # type: ignore[union-attr]
             self._link_texture_to_shader(
                 node_tree=node_tree,  # type: ignore[arg-type]
                 texture=image_texture,
@@ -277,13 +306,6 @@ class BaseImporter(metaclass=ABCMeta):
             bsdf.inputs["Roughness"].default_value = 1.0  # type: ignore[union-attr]
             bsdf.inputs["Specular IOR Level"].default_value = 0.0  # type: ignore[union-attr]
         bpy_material.use_backface_culling = ext_resource.backface_culling
-        if ext_resource.animation_resources:
-            bpy_material["SPT_animation_images"] = [
-                img.name for img in ext_resource.animation_resources
-            ]
-            bpy_material["SPT_animation_ticks"] = ext_resource.animation_ticks
-        for resource in ext_resource.animation_resources:
-            self._image_from_resource(resource)
         bpy_material["SPT_billboard"] = ext_resource.billboard
         return bpy_material
 
