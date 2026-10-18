@@ -742,6 +742,10 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
                 "density": fog.density,
                 "horizon": fog.horizon,
             }
+            environment["weather"] = {
+                "night": track.night,
+                "rain": track.weather,
+            }
             spt_track["environment"] = environment
 
         if import_audio:
