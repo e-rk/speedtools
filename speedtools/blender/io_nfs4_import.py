@@ -47,6 +47,7 @@ from speedtools.types import (
     FlipBookAnimation,
     Light,
     Matrix3x3,
+    ParticleEmitter,
     Polygon,
     Resource,
     Rotation,
@@ -455,6 +456,18 @@ class BaseImporter(metaclass=ABCMeta):
         self.set_object_location(obj=bpy_obj, location=light.location)
         return bpy_obj
 
+    def make_emitter_object(
+        self, name: str, emitter: ParticleEmitter, transform: mathutils.Matrix
+    ) -> bpy.types.Object:
+        bpy_obj = bpy.data.objects.new(name, None)
+        bpy_obj.empty_display_type = "SINGLE_ARROW"
+        bpy_obj["SPT_emitter"] = {
+            "type": emitter.kind,
+            "forward": (transform @ mathutils.Vector(emitter.forward)).to_tuple(),
+            "side": (transform @ mathutils.Vector(emitter.side)).to_tuple(),
+        }
+        return bpy_obj
+
     def make_spot_light_object(
         self, name: str, light: Light, energy: int, angle: float, cutoff_distance: float
     ) -> bpy.types.Object:
@@ -553,6 +566,7 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
         import_audio: bool = False,
     ) -> None:
         bpy.context.scene.render.fps = track.ANIMATION_FPS  # type: ignore[union-attr]
+        gltf_transform = mathutils.Euler((-pi / 2.0, 0.0, 0.0)).to_matrix() @ self.rot_mat
         track_collection = bpy.data.collections.new("Track segments")
         bpy.context.scene.collection.children.link(track_collection)  # type: ignore[union-attr]
         for index, segment in enumerate(track.track_segments):
@@ -598,6 +612,14 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
                     "dimensions": (dim.x, dim.y, dim.z),
                 }
             object_collection.objects.link(bpy_obj)
+        emitter_collection = bpy.data.collections.new("Emitters")
+        bpy.context.scene.collection.children.link(emitter_collection)  # type: ignore[union-attr]
+        for index, emitter in enumerate(track.emitters):
+            bpy_obj = self.make_emitter_object(
+                name=f"Emitter {index}", emitter=emitter, transform=gltf_transform
+            )
+            self.set_object_location(obj=bpy_obj, location=emitter.location)
+            emitter_collection.objects.link(bpy_obj)
         light_collection = bpy.data.collections.new("Lights")
         bpy.context.scene.collection.children.link(light_collection)  # type: ignore[union-attr]
         for index, light in enumerate(track.lights):
@@ -624,7 +646,6 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
                 bpy_obj = self.make_camera_object(name=f"Camera {index}", camera=camera)
                 camera_collection.objects.link(bpy_obj)
         spt_track: dict[str, Any] = {}
-        gltf_transform = mathutils.Euler((-pi / 2.0, 0.0, 0.0)).to_matrix() @ self.rot_mat
         waypoints = chain.from_iterable(segment.waypoints for segment in track.track_segments)
         waypoint_data = zip(
             waypoints,
