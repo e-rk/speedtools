@@ -741,6 +741,20 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
                 "color": color_to_dict(fog.color),
                 "density": fog.density,
                 "horizon": fog.horizon,
+                "regions": [
+                    {
+                        "start": region.start_slice,
+                        "center": region.center_slice,
+                        "end": region.end_slice,
+                        "start_color": color_to_dict(region.start_color),
+                        "center_color": color_to_dict(region.center_color),
+                        "end_color": color_to_dict(region.end_color),
+                        "start_density": region.start_density,
+                        "center_density": region.center_density,
+                        "end_density": region.end_density,
+                    }
+                    for region in fog.regions
+                ],
             }
             environment["weather"] = {
                 "night": track.night,
