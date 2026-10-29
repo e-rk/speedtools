@@ -53,6 +53,7 @@ from speedtools.types import (
     TrackSegment,
     Vertex,
     Waypoint,
+    WeatherAttributes,
 )
 from speedtools.utils import (
     get_path_case_insensitive,
@@ -421,7 +422,7 @@ class TrackData:
         sun_resource = self._sun_resource
         if sun is None and sun_resource:
             sun = sun_resource.sun_attributes
-        if sun:
+        if sun and sun_resource:
             # Angles in INI are in turns. Turns are converted to radians here.
             # The INI angleRho value is not really a spherical coordinate.
             # Some approximations are done here to convert to spherical coordinates.
@@ -465,13 +466,17 @@ class TrackData:
         return self.ini.fog
 
     @property
+    def weather_attributes(self) -> WeatherAttributes:
+        return self.ini.weather
+
+    @property
     def sky_images(self) -> Iterable[Resource]:
         weather = "W" if self.weather else "C"
         night = "N" if self.night else "D"
         return filter(lambda x: fnmatch(x.name, f"H{night}{weather}?"), self.sky.resources)
 
     @property
-    def _sun_resource(self) -> Resource:
+    def _sun_resource(self) -> Resource | None:
         match (self.night, self.weather):
             case (False, False):
                 name = "SUND"
@@ -480,8 +485,9 @@ class TrackData:
             case (False, True):
                 name = "SUNW"
             case (True, True):
-                name = "SUNW"
-        return one(filter(lambda x: x.name == name, self.sky.resources))
+                name = "SNNW"
+        resources = {resource.name: resource for resource in self.sky.resources}
+        return resources.get(name, resources["SUNW"])
 
     @property
     def clouds(self) -> Resource:
