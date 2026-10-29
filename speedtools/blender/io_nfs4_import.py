@@ -756,9 +756,19 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
                     for region in fog.regions
                 ],
             }
+            weather = track.weather_attributes
             environment["weather"] = {
                 "night": track.night,
                 "rain": track.weather,
+                "type": weather.weather_type.value,
+                "start": weather.start_slice,
+                "end": weather.end_slice,
+                "fade": weather.fade,
+                "stay_on": weather.stay_time_on,
+                "fade_off": weather.fade_time_off,
+                "stay_off": weather.stay_time_off,
+                "fade_on": weather.fade_time_on,
+                "density": weather.density,
             }
             spt_track["environment"] = environment
 
