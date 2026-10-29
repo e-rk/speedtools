@@ -19,6 +19,7 @@ from speedtools.types import (
     CloudAttributes,
     Color,
     FogAttributes,
+    FogRegion,
     Horizon,
     LightAttributes,
     LightningAttributes,
@@ -141,6 +142,22 @@ class TrackIni:
             off_ticks=get_int("lightningOffTicks"),
         )
 
+    def _make_fog_region(self, index: int) -> FogRegion:
+        section = f"fog region {index}"
+        get_int = partial(self.parser.getint, section, fallback=0)
+        get_color = partial(self.parser.get, section, fallback="[0,0,0]")
+        return FogRegion(
+            start_slice=get_int("startSlice"),
+            center_slice=get_int("centerSlice"),
+            end_slice=get_int("endSlice"),
+            start_color=self._parse_color(get_color("s_color")),
+            center_color=self._parse_color(get_color("c_color")),
+            end_color=self._parse_color(get_color("e_color")),
+            start_density=get_int("s_density"),
+            center_density=get_int("c_density"),
+            end_density=get_int("e_density"),
+        )
+
     @property
     def weather(self) -> WeatherAttributes:
         get_int = partial(self.parser.getint, "weather", fallback=0)
@@ -159,8 +176,10 @@ class TrackIni:
     @property
     def fog(self) -> FogAttributes:
         color = self.parser.get("fog", "fogColor", fallback="[0,0,0]")
+        num_regions = min(self.parser.getint("fog", "fogNumRegions", fallback=0), 31)
         return FogAttributes(
             color=self._parse_color(color),
             density=self.parser.getint("fog", "fogDensity", fallback=0),
             horizon=self.parser.getfloat("fog", "fogHorizon", fallback=0.0),
+            regions=[self._make_fog_region(index) for index in range(num_regions)],
         )

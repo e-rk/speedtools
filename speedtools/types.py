@@ -542,10 +542,24 @@ class WeatherAttributes:
 
 
 @dataclass(frozen=True)
+class FogRegion:
+    start_slice: int
+    center_slice: int
+    end_slice: int
+    start_color: Color
+    center_color: Color
+    end_color: Color
+    start_density: int
+    center_density: int
+    end_density: int
+
+
+@dataclass(frozen=True)
 class FogAttributes:
     color: Color
     density: int
     horizon: float
+    regions: Sequence[FogRegion]
 
 
 @dataclass(frozen=True)
