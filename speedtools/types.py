@@ -52,6 +52,12 @@ class VehicleLightType(Enum):
     SIREN = 6
 
 
+class VehicleLightFlash(StrEnum):
+    NONE = "none"
+    ODD = "odd"
+    EVEN = "even"
+
+
 class EngineAudioType(Enum):
     COAST = 0
     LOAD = 1
@@ -441,6 +447,10 @@ class TrackLight(Light):
 @dataclass(frozen=True)
 class VehicleLight(Light):
     type: VehicleLightType
+    flash: VehicleLightFlash
+    intensity: int
+    period_ticks: int
+    delay_ticks: int
 
 
 @dataclass(frozen=True)

@@ -864,6 +864,12 @@ class CarImporterSimple(BaseImporter):
                     cutoff_distance=attributes[2],
                 )
                 self.set_object_rotation(obj=bpy_obj, transform=attributes[3])
+                bpy_obj["SPT_light"] = {
+                    "flash": light.flash,
+                    "intensity": light.intensity,
+                    "period": light.period_ticks,
+                    "delay": light.delay_ticks,
+                }
                 light_collection.objects.link(bpy_obj)
         dimensions = car.dimensions
         colors = [CarImporterSimple._serialize_color_preset(x) for x in car.colors]

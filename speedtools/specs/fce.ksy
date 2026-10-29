@@ -304,24 +304,28 @@ types:
       - id: color
         type: str
         size: 1
-      - id: type
-        type: str
-        size: 1
       - id: breakable
         type: str
         size: 1
       - id: flashing
         type: str
         size: 1
-      - id: intensity
-        type: str
-        size: 1
-      - id: time_on
-        type: str
-        size: 1
-      - id: time_off
-        type: str
-        size: 1
+      - id: intensity_f
+        type: u1
+        doc: Digit, the flare size in fifths
+      - id: period
+        type: u1
+        doc: Digit, the flash period is 2^digit ticks of 1/64 s
+      - id: delay
+        type: u1
+        doc: Digit, the flash is delayed by 3 ticks per unit
+    instances:
+        period_ticks:
+            value: 'period == 0 ? 5 : (1 << (period - 0x30))'
+        delay_ticks:
+            value: 'delay == 0 ? 0 : (3 * (delay - 0x30))'
+        intensity:
+            value: 'intensity_f == 0 ? 5 : (intensity_f - 0x30)'
   part:
     seq:
       - id: value

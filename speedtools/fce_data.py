@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import replace
 from enum import Enum
 from functools import partial, reduce
@@ -33,10 +34,13 @@ from speedtools.types import (
     ShapeKeyType,
     Vector3d,
     VehicleLight,
+    VehicleLightFlash,
     VehicleLightType,
     Vertex,
 )
 from speedtools.utils import islicen
+
+logger = logging.getLogger(__name__)
 
 
 class Resolution(Enum):
@@ -157,6 +161,11 @@ class FceData:
         "Y": Color(0xFF, 0xFF, 0),
     }
 
+    light_flashes = {
+        "O": VehicleLightFlash.ODD,
+        "E": VehicleLightFlash.EVEN,
+    }
+
     def __init__(self, parser: FceParser) -> None:
         self.parser = parser
 
@@ -256,7 +265,15 @@ class FceData:
         loc = Vector3d.from_fce_float3(location)
         color = cls.light_colors[dummy.color]
         light_type = cls.light_types[dummy.magic]
-        return VehicleLight(location=loc, color=color, type=light_type)
+        return VehicleLight(
+            location=loc,
+            color=color,
+            type=light_type,
+            flash=cls.light_flashes.get(dummy.flashing, VehicleLightFlash.NONE),
+            intensity=dummy.intensity,
+            period_ticks=dummy.period_ticks,
+            delay_ticks=dummy.delay_ticks,
+        )
 
     @classmethod
     def _make_geometry(cls, fce: FceParser) -> Iterable[Part]:
