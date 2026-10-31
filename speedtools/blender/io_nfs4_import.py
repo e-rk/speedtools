@@ -895,6 +895,12 @@ class CarImporterSimple(BaseImporter):
                     "delay": light.delay_ticks,
                 }
                 light_collection.objects.link(bpy_obj)
+        if car.license_plate:
+            bpy_obj = bpy.data.objects.new("license_plate", None)
+            bpy_obj.empty_display_type = "PLAIN_AXES"
+            self.set_object_location(obj=bpy_obj, location=car.license_plate.location)
+            bpy_obj["SPT_license_plate"] = {"kind": car.license_plate.kind}
+            car_collection.objects.link(bpy_obj)
         dimensions = car.dimensions
         colors = [CarImporterSimple._serialize_color_preset(x) for x in car.colors]
         car_metadata = {
