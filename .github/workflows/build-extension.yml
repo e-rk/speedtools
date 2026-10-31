@@ -63,9 +63,49 @@ jobs:
                   echo 'C:\Program Files\Blender Foundation\Blender 5.2\' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
             - run: blender --command extension install-file -e -r user_default speedtools-*.zip
 
+    executable:
+        name: Build executable
+        strategy:
+            matrix:
+                os: [windows-latest, ubuntu-latest]
+        runs-on: ${{ matrix.os }}
+        defaults:
+            run:
+                shell: bash
+        steps:
+            - name: Git describe
+              id: ghd
+              uses: proudust/gh-describe@v2
+            - uses: actions/checkout@v4
+            - uses: actions/setup-python@v5
+              with:
+                  python-version: "3.13"
+            - if: ${{ matrix.os == 'ubuntu-latest' }}
+              name: Install the Kaitai Struct compiler
+              run: |
+                  curl -fsSLO https://github.com/kaitai-io/kaitai_struct_compiler/releases/download/0.11/kaitai-struct-compiler_0.11_all.deb
+                  sudo apt-get install ./kaitai-struct-compiler_0.11_all.deb
+            - if: ${{ matrix.os == 'windows-latest' }}
+              name: Install the Kaitai Struct compiler
+              run: |
+                  curl -fsSLO https://github.com/kaitai-io/kaitai_struct_compiler/releases/download/0.11/kaitai-struct-compiler-0.11.zip
+                  unzip -q kaitai-struct-compiler-0.11.zip
+                  cygpath -w "$PWD/kaitai-struct-compiler-0.11/bin" >> $GITHUB_PATH
+            - name: Build
+              run: |
+                  pip install . pyinstaller
+                  pyinstaller --onefile --name "speedtool" scripts/speedtool.py
+                  ./dist/speedtool --help
+            - name: Upload executable
+              uses: actions/upload-artifact@v4
+              with:
+                  name: speedtool-${{ matrix.os }}
+                  path: dist/speedtool*
+                  if-no-files-found: error
+
     release:
         name: Publish Release
-        needs: extension
+        needs: [extension, executable]
         runs-on: ubuntu-latest
         permissions:
             contents: write
@@ -77,8 +117,13 @@ jobs:
               uses: actions/download-artifact@v4
               with:
                   name: speedtools
+            - name: Download executables
+              uses: actions/download-artifact@v4
+              with:
+                  pattern: speedtool-*
+                  merge-multiple: true
             - name: Create draft release
               env:
                   GH_TOKEN: ${{ github.token }}
                   GH_REPO: ${{ github.repository }}
-              run: gh release create '${{ steps.ghd.outputs.describe }}' --draft=true --generate-notes speedtools-*.zip
+              run: gh release create '${{ steps.ghd.outputs.describe }}' --draft=true --generate-notes speedtools-*.zip speedtool speedtool.exe

@@ -92,3 +92,7 @@ def bnk_unpack(path: Path) -> None:
             with open(f"{name}.wav", "wb") as f:
                 logger.info(f"Unpacking: {name}")
                 f.write(raw_stream_to_wav(sound))
+
+
+if __name__ == "__main__":
+    main()
