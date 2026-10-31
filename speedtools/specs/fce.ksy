@@ -298,6 +298,29 @@ types:
                 value: (flags & 0x0008) != 0
     dummy:
         seq:
+            - id: data
+              type:
+                  switch-on: magic
+                  cases:
+                      '":"': license_plate
+                      '""': strz
+                      _: light
+        instances:
+            magic:
+                pos: _io.pos
+                type: strz
+                size: 1
+                encoding: ASCII
+    license_plate:
+        seq:
+            - id: magic
+              type: str
+              size: 1
+            - id: data
+              type: strz
+              encoding: ASCII
+    light:
+        seq:
             - id: magic
               type: str
               size: 1

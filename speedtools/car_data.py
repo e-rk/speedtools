@@ -266,4 +266,5 @@ class CarData:
             engine_location=engine_location,
             car_class=car_class,
             police=police,
+            license_plate=self.fce.license_plate,
         )

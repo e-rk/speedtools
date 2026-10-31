@@ -58,6 +58,11 @@ class VehicleLightFlash(StrEnum):
     EVEN = "even"
 
 
+class LicensePlateKind(StrEnum):
+    STANDARD = "standard"
+    EURO = "euro"
+
+
 class EngineAudioType(Enum):
     COAST = 0
     LOAD = 1
@@ -415,6 +420,13 @@ class Car:
     engine_location: EngineLocation
     car_class: CarClass
     police: bool = False
+    license_plate: LicensePlate | None = None
+
+
+@dataclass(frozen=True)
+class LicensePlate:
+    location: Vector3d
+    kind: LicensePlateKind
 
 
 @dataclass(frozen=True)

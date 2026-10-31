@@ -15,7 +15,7 @@ from math import pi
 from pathlib import Path
 from typing import Iterable, NamedTuple
 
-from more_itertools import one
+from more_itertools import filter_map, one, only
 
 from speedtools.parsers import FceParser
 from speedtools.types import (
@@ -25,6 +25,8 @@ from speedtools.types import (
     ColorHSV,
     ColorPreset,
     DrawableMesh,
+    LicensePlate,
+    LicensePlateKind,
     Matrix3x3,
     Part,
     Polygon,
@@ -166,6 +168,9 @@ class FceData:
         "E": VehicleLightFlash.EVEN,
     }
 
+    license_plate_dummy = "LICENSE"
+    license_plate_euro = "EURO"
+
     def __init__(self, parser: FceParser) -> None:
         self.parser = parser
 
@@ -261,18 +266,18 @@ class FceData:
         return Vector3d(x=half_sizes.x * 2, y=half_sizes.y * 2, z=half_sizes.z * 2)
 
     @classmethod
-    def _make_light(cls, location: FceParser.Float3, dummy: FceParser.Dummy) -> VehicleLight:
+    def _make_light(cls, location: FceParser.Float3, light: FceParser.Light) -> VehicleLight:
         loc = Vector3d.from_fce_float3(location)
-        color = cls.light_colors[dummy.color]
-        light_type = cls.light_types[dummy.magic]
+        color = cls.light_colors[light.color]
+        light_type = cls.light_types[light.magic]
         return VehicleLight(
             location=loc,
             color=color,
             type=light_type,
-            flash=cls.light_flashes.get(dummy.flashing, VehicleLightFlash.NONE),
-            intensity=dummy.intensity,
-            period_ticks=dummy.period_ticks,
-            delay_ticks=dummy.delay_ticks,
+            flash=cls.light_flashes.get(light.flashing, VehicleLightFlash.NONE),
+            intensity=light.intensity,
+            period_ticks=light.period_ticks,
+            delay_ticks=light.delay_ticks,
         )
 
     @classmethod
@@ -320,8 +325,38 @@ class FceData:
     @property
     def lights(self) -> Iterable[VehicleLight]:
         dummies_with_location = zip(self.parser.light_sources, self.parser.dummies)
-        lights = filter(lambda x: x[1].magic in self.light_types, dummies_with_location)
-        return starmap(self._make_light, lights)
+        lights = filter_map(
+            lambda x: (
+                self._make_light(x[0], x[1].data)
+                if isinstance(x[1].data, FceParser.Light) and x[1].data.magic in self.light_types
+                else None
+            ),
+            dummies_with_location,
+        )
+        return lights
+
+    @property
+    def license_plate(self) -> LicensePlate | None:
+        def mklicense(location: Vector3d, dummy: FceParser.Dummy) -> LicensePlate | None:
+            match dummy.data:
+                case FceParser.LicensePlate() as license_plate if (
+                    self.license_plate_dummy in license_plate.data
+                ):
+                    kind = (
+                        LicensePlateKind.EURO
+                        if self.license_plate_euro in license_plate.data
+                        else LicensePlateKind.STANDARD
+                    )
+                    return LicensePlate(location=Vector3d.from_fce_float3(location), kind=kind)
+                case _:
+                    return None
+
+        dummies_with_location = zip(self.parser.light_sources, self.parser.dummies)
+        plates = filter_map(lambda x: mklicense(x[0], x[1]), dummies_with_location)
+        found = only(plates)
+        if found is None:
+            return None
+        return found
 
     @property
     def colors(self) -> Iterable[ColorPreset]:
