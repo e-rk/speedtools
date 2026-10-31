@@ -91,4 +91,4 @@ class VivData:
                 raise TypeError(f"Unexpected VIV entry type: {expected_type}")
             return viv_entry.body
         except ValueError as e:
-            raise FileNotFoundError from e
+            raise FileNotFoundError(f"Entry not found: {entry} ({entry.filename})") from e
