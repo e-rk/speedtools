@@ -282,6 +282,10 @@ class FrdData:
             orientation=orientation,
             left_wall=road_block.left_wall,
             right_wall=road_block.right_wall,
+            left_lane_width=road_block.left_lane_width,
+            right_lane_width=road_block.right_lane_width,
+            num_left_lanes=road_block.num_left_lanes,
+            num_right_lanes=road_block.num_right_lanes,
         )
 
     @classmethod

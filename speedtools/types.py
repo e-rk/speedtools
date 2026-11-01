@@ -390,6 +390,10 @@ class Waypoint:
     orientation: Matrix3x3
     left_wall: float
     right_wall: float
+    left_lane_width: float
+    right_lane_width: float
+    num_left_lanes: int
+    num_right_lanes: int
 
 
 @dataclass(frozen=True)

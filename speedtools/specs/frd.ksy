@@ -92,15 +92,25 @@ types:
             - id: right_wall
               type: f4
               doc: Distance to the right wall
-            - id: unknown1
-              size: 8
+            - id: left_lane_width
+              type: f4
+              doc: Width of one driving lane left of the node
+            - id: right_lane_width
+              type: f4
+              doc: Width of one driving lane right of the node
             - id: neighbors
               type: u2
               repeat: expr
               repeat-expr: 2
               doc: Neighboring nodes
+            - id: num_left_lanes
+              type: s4
+              doc: Number of driving lanes left of the node
+            - id: num_right_lanes
+              type: s4
+              doc: Number of driving lanes right of the node
             - id: unknown2
-              size: 16
+              size: 8
     segment_header:
         seq:
             - id: num_polygons
