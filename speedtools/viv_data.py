@@ -32,6 +32,7 @@ class Entry(Enum):
     SCarengBnk = ("scareng.bnk", BnkParser)
     CarBodyTexture = ("car00.tga", bytes)
     CarInteriorTexture = ("dash00.tga", bytes)
+    HelicopterTexture = ("hel00.tga", bytes)
     FedataEng = ("fedata.eng", FedataParser)
     FedataGer = ("fedata.ger", FedataParser)
     FedataSpa = ("fedata.spa", FedataParser)
@@ -79,7 +80,10 @@ class VivData:
         self, entry: Literal[Entry.CarengBnk, Entry.OCarengBnk, Entry.SCarengBnk]
     ) -> BnkParser: ...
     @overload
-    def get(self, entry: Literal[Entry.CarBodyTexture, Entry.CarInteriorTexture]) -> bytes: ...
+    def get(
+        self,
+        entry: Literal[Entry.CarBodyTexture, Entry.CarInteriorTexture, Entry.HelicopterTexture],
+    ) -> bytes: ...
     @overload
     def get(self, entry: FedataType) -> FedataParser: ...
 

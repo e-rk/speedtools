@@ -424,6 +424,13 @@ class Car:
 
 
 @dataclass(frozen=True)
+class Helicopter:
+    parts: list[Part]
+    lights: list[VehicleLight]
+    dimensions: Vector3d
+
+
+@dataclass(frozen=True)
 class LicensePlate:
     location: Vector3d
     kind: LicensePlateKind
