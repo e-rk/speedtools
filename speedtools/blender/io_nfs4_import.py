@@ -668,6 +668,10 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
                 backward_offset,
                 wp.left_wall,
                 wp.right_wall,
+                wp.left_lane_width,
+                wp.right_lane_width,
+                wp.num_left_lanes,
+                wp.num_right_lanes,
             )
             for (
                 wp,
@@ -691,6 +695,10 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
                 "backward_offset": -w[5],
                 "left_wall": w[6],
                 "right_wall": w[7],
+                "left_lane_width": w[8],
+                "right_lane_width": w[9],
+                "num_left_lanes": w[10],
+                "num_right_lanes": w[11],
             }
             for w in waypoint_metadata
         ]
