@@ -15,7 +15,7 @@ from functools import total_ordering
 from itertools import chain, groupby
 from math import pi, radians
 from pathlib import Path
-from typing import Any, Generator, Literal, TypeAlias
+from typing import Any, Generator, Iterable, Literal, TypeAlias
 
 import bpy
 import mathutils
@@ -29,7 +29,7 @@ from more_itertools import (
     unzip,
 )
 
-from speedtools import CarData, TrackData
+from speedtools import CarData, HeliData, TrackData
 from speedtools.types import (
     UV,
     Action,
@@ -47,6 +47,7 @@ from speedtools.types import (
     FlipBookAnimation,
     Light,
     Matrix3x3,
+    Part,
     ParticleEmitter,
     Polygon,
     Resource,
@@ -55,6 +56,7 @@ from speedtools.types import (
     ShapeKeys,
     UvScrollAnimation,
     Vector3d,
+    VehicleLight,
     VehicleLightType,
 )
 from speedtools.utils import (
@@ -797,7 +799,7 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
         bpy_clouds = self._image_to_bpy_image("clouds", clouds_image)
 
 
-class CarImporterSimple(BaseImporter):
+class VehicleImporter(BaseImporter):
     car_light_attributes = {  # (Energy, angle, cutoff, rotation)
         VehicleLightType.HEADLIGHT: (
             200,
@@ -827,6 +829,47 @@ class CarImporterSimple(BaseImporter):
         VehicleLightType.SIREN: (100, 180, 40.0, mathutils.Matrix.Rotation(radians(-90), 3, "X")),
     }
 
+    def import_parts(
+        self, parts: Iterable[Part], collection: bpy.types.Collection
+    ) -> list[bpy.types.Object]:
+        objects = []
+        for part in parts:
+            bpy_obj = self.make_drawable_object(name=part.name, mesh=part.mesh)
+            self.set_object_location(obj=bpy_obj, location=part.location)
+            collection.objects.link(bpy_obj)
+            match part.mesh.morph:
+                case ShapeKeys(keys=keys):
+                    for shape_key in keys:
+                        self.make_shape_key(obj=bpy_obj, shape_key=shape_key)
+                case Rotation() as rotation:
+                    self.make_rotation_rig(obj=bpy_obj, rotation=rotation, collection=collection)
+            objects.append(bpy_obj)
+        return objects
+
+    def import_lights(
+        self, lights: Iterable[VehicleLight], collection: bpy.types.Collection
+    ) -> None:
+        for index, light in enumerate(lights):
+            name = f"{light.type.name.lower()}-{index}"
+            attributes = self.car_light_attributes[light.type]
+            bpy_obj = self.make_spot_light_object(
+                name=name,
+                light=light,
+                energy=attributes[0],
+                angle=radians(attributes[1]),
+                cutoff_distance=attributes[2],
+            )
+            self.set_object_rotation(obj=bpy_obj, transform=attributes[3])
+            bpy_obj["SPT_light"] = {
+                "flash": light.flash,
+                "intensity": light.intensity,
+                "period": light.period_ticks,
+                "delay": light.delay_ticks,
+            }
+            collection.objects.link(bpy_obj)
+
+
+class CarImporterSimple(VehicleImporter):
     @staticmethod
     def _serialize_color(color: ColorHSV) -> dict[str, Any]:
         return {"hue": color.hue, "value": color.value, "saturation": color.saturation}
@@ -846,20 +889,8 @@ class CarImporterSimple(BaseImporter):
         car = car_data.car
         car_collection = bpy.data.collections.new("Car parts")
         bpy.context.scene.collection.children.link(car_collection)  # type: ignore[union-attr]
-        parts = car.parts
-        for part in parts:
-            bpy_obj = self.make_drawable_object(name=part.name, mesh=part.mesh)
-            self.set_object_location(obj=bpy_obj, location=part.location)
-            car_collection.objects.link(bpy_obj)
+        for bpy_obj in self.import_parts(parts=car.parts, collection=car_collection):
             bpy_obj["SPT_interior"] = False
-            match part.mesh.morph:
-                case ShapeKeys(keys=keys):
-                    for shape_key in keys:
-                        self.make_shape_key(obj=bpy_obj, shape_key=shape_key)
-                case Rotation() as rotation:
-                    self.make_rotation_rig(
-                        obj=bpy_obj, rotation=rotation, collection=car_collection
-                    )
         if import_interior:
             interior_collection = bpy.data.collections.new("Interior parts")
             bpy.context.scene.collection.children.link(interior_collection)  # type: ignore[union-attr]
@@ -877,24 +908,7 @@ class CarImporterSimple(BaseImporter):
         light_collection = bpy.data.collections.new("Car lights")
         bpy.context.scene.collection.children.link(light_collection)  # type: ignore[union-attr]
         if import_lights:
-            for index, light in enumerate(car.lights):
-                name = f"{light.type.name.lower()}-{index}"
-                attributes = self.car_light_attributes[light.type]
-                bpy_obj = self.make_spot_light_object(
-                    name=name,
-                    light=light,
-                    energy=attributes[0],
-                    angle=radians(attributes[1]),
-                    cutoff_distance=attributes[2],
-                )
-                self.set_object_rotation(obj=bpy_obj, transform=attributes[3])
-                bpy_obj["SPT_light"] = {
-                    "flash": light.flash,
-                    "intensity": light.intensity,
-                    "period": light.period_ticks,
-                    "delay": light.delay_ticks,
-                }
-                light_collection.objects.link(bpy_obj)
+            self.import_lights(lights=car.lights, collection=light_collection)
         if car.license_plate:
             bpy_obj = bpy.data.objects.new("license_plate", None)
             bpy_obj.empty_display_type = "PLAIN_AXES"
@@ -936,6 +950,22 @@ class CarImporterSimple(BaseImporter):
             audio = car.engine_audio
             car_metadata["engine_samples"] = [mkaudioattr(x) for x in audio]
         bpy.context.scene["SPT_car"] = car_metadata  # type: ignore[index]
+
+
+class HeliImporterSimple(VehicleImporter):
+    def import_helicopter(self, heli_data: HeliData, import_lights: bool) -> None:
+        heli = heli_data.helicopter
+        heli_collection = bpy.data.collections.new("Helicopter parts")
+        bpy.context.scene.collection.children.link(heli_collection)  # type: ignore[union-attr]
+        self.import_parts(parts=heli.parts, collection=heli_collection)
+        light_collection = bpy.data.collections.new("Helicopter lights")
+        bpy.context.scene.collection.children.link(light_collection)  # type: ignore[union-attr]
+        if import_lights:
+            self.import_lights(lights=heli.lights, collection=light_collection)
+        dimensions = heli.dimensions
+        bpy.context.scene["SPT_helicopter"] = {  # type: ignore[index]
+            "dimensions": (dimensions.x, dimensions.y, dimensions.z),
+        }
 
 
 class TrackImporter(bpy.types.Operator):
@@ -1083,20 +1113,59 @@ class CarImporter(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class HelicopterImporter(bpy.types.Operator):
+    """Import NFS4 Helicopter Operator"""
+
+    bl_idname = "import_scene.nfs4heli"
+    bl_label = "Import NFS4 helicopter"
+    bl_description = "Import NFS4 helicopter files"
+    bl_options = {"REGISTER", "UNDO"}
+
+    directory: StringProperty(  # type: ignore
+        name="Directory Path",
+        description="Directory containing the helicopter files",
+        maxlen=1024,
+        default="",
+    )
+    import_lights: BoolProperty(  # type: ignore[valid-type]
+        name="Import helicopter lights",
+        description="Import helicopter lights and assign default attribute values",
+        default=False,
+    )
+
+    def invoke(
+        self, context: bpy.types.Context, event: bpy.types.Event
+    ) -> set[Literal["RUNNING_MODAL", "CANCELLED", "FINISHED", "PASS_THROUGH", "INTERFACE"]]:
+        wm = context.window_manager
+        wm.fileselect_add(self)  # type: ignore[union-attr]
+        return {"RUNNING_MODAL"}
+
+    def execute(
+        self, context: bpy.types.Context
+    ) -> set[Literal["RUNNING_MODAL", "CANCELLED", "FINISHED", "PASS_THROUGH", "INTERFACE"]]:
+        heli_data = HeliData(directory=Path(self.directory))
+        importer = HeliImporterSimple(material_map=heli_data.material_map)
+        importer.import_helicopter(heli_data, import_lights=self.import_lights)
+        return {"FINISHED"}
+
+
 def menu_func(self: Any, context: bpy.types.Context) -> None:
     self.layout.operator(TrackImporter.bl_idname, text="Track resources")
     self.layout.operator(CarImporter.bl_idname, text="Car resources")
+    self.layout.operator(HelicopterImporter.bl_idname, text="Helicopter resources")
 
 
 def register() -> None:
     bpy.utils.register_class(TrackImporter)
     bpy.utils.register_class(CarImporter)
+    bpy.utils.register_class(HelicopterImporter)
     bpy.types.TOPBAR_MT_file_import.append(menu_func)
 
 
 def unregister() -> None:
     bpy.utils.unregister_class(TrackImporter)
     bpy.utils.unregister_class(CarImporter)
+    bpy.utils.unregister_class(HelicopterImporter)
     bpy.types.TOPBAR_MT_file_import.remove(menu_func)
 
 
