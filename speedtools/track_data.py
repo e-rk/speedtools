@@ -487,7 +487,7 @@ class TrackData:
             case (True, True):
                 name = "SNNW"
         resources = {resource.name: resource for resource in self.sky.resources}
-        return resources.get(name, resources["SUNW"])
+        return resources.get(name) or resources.get("SUNW")
 
     @property
     def clouds(self) -> Resource:
