@@ -53,8 +53,14 @@ class build_ksy(Command):
             for executable in executables:
                 try:
                     self.spawn([executable] + args)
+                    break
                 except ExecError:
                     pass
+            else:
+                raise ExecError(
+                    f"Failed to compile {source} with the Kaitai Struct compiler "
+                    f"(tried: {', '.join(executables)})"
+                )
 
     def get_output_mapping(self):
         mapping = {}
