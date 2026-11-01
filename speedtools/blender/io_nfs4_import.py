@@ -342,6 +342,7 @@ class BaseImporter(metaclass=ABCMeta):
 
     def set_object_action(self, obj: bpy.types.Object, action: AnimationAction) -> None:
         animation = action.animation
+        base_location, base_rotation, _ = obj.matrix_basis.decompose()
         obj.rotation_mode = "QUATERNION"
         if obj.animation_data is None:
             anim_data = obj.animation_data_create()
@@ -349,26 +350,27 @@ class BaseImporter(metaclass=ABCMeta):
             anim_data = obj.animation_data
         bpy_action = bpy.data.actions.new(name=str(action.action))
         anim_data.action = bpy_action
+        rot_quat = mathutils.Euler((0.0, 0.0, pi)).to_quaternion()
         for index, (location, quaternion) in enumerate(
             zip(animation.locations, animation.quaternions)
         ):
-            rot_quat = mathutils.Euler((0.0, 0.0, pi)).to_quaternion()
             mu_location = rot_quat @ mathutils.Vector(location)
             mu_quaternion = mathutils.Quaternion(quaternion)
             mu_quaternion = mu_quaternion.normalized()
-            mu_quaternion = rot_quat @ mu_quaternion.inverted()
-            obj.rotation_quaternion = rot_quat
-            obj.delta_location = mu_location
-            obj.delta_rotation_quaternion = mu_quaternion
+            mu_quaternion = rot_quat @ mu_quaternion.inverted() @ rot_quat
+            obj.location = base_location + mu_location
+            obj.rotation_quaternion = mu_quaternion @ base_rotation
             interval = index * animation.delay
             obj.keyframe_insert(  # type: ignore[call-arg]
-                data_path="delta_location", frame=interval, options={"INSERTKEY_CYCLE_AWARE"}
+                data_path="location", frame=interval, options={"INSERTKEY_CYCLE_AWARE"}
             )
             obj.keyframe_insert(  # type: ignore[call-arg]
-                data_path="delta_rotation_quaternion",
+                data_path="rotation_quaternion",
                 frame=interval,
                 options={"INSERTKEY_CYCLE_AWARE"},
             )
+        obj.location = base_location
+        obj.rotation_quaternion = base_rotation
         bpy_strip = bpy_action.layers[0].strips[0]
         bpy_slot = bpy_action.slots[0]
         bpy_channelbags = bpy_strip.channelbag(bpy_slot)  # type: ignore[attr-defined]
@@ -594,6 +596,11 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
             name = f"Object {index}"
             mesh = self.duplicate_common_vertices(mesh=obj.mesh)
             bpy_obj = self.make_drawable_object(name=name, mesh=mesh)
+            if obj.location:
+                self.set_object_location(obj=bpy_obj, location=obj.location)
+            if obj.transform:
+                offset = mathutils.Euler((0, 0, pi))
+                self.set_object_rotation(obj=bpy_obj, transform=obj.transform, offset=offset)
             actions = (
                 obj.actions
                 if import_actions
@@ -601,11 +608,6 @@ class TrackImportGLTF(TrackImportStrategy, BaseImporter):
             )
             for action in actions:
                 self.set_object_action(obj=bpy_obj, action=action)
-            if obj.location:
-                self.set_object_location(obj=bpy_obj, location=obj.location)
-            if obj.transform:
-                offset = mathutils.Euler((0, 0, pi))
-                self.set_object_rotation(obj=bpy_obj, transform=obj.transform, offset=offset)
             if obj.physics:
                 dim = obj.physics.dimension
                 bpy_obj["SPT_object"] = {
