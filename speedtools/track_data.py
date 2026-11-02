@@ -54,6 +54,7 @@ from speedtools.types import (
     Vertex,
     Waypoint,
     WeatherAttributes,
+    TrafficHandedness,
 )
 from speedtools.utils import (
     get_path_case_insensitive,
@@ -174,6 +175,9 @@ class TrackData:
         self.night: bool = night
         self.weather: bool = weather
         self.name: str = directory.name.upper()
+        self.base_name: TrackName = (
+            TrackName(self.name) if self.name in TrackName else TrackName.HOMETOWN
+        )
         self.game_root: Path = game_root
         self.spd_forward: SpdData = SpdData.from_file(
             self.frd.num_road_blocks,
@@ -521,3 +525,11 @@ class TrackData:
             weather=self.weather,
         )
         return filter_map(partial(self._make_audio_source, audio_file), self.frd.sound_dummies)
+
+    @property
+    def traffic_handedness(self) -> TrafficHandedness:
+        return (
+            TrafficHandedness.Left
+            if self.base_name in {TrackName.UK, TrackName.HILLS}
+            else TrafficHandedness.Right
+        )

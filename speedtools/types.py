@@ -119,6 +119,11 @@ class EmitterKind(StrEnum):
     RisingSmoke = "rising_smoke"
 
 
+class TrafficHandedness(StrEnum):
+    Left = "left"
+    Right = "right"
+
+
 class Vector3d(NamedTuple):
     x: float
     z: float
