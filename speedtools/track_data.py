@@ -51,10 +51,10 @@ from speedtools.types import (
     TrackName,
     TrackObject,
     TrackSegment,
+    TrafficHandedness,
     Vertex,
     Waypoint,
     WeatherAttributes,
-    TrafficHandedness,
 )
 from speedtools.utils import (
     get_path_case_insensitive,
