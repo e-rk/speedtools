@@ -934,6 +934,9 @@ class CarImporterSimple(VehicleImporter):
             "engine_location": car.engine_location.value,
             "car_class": car.car_class.value if car.car_class else None,
             "police": car.police,
+            "manufacturer": car.manufacturer,
+            "model": car.model,
+            "name": car.name,
         }
         if import_audio:
 
