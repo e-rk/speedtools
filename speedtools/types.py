@@ -430,6 +430,9 @@ class Car:
     car_class: CarClass
     police: bool = False
     license_plate: LicensePlate | None = None
+    manufacturer: str = ""
+    model: str = ""
+    name: str = ""
 
 
 @dataclass(frozen=True)

@@ -254,6 +254,9 @@ class CarData:
         engine_location = self.fedata.engine_location if self.fedata else EngineLocation.FRONT
         car_class = self.fedata.car_class if self.fedata else CarClass.NONE
         police = self.fedata.police if self.fedata else False
+        manufacturer = self.fedata.manufacturer if self.fedata else ""
+        model = self.fedata.model if self.fedata else ""
+        name = self.fedata.name if self.fedata else ""
         return Car(
             parts=list(self.body),
             interior=list(self.interior),
@@ -267,4 +270,7 @@ class CarData:
             car_class=car_class,
             police=police,
             license_plate=self.fce.license_plate,
+            manufacturer=manufacturer,
+            model=model,
+            name=name,
         )
