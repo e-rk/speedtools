@@ -13,6 +13,10 @@ from speedtools.types import CarClass, EngineLocation
 
 
 class FedataData:
+    manufacturer_string = 0
+    model_string = 1
+    name_string = 2
+
     car_classes = {
         FedataParser.CarClass.aaa: CarClass.AAA,
         FedataParser.CarClass.aa: CarClass.AA,
@@ -52,3 +56,19 @@ class FedataData:
     @property
     def engine_location(self) -> EngineLocation:
         return self.engine_locations.get(self.fedata.engine_location, EngineLocation.FRONT)
+
+    def _string(self, index: int) -> str:
+        strings = self.fedata.strings
+        return strings[index].value if index < len(strings) else ""
+
+    @property
+    def manufacturer(self) -> str:
+        return self._string(self.manufacturer_string)
+
+    @property
+    def model(self) -> str:
+        return self._string(self.model_string)
+
+    @property
+    def name(self) -> str:
+        return self._string(self.name_string)
